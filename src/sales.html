@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 400px;
+            margin: 50px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Sales Entry Form</h2>
+
+    <form>
+        <label>Customer Name</label>
+        <input type="text" required>
+
+        <label>Product Name</label>
+        <input type="text" required>
+
+        <label>Quantity</label>
+        <input type="number" min="1" required>
+
+        <label>Price</label>
+        <input type="number" min="1" required>
+
+        <label>Payment Mode</label>
+        <select required>
+            <option value="">Select</option>
+            <option>Cash</option>
+            <option>Card</option>
+            <option>UPI</option>
+        </select>
+
+        <button type="submit">Submit Sale</button>
+    </form>
+</div>
+
+</body>
+</html>
