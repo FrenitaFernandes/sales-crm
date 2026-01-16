@@ -1,10 +1,11 @@
 import MainLayout from "../../../components/layout/MainLayout";
 
-export default function Advertisement() {
+const Advertisement = () => {
   return (
     <MainLayout title="Advertisement" role="admin">
-      <h2>Advertisement</h2>
-      <p>Manage advertisements and campaigns.</p>
+      {/* Advertisement content will be added here */}
     </MainLayout>
   );
-}
+};
+
+export default Advertisement;

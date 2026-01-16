@@ -1,10 +1,11 @@
 import MainLayout from "../../../components/layout/MainLayout";
 
-export default function ActivityReport() {
+const ActivityReport = () => {
   return (
     <MainLayout title="Activity Report" role="admin">
-      <h2>Activity Report</h2>
-      <p>Placeholder for activity reporting UI.</p>
+      {/* Activity Report content will be added here */}
     </MainLayout>
   );
-}
+};
+
+export default ActivityReport;
