@@ -41,12 +41,12 @@ const MainLayout = ({
   };
 
   return (
-    <div className="main-layout-wrapper">
-      <div className={`sidebar-column ${sidebarOpen ? "open" : "closed"}`}>
+    <div className="flex min-h-screen bg-slate-50">
+      <div className={`relative z-50 ${sidebarOpen ? "block" : "hidden"} md:block`}>
         <Sidebar role={role} />
       </div>
 
-      <div className="content-column">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar
           title={title}
           onLogout={onLogout}
@@ -55,12 +55,15 @@ const MainLayout = ({
         />
 
         {showBreadcrumb && breadcrumbs.length > 0 && (
-          <nav className="breadcrumb-nav" aria-label="breadcrumb">
-            <ol className="breadcrumb">
+          <nav className="bg-white border-b border-gray-200 px-5 py-3 shadow-sm" aria-label="breadcrumb">
+            <ol className="flex flex-wrap gap-0">
               {breadcrumbs.map((crumb, idx) => (
-                <li key={idx} className="breadcrumb-item">
+                <li key={idx} className="flex items-center text-gray-500 text-sm">
+                  {idx > 0 && <span className="mx-2 text-gray-300">/</span>}
                   {crumb.path ? (
-                    <a href={crumb.path}>{crumb.label}</a>
+                    <a href={crumb.path} className="text-blue-600 no-underline hover:text-blue-700 hover:underline transition-colors">
+                      {crumb.label}
+                    </a>
                   ) : (
                     <span>{crumb.label}</span>
                   )}
@@ -70,8 +73,8 @@ const MainLayout = ({
           </nav>
         )}
 
-        <main className="main-content">
-          <Container fluid className="content-container">
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <Container fluid className="w-full max-w-full">
             {children}
           </Container>
         </main>
@@ -80,7 +83,7 @@ const MainLayout = ({
       {/* Mobile overlay for sidebar */}
       {isMobile && sidebarOpen && (
         <div
-          className="sidebar-overlay"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setSidebarOpen(false)}
           role="button"
           tabIndex={0}

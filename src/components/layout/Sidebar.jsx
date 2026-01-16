@@ -89,23 +89,23 @@ const Sidebar = ({ role = "admin" }) => {
   const logoText = role === "customer" ? "Customer" : "Admin";
 
   return (
-    <aside className="sidebar-wrapper">
-      <div className="sidebar-header">
-        <h2 className="sidebar-logo">{logoText}</h2>
-        <p className="sidebar-subtitle" style={{ fontSize: "12px", color: "#cbd5e1", margin: 0 }}>
+    <aside className="w-64 min-h-screen bg-gradient-to-b from-slate-800 to-slate-900 text-white p-5 overflow-y-auto shadow-2xl">
+      <div className="mb-6 pb-4 border-b border-white border-opacity-10">
+        <h2 className="text-2xl font-bold text-center m-0 text-white tracking-widest">{logoText}</h2>
+        <p className="text-xs text-slate-400 m-0 text-center">
           {role === "customer" ? "Portal" : "Dashboard"}
         </p>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="flex flex-col gap-2.5">
         {sections.map((section) => (
-          <div key={section.key} className="sidebar-section">
+          <div key={section.key} className="mb-2.5">
             <button
               onClick={() => toggleSection(section.key)}
-              className="sidebar-section-header"
+              className="w-full flex justify-between items-center p-3 bg-gradient-to-r from-slate-700 to-slate-600 text-white border-0 rounded-md cursor-pointer text-sm font-semibold mb-1 hover:from-slate-600 hover:to-slate-500 hover:translate-x-0.5 transition-all text-left"
             >
               <span>{section.title}</span>
-              <span className="arrow-icon">
+              <span className="text-xs transition-transform">
                 {openSections[section.key] ? (
                   <MdKeyboardArrowUp size={18} />
                 ) : (
@@ -115,16 +115,20 @@ const Sidebar = ({ role = "admin" }) => {
             </button>
 
             {openSections[section.key] && (
-              <div className="sidebar-submenu">
+              <div className="pl-2.5 flex flex-col gap-1.25">
                 {menus[section.key]?.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
                     className={({ isActive }) =>
-                      `sidebar-link ${isActive ? "active" : ""}`
+                      `flex items-center gap-3 px-4 py-2.5 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white hover:border-l-blue-600 hover:pl-4.5 ${
+                        isActive
+                          ? "bg-blue-600 text-white border-l-blue-700 font-semibold"
+                          : ""
+                      }`
                     }
                   >
-                    <span className="sidebar-link-icon">{getIcon(item.icon)}</span>
+                    <span className="flex items-center justify-center text-lg min-w-max">{getIcon(item.icon)}</span>
                     <span>{item.name}</span>
                   </NavLink>
                 ))}

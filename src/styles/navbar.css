@@ -1,122 +1,6 @@
-/* Navbar Bootstrap Styles */
+/* Navbar now uses Tailwind CSS - minimal styling below */
 
-.navbar-wrapper {
-  background: #ffffff !important;
-  border-bottom: 1px solid #e5e7eb !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-  padding: 0.75rem 0 !important;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.navbar-wrapper .navbar-brand {
-  color: #1e293b !important;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-bottom: 0 !important;
-}
-
-.navbar-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #64748b;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.navbar-toggle-btn:hover {
-  background-color: #f1f5f9;
-  color: #2563eb;
-}
-
-/* Navbar Icons */
-.navbar-icons {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.navbar-icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.navbar-icon-btn:hover {
-  background-color: #f1f5f9;
-  color: #2563eb;
-}
-
-/* Notification Badge */
-.notification-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background-color: #dc2626;
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 5px;
-  border-radius: 10px;
-  min-width: 18px;
-  text-align: center;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-/* Dropdown Menu Styles */
-.navbar-dropdown .dropdown-toggle::after {
-  display: none;
-}
-
-.navbar-dropdown-menu {
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 8px 0;
-}
-
-.navbar-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px !important;
-  color: #1e293b;
-  transition: all 0.2s ease;
-}
-
-.navbar-dropdown-item:hover {
-  background-color: #f1f5f9;
-  color: #2563eb;
-}
-
-.navbar-dropdown-item.logout-item:hover {
-  background-color: #fee2e2;
-  color: #dc2626;
-}
-
-/* Pulse animation */
+/* Pulse animation for notification badge */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -126,79 +10,29 @@
   }
 }
 
-/* Responsive Navbar */
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Bootstrap navbar overrides */
+.navbar-wrapper {
+  /* Now handled by Tailwind classes */
+}
+
+/* Dropdown styling for Bootstrap */
+.navbar-dropdown .dropdown-toggle::after {
+  display: none;
+}
+
+/* Responsive utilities can be customized here if needed */
 @media (max-width: 991px) {
-  .navbar-toggle-btn {
-    display: flex;
-  }
-
-  .navbar-wrapper {
-    min-height: 55px;
-    padding: 0.6rem 0 !important;
-  }
-
-  .navbar-wrapper .navbar-brand {
-    font-size: 18px;
-  }
-
-  .navbar-icons {
-    gap: 12px;
-  }
-
-  .navbar-icon-btn {
-    padding: 7px;
-  }
+  /* Responsive adjustments */
 }
 
 @media (max-width: 768px) {
-  .navbar-wrapper {
-    min-height: 50px;
-    padding: 0.5rem 0 !important;
-  }
-
-  .navbar-wrapper .navbar-brand {
-    font-size: 16px;
-  }
-
-  .navbar-left {
-    gap: 8px;
-  }
-
-  .navbar-icons {
-    gap: 10px;
-  }
-
-  .navbar-icon-btn {
-    padding: 6px;
-    font-size: 16px;
-  }
+  /* Mobile navbar adjustments */
 }
 
 @media (max-width: 480px) {
-  .navbar-wrapper {
-    min-height: 45px;
-    padding: 0.4rem 0 !important;
-  }
-
-  .navbar-wrapper .navbar-brand {
-    font-size: 14px;
-  }
-
-  .navbar-left {
-    gap: 4px;
-  }
-
-  .navbar-icons {
-    gap: 8px;
-  }
-
-  .navbar-icon-btn {
-    padding: 4px;
-    font-size: 14px;
-  }
-
-  .notification-badge {
-    font-size: 9px;
-    padding: 1px 4px;
-  }
+  /* Small screen navbar adjustments */
 }
