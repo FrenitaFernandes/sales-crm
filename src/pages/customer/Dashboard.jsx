@@ -1,4 +1,3 @@
-import MainLayout from "../../components/layout/MainLayout";
 import { Card, Row, Col, Button } from "react-bootstrap";
 import { MdReceipt, MdNotifications, MdHelpOutline } from "react-icons/md";
 
@@ -10,7 +9,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <MainLayout title="Customer Dashboard" role="customer">
+    <div>
       <h2 className="mb-4">Welcome to Your Dashboard</h2>
       <p className="text-muted mb-4">Manage your account and services</p>
       
@@ -45,7 +44,7 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
-    </MainLayout>
+    </div>
   );
 };
 

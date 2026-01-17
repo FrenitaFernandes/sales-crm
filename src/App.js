@@ -9,6 +9,9 @@ import "./styles/dashboard.css";
 import "./styles/responsive.css";
 import "./App.css";
 
+// ✅ LAYOUT
+import MainLayout from "./components/layout/MainLayout";
+
 // ADMIN CRM PAGES
 import AdminCRMDashboard from "./pages/admin/crm/Dashboard";
 import CustomerDetails from "./pages/admin/crm/CustomerDetails";
@@ -40,29 +43,155 @@ function App() {
         {/* DEFAULT ROUTE */}
         <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
-        {/* ✅ ADMIN CRM ROUTES */}
-        <Route path="/admin/crm/dashboard" element={<AdminCRMDashboard />} />
-        <Route path="/admin/crm/customer-details" element={<CustomerDetails />} />
-        <Route path="/admin/crm/service-requests" element={<ServiceRequests />} />
+        {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
+        <Route
+          path="/admin/crm/dashboard"
+          element={
+            <MainLayout>
+              <AdminCRMDashboard />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/crm/customer-details"
+          element={
+            <MainLayout>
+              <CustomerDetails />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/crm/service-requests"
+          element={
+            <MainLayout>
+              <ServiceRequests />
+            </MainLayout>
+          }
+        />
 
-        {/* ✅ ADMIN SALES ROUTES */}
-        <Route path="/admin/sales/dashboard" element={<AdminSalesDashboard />} />
-        <Route path="/admin/sales/deals" element={<Deals />} />
-        <Route path="/admin/sales/stock" element={<Stock />} />
-        <Route path="/admin/sales/stock-report" element={<StockReport />} />
-        <Route path="/admin/sales/leads" element={<Leads />} />
-        <Route path="/admin/sales/follow-up-tasks" element={<FollowUpTasks />} />
-        <Route path="/admin/sales/reports" element={<Reports />} />
-        <Route path="/admin/sales/advertisement" element={<Advertisement />} />
-        <Route path="/admin/sales/activity-report" element={<ActivityReport />} />
+        {/* ✅ ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
+        <Route
+          path="/admin/sales/dashboard"
+          element={
+            <MainLayout>
+              <AdminSalesDashboard />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/deals"
+          element={
+            <MainLayout>
+              <Deals />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/stock"
+          element={
+            <MainLayout>
+              <Stock />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/stock-report"
+          element={
+            <MainLayout>
+              <StockReport />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads"
+          element={
+            <MainLayout>
+              <Leads />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/follow-up-tasks"
+          element={
+            <MainLayout>
+              <FollowUpTasks />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/reports"
+          element={
+            <MainLayout>
+              <Reports />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/advertisement"
+          element={
+            <MainLayout>
+              <Advertisement />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/activity-report"
+          element={
+            <MainLayout>
+              <ActivityReport />
+            </MainLayout>
+          }
+        />
 
-        {/* ✅ CUSTOMER ROUTES */}
-        <Route path="/customer/dashboard" element={<CustomerDashboard />} />
-        <Route path="/customer/invoices" element={<Invoices />} />
-        <Route path="/customer/tickets" element={<Tickets />} />
-        <Route path="/customer/profile" element={<Profile />} />
-        <Route path="/customer/support" element={<Support />} />
-        <Route path="/customer/notifications" element={<Notifications />} />
+        {/* ✅ CUSTOMER ROUTES (WITH SIDEBAR + NAVBAR) */}
+        <Route
+          path="/customer/dashboard"
+          element={
+            <MainLayout>
+              <CustomerDashboard />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/invoices"
+          element={
+            <MainLayout>
+              <Invoices />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/tickets"
+          element={
+            <MainLayout>
+              <Tickets />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/profile"
+          element={
+            <MainLayout>
+              <Profile />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/support"
+          element={
+            <MainLayout>
+              <Support />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/notifications"
+          element={
+            <MainLayout>
+              <Notifications />
+            </MainLayout>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

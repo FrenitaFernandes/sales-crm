@@ -1,10 +1,8 @@
-import MainLayout from "../../../components/layout/MainLayout";
-
 const Deals = () => {
   return (
-    <MainLayout title="Deals" role="admin">
+    <div>
       {/* Deals content will be added here */}
-    </MainLayout>
+    </div>
   );
 };
 

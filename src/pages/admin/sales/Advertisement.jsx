@@ -1,10 +1,8 @@
-import MainLayout from "../../../components/layout/MainLayout";
-
 const Advertisement = () => {
   return (
-    <MainLayout title="Advertisement" role="admin">
+    <div>
       {/* Advertisement content will be added here */}
-    </MainLayout>
+    </div>
   );
 };
 

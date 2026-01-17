@@ -1,10 +1,8 @@
-import MainLayout from "../../../components/layout/MainLayout";
-
 const Dashboard = () => {
   return (
-    <MainLayout title="CRM Dashboard" role="admin">
+    <div>
       {/* Dashboard content will be added here */}
-    </MainLayout>
+    </div>
   );
 };
 

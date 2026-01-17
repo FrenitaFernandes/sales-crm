@@ -1,11 +1,9 @@
-import MainLayout from "../../components/layout/MainLayout";
-
 const Support = () => {
   return (
-    <MainLayout title="Support" role="customer">
+    <div>
       <h2>Customer Support</h2>
       <p>Get help and support.</p>
-    </MainLayout>
+    </div>
   );
 };
 
