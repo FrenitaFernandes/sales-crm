@@ -33,21 +33,19 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 
-
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* DEFAULT ROUTE */}
         <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
-        {/* ADMIN CRM ROUTES */}
+        {/* ✅ ADMIN CRM ROUTES */}
         <Route path="/admin/crm/dashboard" element={<AdminCRMDashboard />} />
         <Route path="/admin/crm/customer-details" element={<CustomerDetails />} />
         <Route path="/admin/crm/service-requests" element={<ServiceRequests />} />
 
-        {/* ADMIN SALES ROUTES */}
+        {/* ✅ ADMIN SALES ROUTES */}
         <Route path="/admin/sales/dashboard" element={<AdminSalesDashboard />} />
         <Route path="/admin/sales/deals" element={<Deals />} />
         <Route path="/admin/sales/stock" element={<Stock />} />
@@ -58,14 +56,13 @@ function App() {
         <Route path="/admin/sales/advertisement" element={<Advertisement />} />
         <Route path="/admin/sales/activity-report" element={<ActivityReport />} />
 
-        {/* CUSTOMER ROUTES */}
+        {/* ✅ CUSTOMER ROUTES */}
         <Route path="/customer/dashboard" element={<CustomerDashboard />} />
         <Route path="/customer/invoices" element={<Invoices />} />
         <Route path="/customer/tickets" element={<Tickets />} />
         <Route path="/customer/profile" element={<Profile />} />
         <Route path="/customer/support" element={<Support />} />
         <Route path="/customer/notifications" element={<Notifications />} />
-
       </Routes>
     </BrowserRouter>
   );
