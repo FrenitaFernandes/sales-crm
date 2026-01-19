@@ -3,7 +3,7 @@ const User = require("../models/user");
 
 const router = express.Router();
 
-// Test route: insert dummy user
+// Test route: add dummy user
 router.get("/add-user", async (req, res) => {
   try {
     const newUser = await User.create({
