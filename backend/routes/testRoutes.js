@@ -5,7 +5,6 @@ const router = express.Router();
 
 // Test route: add dummy user
 router.get("/add-user", async (req, res) => {
-router.get("/add-user", async (req, res) => {
   try {
     const newUser = await User.create({
       name: "Test User",
