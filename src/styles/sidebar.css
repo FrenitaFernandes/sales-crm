@@ -1,0 +1,33 @@
+/* Sidebar now uses Tailwind CSS - minimal styling below */
+
+/* Scrollbar styling for sidebar */
+.sidebar-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive utilities can be customized here if needed */
+@media (max-width: 991px) {
+  /* Responsive adjustments */
+}
+
+@media (max-width: 768px) {
+  /* Mobile sidebar adjustments */
+}
+
+@media (max-width: 480px) {
+  /* Small screen sidebar adjustments */
+}
+

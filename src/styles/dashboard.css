@@ -1,0 +1,113 @@
+/* Dashboard & Cards now uses Tailwind CSS - minimal styling below */
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.completed {
+  background-color: #dbeafe;
+  color: #0c4a6e;
+}
+
+.status-badge.rejected {
+  background-color: #fee2e2;
+  color: #7f1d1d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card .card-body {
+    padding: 15px;
+  }
+
+  .stat-icon {
+    font-size: 24px;
+  }
+
+  .stat-card h4 {
+    font-size: 22px;
+  }
+
+  .quick-link-card .card-body {
+    padding: 18px;
+  }
+
+  .quick-link-card svg {
+    font-size: 24px;
+  }
+
+  .dashboard-section-title {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stat-card .card-body {
+    padding: 12px;
+  }
+
+  .stat-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card h4 {
+    font-size: 18px;
+  }
+
+  .quick-link-card .card-body {
+    padding: 15px;
+  }
+
+  .quick-link-card h5 {
+    font-size: 13px;
+  }
+
+  .quick-link-card svg {
+    font-size: 20px;
+  }
+
+  .dashboard-section-title {
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .form-control,
+  .form-select {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
