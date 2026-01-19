@@ -1,0 +1,81 @@
+/* Responsive Utilities - now using Tailwind CSS primarily */
+
+/* Keeping some utility classes for Bootstrap compatibility */
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Cards - Responsive */
+.card {
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .card {
+    margin-bottom: 10px;
+  }
+  
+  .card-body {
+    padding: 12px;
+  }
+
+  table {
+    font-size: 14px;
+  }
+  
+  table th,
+  table td {
+    padding: 8px 5px;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  button,
+  .btn {
+    width: 100%;
+    padding: 10px 15px;
+    font-size: 14px;
+  }
+}
+
+/* Visibility Classes */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .show-mobile {
+    display: none !important;
+  }
+}
+
+/* Spacing - Responsive */
+@media (max-width: 768px) {
+  .m-responsive {
+    margin: 10px;
+  }
+  
+  .p-responsive {
+    padding: 10px;
+  }
+}
+
+@media (min-width: 769px) {
+  .m-responsive {
+    margin: 20px;
+  }
+  
+  .p-responsive {
+    padding: 20px;
+  }
+}

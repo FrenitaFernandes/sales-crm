@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 
 // ✅ Register Controller
@@ -79,5 +79,4 @@ const loginUser = async (req, res) => {
   }
 };
 
-
-module.exports = { registerUser,loginUser };
+module.exports = { registerUser, loginUser };

@@ -1,0 +1,38 @@
+/* Navbar now uses Tailwind CSS - minimal styling below */
+
+/* Pulse animation for notification badge */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Bootstrap navbar overrides */
+.navbar-wrapper {
+  /* Now handled by Tailwind classes */
+}
+
+/* Dropdown styling for Bootstrap */
+.navbar-dropdown .dropdown-toggle::after {
+  display: none;
+}
+
+/* Responsive utilities can be customized here if needed */
+@media (max-width: 991px) {
+  /* Responsive adjustments */
+}
+
+@media (max-width: 768px) {
+  /* Mobile navbar adjustments */
+}
+
+@media (max-width: 480px) {
+  /* Small screen navbar adjustments */
+}
