@@ -15,6 +15,9 @@ import {
   MdTask,
   MdKeyboardArrowUp,
   MdKeyboardArrowDown,
+  MdEmail,
+  MdPhone,
+  MdDownload,
 } from "react-icons/md";
 
 const iconMap = {
@@ -30,6 +33,9 @@ const iconMap = {
   support: <MdSupportAgent className="icon" />,
   notifications: <MdNotifications className="icon" />,
   advertisement: <MdAdsClick className="icon" />,
+  email: <MdEmail className="icon" />,
+  phone: <MdPhone className="icon" />,
+  download: <MdDownload className="icon" />,
 };
 
 const getIcon = (name) => iconMap[name] || null;
@@ -40,11 +46,22 @@ const Sidebar = ({ role = "admin" }) => {
     "admin-crm": true,
     "customer": true,
   });
+  
+  const [openSubMenus, setOpenSubMenus] = useState({
+    leads: false,
+  });
 
   const toggleSection = (section) => {
     setOpenSections((prev) => ({
       ...prev,
       [section]: !prev[section],
+    }));
+  };
+
+  const toggleSubMenu = (menuKey) => {
+    setOpenSubMenus((prev) => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
     }));
   };
 
@@ -57,7 +74,17 @@ const Sidebar = ({ role = "admin" }) => {
     "admin-sales": [
       { name: "Dashboard", path: "/admin/sales/dashboard", icon: "dashboard" },
       { name: "Deals", path: "/admin/sales/deals", icon: "deals" },
-      { name: "Leads", path: "/admin/sales/leads", icon: "leads" },
+      { 
+        name: "Leads", 
+        path: "/admin/sales/leads", 
+        icon: "leads",
+        subMenu: [
+          { name: "Leads", path: "/admin/sales/leads", icon: "leads" },
+          { name: "Get Email", path: "/admin/sales/leads/get-email", icon: "email" },
+          { name: "Get Phone", path: "/admin/sales/leads/get-phone", icon: "phone" },
+          { name: "Download Lead", path: "/admin/sales/leads/download-lead", icon: "download" },
+        ]
+      },
       { name: "Stock", path: "/admin/sales/stock", icon: "stock" },
       { name: "Stock Report", path: "/admin/sales/stock-report", icon: "reports" },
       { name: "Follow Up Tasks", path: "/admin/sales/follow-up-tasks", icon: "tasks" },
@@ -117,20 +144,62 @@ const Sidebar = ({ role = "admin" }) => {
             {openSections[section.key] && (
               <div className="pl-2.5 flex flex-col gap-1.25">
                 {menus[section.key]?.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-2.5 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white hover:border-l-blue-600 hover:pl-4.5 ${
-                        isActive
-                          ? "bg-blue-600 text-white border-l-blue-700 font-semibold"
-                          : ""
-                      }`
-                    }
-                  >
-                    <span className="flex items-center justify-center text-lg min-w-max">{getIcon(item.icon)}</span>
-                    <span>{item.name}</span>
-                  </NavLink>
+                  <div key={item.path}>
+                    {item.subMenu ? (
+                      <>
+                        <button
+                          onClick={() => toggleSubMenu(item.name.toLowerCase())}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white bg-transparent cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center text-lg min-w-max">{getIcon(item.icon)}</span>
+                            <span>{item.name}</span>
+                          </div>
+                          <span className="text-xs">
+                            {openSubMenus[item.name.toLowerCase()] ? (
+                              <MdKeyboardArrowUp size={16} />
+                            ) : (
+                              <MdKeyboardArrowDown size={16} />
+                            )}
+                          </span>
+                        </button>
+                        {openSubMenus[item.name.toLowerCase()] && (
+                          <div className="pl-6 flex flex-col gap-1">
+                            {item.subMenu.map((subItem) => (
+                              <NavLink
+                                key={subItem.path}
+                                to={subItem.path}
+                                className={({ isActive }) =>
+                                  `flex items-center gap-3 px-4 py-2 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white hover:border-l-blue-600 hover:pl-4.5 ${
+                                    isActive
+                                      ? "bg-blue-600 text-white border-l-blue-700 font-semibold"
+                                      : ""
+                                  }`
+                                }
+                              >
+                                <span className="flex items-center justify-center text-base min-w-max">{getIcon(subItem.icon)}</span>
+                                <span>{subItem.name}</span>
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-4 py-2.5 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white hover:border-l-blue-600 hover:pl-4.5 ${
+                            isActive
+                              ? "bg-blue-600 text-white border-l-blue-700 font-semibold"
+                              : ""
+                          }`
+                        }
+                      >
+                        <span className="flex items-center justify-center text-lg min-w-max">{getIcon(item.icon)}</span>
+                        <span>{item.name}</span>
+                      </NavLink>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

@@ -23,6 +23,10 @@ import Deals from "./pages/admin/sales/Deals";
 import Stock from "./pages/admin/sales/Stock";
 import StockReport from "./pages/admin/sales/StockReport";
 import Leads from "./pages/admin/sales/Leads";
+import LeadDetails from "./pages/admin/sales/LeadDetails";
+import GetEmail from "./pages/admin/sales/GetEmail";
+import GetPhone from "./pages/admin/sales/GetPhone";
+import DownloadLead from "./pages/admin/sales/DownloadLead";
 import FollowUpTasks from "./pages/admin/sales/FollowUpTasks";
 import Reports from "./pages/admin/sales/Reports";
 import Advertisement from "./pages/admin/sales/Advertisement";
@@ -107,6 +111,38 @@ function App() {
           element={
             <MainLayout>
               <Leads />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/:id"
+          element={
+            <MainLayout>
+              <LeadDetails />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/get-email"
+          element={
+            <MainLayout>
+              <GetEmail />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/get-phone"
+          element={
+            <MainLayout>
+              <GetPhone />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/download-lead"
+          element={
+            <MainLayout>
+              <DownloadLead />
             </MainLayout>
           }
         />
