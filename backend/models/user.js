@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true,
     },
 
     email: {
@@ -13,7 +12,6 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
-      trim: true,
     },
 
     password: {
@@ -23,8 +21,16 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["customer", "admin", "staff"],
-      default: "customer",
+      enum: ["admin", "customer"],
+      default: "customer", // IMPORTANT
+    },
+
+    otp: {
+      type: String,
+    },
+
+    otpExpiry: {
+      type: Date,
     },
   },
   { timestamps: true }
