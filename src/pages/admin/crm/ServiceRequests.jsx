@@ -1,0 +1,532 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+const API_BASE = "http://localhost:5000/api/admin";
+
+const statuses = ["All", "Pending", "In Progress", "Completed"];
+const priorities = ["Low", "Medium", "High"];
+
+function formatDate(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return d.toLocaleString();
+}
+
+const ServiceRequests = () => {
+  const [requests, setRequests] = useState([]);
+  const [customers, setCustomers] = useState([]);
+
+  // UI state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("new"); // new / old
+
+  // pagination
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+
+  // modals
+  const [showCreate, setShowCreate] = useState(false);
+  const [viewRequest, setViewRequest] = useState(null);
+
+  // toast
+  const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
+
+  // create form
+  const [customerId, setCustomerId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("Medium");
+
+  const showToast = (msg, type = "success") => {
+    setToast({ show: true, msg, type });
+    setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 2500);
+  };
+
+  // ✅ fetch customers
+  const fetchCustomers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/customers`);
+      const data = await res.json();
+      setCustomers(data);
+    } catch (err) {
+      console.log("Fetch customers error:", err);
+    }
+  };
+
+  // ✅ fetch requests
+  const fetchRequests = async () => {
+    try {
+      const q = new URLSearchParams();
+      if (statusFilter && statusFilter !== "All") q.append("status", statusFilter);
+      if (search.trim()) q.append("search", search.trim());
+
+      const res = await fetch(`${API_BASE}/service-requests?${q.toString()}`);
+      const data = await res.json();
+      setRequests(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.log("Fetch requests error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+    fetchRequests();
+    // eslint-disable-next-line
+  }, [statusFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      fetchRequests();
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [search]);
+
+  // sort
+  const sortedRequests = useMemo(() => {
+    const copy = [...requests];
+    copy.sort((a, b) => {
+      const da = new Date(a.createdAt).getTime();
+      const db = new Date(b.createdAt).getTime();
+      return sortOrder === "new" ? db - da : da - db;
+    });
+    return copy;
+  }, [requests, sortOrder]);
+
+  // pagination
+  const totalPages = Math.ceil(sortedRequests.length / pageSize) || 1;
+  const paginated = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sortedRequests.slice(start, start + pageSize);
+  }, [sortedRequests, page]);
+
+  const resetForm = () => {
+    setCustomerId("");
+    setTitle("");
+    setDescription("");
+    setPriority("Medium");
+  };
+
+  // ✅ create request
+  const handleCreate = async (e) => {
+    e.preventDefault();
+
+    if (!customerId || !title.trim()) {
+      showToast("Please select customer and enter title.", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/service-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId,
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.message || "Failed to create request", "error");
+        return;
+      }
+
+      showToast("✅ Service request created");
+      setShowCreate(false);
+      resetForm();
+      fetchRequests();
+    } catch (err) {
+      showToast("Server error while creating request", "error");
+    }
+  };
+
+  // ✅ update status
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const res = await fetch(`${API_BASE}/service-requests/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.message || "Failed to update status", "error");
+        return;
+      }
+
+      showToast("✅ Status updated");
+      fetchRequests();
+    } catch (err) {
+      showToast("Server error while updating status", "error");
+    }
+  };
+
+  // ✅ delete request
+  const handleDelete = async (id) => {
+    const ok = window.confirm("Are you sure you want to delete this request?");
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/service-requests/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.message || "Failed to delete request", "error");
+        return;
+      }
+
+      showToast("✅ Service request deleted");
+      fetchRequests();
+    } catch (err) {
+      showToast("Server error while deleting request", "error");
+    }
+  };
+
+  // KPI cards
+  const kpis = useMemo(() => {
+    const total = requests.length;
+    const pending = requests.filter((r) => r.status === "Pending").length;
+    const inProg = requests.filter((r) => r.status === "In Progress").length;
+    const completed = requests.filter((r) => r.status === "Completed").length;
+    return { total, pending, inProg, completed };
+  }, [requests]);
+
+  return (
+    <div className="p-6">
+      {/* Toast */}
+      {toast.show && (
+        <div
+          className={`fixed top-5 right-5 px-4 py-3 rounded shadow text-white z-[9999] ${
+            toast.type === "error" ? "bg-red-600" : "bg-green-600"
+          }`}
+        >
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+        <div>
+          <h2 className="text-2xl font-bold">Service Requests</h2>
+          <p className="text-gray-500 text-sm">
+            Track customer issues, update statuses and monitor progress.
+          </p>
+        </div>
+
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+          onClick={() => setShowCreate(true)}
+        >
+          + Create Request
+        </button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4">
+          <p className="text-gray-500">Total</p>
+          <h3 className="text-2xl font-bold">{kpis.total}</h3>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <p className="text-gray-500">Pending</p>
+          <h3 className="text-2xl font-bold">{kpis.pending}</h3>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <p className="text-gray-500">In Progress</p>
+          <h3 className="text-2xl font-bold">{kpis.inProg}</h3>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <p className="text-gray-500">Completed</p>
+          <h3 className="text-2xl font-bold">{kpis.completed}</h3>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="bg-white rounded-lg shadow p-4 mb-5 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+        <input
+          className="border p-2 rounded w-full lg:w-[40%]"
+          placeholder="Search customer / email / title..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            className="border p-2 rounded"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                Status: {s}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border p-2 rounded"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <option value="new">Sort: Newest</option>
+            <option value="old">Sort: Oldest</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100 text-left">
+              <th className="p-3 border">Customer</th>
+              <th className="p-3 border">Title</th>
+              <th className="p-3 border">Priority</th>
+              <th className="p-3 border">Created</th>
+              <th className="p-3 border">Status</th>
+              <th className="p-3 border">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {paginated.length > 0 ? (
+              paginated.map((r) => (
+                <tr key={r._id} className="hover:bg-gray-50">
+                  <td className="p-3 border">
+                    <div className="font-semibold">{r.customerId?.name || "N/A"}</div>
+                    <div className="text-xs text-gray-500">{r.customerId?.email}</div>
+                  </td>
+
+                  <td className="p-3 border">
+                    <div className="font-medium">{r.title}</div>
+                    <div className="text-xs text-gray-500 line-clamp-1">
+                      {r.description || "—"}
+                    </div>
+                  </td>
+
+                  <td className="p-3 border">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        r.priority === "High"
+                          ? "bg-red-100 text-red-700"
+                          : r.priority === "Low"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {r.priority || "Medium"}
+                    </span>
+                  </td>
+
+                  <td className="p-3 border text-sm">{formatDate(r.createdAt)}</td>
+
+                  <td className="p-3 border">
+                    <select
+                      className="border p-2 rounded w-full"
+                      value={r.status}
+                      onChange={(e) => handleStatusChange(r._id, e.target.value)}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </td>
+
+                  <td className="p-3 border">
+                    <div className="flex gap-2">
+                      <button
+                        className="bg-gray-800 text-white px-3 py-1 rounded text-sm"
+                        onClick={() => setViewRequest(r)}
+                      >
+                        View
+                      </button>
+                      <button
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+                        onClick={() => handleDelete(r._id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="p-6 text-center text-gray-500">
+                  No service requests found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-4">
+        <p className="text-sm text-gray-500">
+          Page {page} of {totalPages}
+        </p>
+
+        <div className="flex gap-2">
+          <button
+            className="border px-3 py-1 rounded"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </button>
+          <button
+            className="border px-3 py-1 rounded"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold">Create Service Request</h3>
+              <button
+                className="text-gray-600 hover:text-black"
+                onClick={() => {
+                  setShowCreate(false);
+                  resetForm();
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="text-sm text-gray-600">Customer</label>
+                <select
+                  className="border p-2 rounded w-full"
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                >
+                  <option value="">Select Customer</option>
+                  {customers.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} ({c.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-gray-600">Title</label>
+                  <input
+                    className="border p-2 rounded w-full"
+                    placeholder="Eg: Installation issue"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-600">Priority</label>
+                  <select
+                    className="border p-2 rounded w-full"
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                  >
+                    {priorities.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Description</label>
+                <textarea
+                  className="border p-2 rounded w-full"
+                  rows={4}
+                  placeholder="Enter request description..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="border px-4 py-2 rounded"
+                  onClick={() => {
+                    setShowCreate(false);
+                    resetForm();
+                  }}
+                >
+                  Cancel
+                </button>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {viewRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold">Request Details</h3>
+              <button
+                className="text-gray-600 hover:text-black"
+                onClick={() => setViewRequest(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p><b>Customer:</b> {viewRequest.customerId?.name}</p>
+              <p><b>Email:</b> {viewRequest.customerId?.email}</p>
+              <p><b>Phone:</b> {viewRequest.customerId?.phone}</p>
+              <p><b>Title:</b> {viewRequest.title}</p>
+              <p><b>Description:</b> {viewRequest.description || "—"}</p>
+              <p><b>Priority:</b> {viewRequest.priority || "Medium"}</p>
+              <p><b>Status:</b> {viewRequest.status}</p>
+              <p><b>Created:</b> {formatDate(viewRequest.createdAt)}</p>
+            </div>
+
+            <div className="flex justify-end mt-4">
+              <button className="border px-4 py-2 rounded" onClick={() => setViewRequest(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ServiceRequests;
