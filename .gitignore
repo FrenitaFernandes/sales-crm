@@ -31,3 +31,6 @@ backend/.env
 
 # logs
 *.log
+# env files
+.env
+.env.*

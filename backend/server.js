@@ -9,7 +9,10 @@ const authRoutes = require("./routes/authRoutes");
 const testRoutes = require("./routes/testRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === "production" ? ".env.prod" : ".env.draft",
+});
+
 
 const app = express();
 

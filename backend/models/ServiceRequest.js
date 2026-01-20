@@ -1,28 +1,25 @@
-const express = require("express");
-const router = express.Router();
+const mongoose = require("mongoose");
 
-const Customer = require("./Customer");
-const ServiceRequest = require("./ServiceRequest");
+const serviceRequestSchema = new mongoose.Schema(
+  {
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
 
-// ✅ Admin CRM Dashboard Stats
-router.get("/crm/dashboard", async (req, res) => {
-  try {
-    const totalCustomers = await Customer.countDocuments();
+    title: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
 
-    const totalServiceRequests = await ServiceRequest.countDocuments();
-    const pendingRequests = await ServiceRequest.countDocuments({ status: "Pending" });
-    const completedRequests = await ServiceRequest.countDocuments({ status: "Completed" });
+    priority: {
+      type: String,
+      enum: ["Low", "Medium", "High"],
+      default: "Medium",
+    },
 
-    res.json({
-      totalCustomers,
-      totalServiceRequests,
-      pendingRequests,
-      completedRequests,
-    });
-  } catch (error) {
-    console.error("Dashboard API error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+    status: {
+      type: String,
+      enum: ["Pending", "In Progress", "Completed"],
+      default: "Pending",
+    },
+  },
+  { timestamps: true }
+);
 
-module.exports = router;
+module.exports = mongoose.model("ServiceRequest", serviceRequestSchema);
