@@ -1,13 +1,24 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { registerUser } from "../services/authService";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    alert("Register clicked (OTP & email will be added later)");
+
+    try {
+      const data = await registerUser({ name, email, password });
+      setMessage(data.message);
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message || "Registration failed"
+      );
+    }
   };
 
   return (
@@ -19,6 +30,12 @@ function Register() {
         <h2 className="text-2xl font-bold mb-6 text-center">
           Customer Registration
         </h2>
+
+        {message && (
+          <p className="text-center text-sm text-green-600 mb-3">
+            {message}
+          </p>
+        )}
 
         <input
           type="text"
@@ -41,7 +58,7 @@ function Register() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-4 mb-4 border rounded"
+          className="w-full p-2 mb-4 border rounded"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -56,6 +73,13 @@ function Register() {
 
         <p className="text-sm text-gray-500 mt-3 text-center">
           Only customers can register
+        </p>
+
+        <p className="text-center text-sm text-gray-600 mt-2">
+          Already have an account?{" "}
+          <Link to="/login" className="text-blue-600 hover:underline">
+            Login
+          </Link>
         </p>
       </form>
     </div>
