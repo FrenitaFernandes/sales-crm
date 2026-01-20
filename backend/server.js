@@ -8,7 +8,10 @@ const connectDB = require("./utils/db");
 const authRoutes = require("./routes/authRoutes");
 const testRoutes = require("./routes/testRoutes");
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === "production" ? ".env.prod" : ".env.draft",
+});
+
 
 const app = express();
 
