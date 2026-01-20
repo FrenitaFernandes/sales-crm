@@ -1,15 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-
-
-//added by janihsma
-
-
 import "./styles/layout.css";
 import "./styles/navbar.css";
 import "./styles/sidebar.css";
@@ -17,7 +7,6 @@ import "./styles/table.css";
 import "./styles/chart.css";
 import "./styles/dashboard.css";
 import "./styles/responsive.css";
-
 import "./App.css";
 
 // ✅ LAYOUT
@@ -34,6 +23,10 @@ import Deals from "./pages/admin/sales/Deals";
 import Stock from "./pages/admin/sales/Stock";
 import StockReport from "./pages/admin/sales/StockReport";
 import Leads from "./pages/admin/sales/Leads";
+import LeadDetails from "./pages/admin/sales/LeadDetails";
+import GetEmail from "./pages/admin/sales/GetEmail";
+import GetPhone from "./pages/admin/sales/GetPhone";
+import DownloadLead from "./pages/admin/sales/DownloadLead";
 import FollowUpTasks from "./pages/admin/sales/FollowUpTasks";
 import Reports from "./pages/admin/sales/Reports";
 import Advertisement from "./pages/admin/sales/Advertisement";
@@ -52,21 +45,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* DEFAULT ROUTE */}
-       
-       
-       
-       { /*added by janihsma*/}
-
-       {/*<Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />*/}
-
-       <Route path="/" element={<Home />} />
-       <Route path="/login" element={<Login />} />
-       <Route path="/register" element={<Register />} />
-       <Route path="/forgot-password" element={<ForgotPassword />} />
-
-
-
-
+        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
         {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
@@ -132,6 +111,38 @@ function App() {
           element={
             <MainLayout>
               <Leads />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/:id"
+          element={
+            <MainLayout>
+              <LeadDetails />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/get-email"
+          element={
+            <MainLayout>
+              <GetEmail />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/get-phone"
+          element={
+            <MainLayout>
+              <GetPhone />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/leads/download-lead"
+          element={
+            <MainLayout>
+              <DownloadLead />
             </MainLayout>
           }
         />
