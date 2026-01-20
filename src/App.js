@@ -1,15 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-
-
-//added by janihsma
-
-
 import "./styles/layout.css";
 import "./styles/navbar.css";
 import "./styles/sidebar.css";
@@ -17,7 +7,6 @@ import "./styles/table.css";
 import "./styles/chart.css";
 import "./styles/dashboard.css";
 import "./styles/responsive.css";
-
 import "./App.css";
 
 // ✅ LAYOUT
@@ -52,21 +41,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* DEFAULT ROUTE */}
-       
-       
-       
-       { /*added by janihsma*/}
-
-       {/*<Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />*/}
-
-       <Route path="/" element={<Home />} />
-       <Route path="/login" element={<Login />} />
-       <Route path="/register" element={<Register />} />
-       <Route path="/forgot-password" element={<ForgotPassword />} />
-
-
-
-
+        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
         {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
