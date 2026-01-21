@@ -313,4 +313,191 @@ router.get("/dashboard/analytics", async (req, res) => {
   }
 });
 
+// ---------------------------------------------
+// SALES MODULE IMPORTS
+// ---------------------------------------------
+const StockEntry = require("../models/StockEntry");
+const StockUsage = require("../models/StockUsage");
+const Invoice = require("../models/Invoice");
+const Project = require("../models/Project");
+const Advertisement = require("../models/Advertisement");
+const ActivityLog = require("../models/ActivityLog");
+
+
+// -----------------------------------------------------
+// STOCK ENTRY
+// -----------------------------------------------------
+router.post("/stock/entry", async (req, res) => {
+  try {
+    const entry = await StockEntry.create(req.body);
+    res.json({ message: "Stock entry added", entry });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/stock/entry", async (req, res) => {
+  try {
+    const entries = await StockEntry.find().sort({ createdAt: -1 });
+    res.json(entries);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// STOCK USAGE
+// -----------------------------------------------------
+router.post("/stock/usage", async (req, res) => {
+  try {
+    const usage = await StockUsage.create(req.body);
+    res.json({ message: "Stock usage added", usage });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/stock/usage", async (req, res) => {
+  try {
+    const usage = await StockUsage.find().sort({ createdAt: -1 });
+    res.json(usage);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// STOCK SUMMARY
+// -----------------------------------------------------
+router.get("/stock/summary", async (req, res) => {
+  try {
+    const entry = await StockEntry.aggregate([{ $unwind: "$items" }]);
+    const usage = await StockUsage.aggregate([{ $unwind: "$items" }]);
+
+    const summary = {};
+
+    entry.forEach((e) => {
+      if (!summary[e.items.itemName]) summary[e.items.itemName] = 0;
+      summary[e.items.itemName] += e.items.qty;
+    });
+
+    usage.forEach((u) => {
+      if (!summary[u.items.itemName]) summary[u.items.itemName] = 0;
+      summary[u.items.itemName] -= u.items.qtyUsed;
+    });
+
+    res.json(summary);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// INVOICE
+// -----------------------------------------------------
+router.post("/invoice/new", async (req, res) => {
+  try {
+    const invoice = await Invoice.create(req.body);
+    res.json({ message: "Invoice created", invoice });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/invoice/history", async (req, res) => {
+  try {
+    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    res.json(invoices);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.delete("/invoice/:id", async (req, res) => {
+  try {
+    await Invoice.findByIdAndDelete(req.params.id);
+    res.json({ message: "Invoice deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// PROJECT
+// -----------------------------------------------------
+router.post("/project", async (req, res) => {
+  try {
+    const project = await Project.create(req.body);
+    res.json({ message: "Project added", project });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/project/ongoing", async (req, res) => {
+  try {
+    const data = await Project.find({ status: "Ongoing" });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/project/completed", async (req, res) => {
+  try {
+    const data = await Project.find({ status: "Completed" });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// ADVERTISEMENT
+// -----------------------------------------------------
+router.post("/advertisement", async (req, res) => {
+  try {
+    const adv = await Advertisement.create(req.body);
+    res.json({ message: "Ad created", adv });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/advertisement", async (req, res) => {
+  try {
+    const ads = await Advertisement.find().sort({ createdAt: -1 });
+    res.json(ads);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+
+// -----------------------------------------------------
+// ACTIVITY LOGS
+// -----------------------------------------------------
+router.post("/activity/log", async (req, res) => {
+  try {
+    const log = await ActivityLog.create(req.body);
+    res.json({ message: "Log saved", log });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.get("/activity/logs", async (req, res) => {
+  try {
+    const logs = await ActivityLog.find().sort({ createdAt: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
 module.exports = router;

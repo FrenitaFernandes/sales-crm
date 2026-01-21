@@ -49,6 +49,12 @@ const Sidebar = ({ role = "admin" }) => {
   
   const [openSubMenus, setOpenSubMenus] = useState({
     leads: false,
+    stock: false,
+    "stock report": false,
+    invoice: false,
+    project: false,
+    advertisement: false,
+    "activity report": false,
   });
 
   const toggleSection = (section) => {
@@ -73,7 +79,6 @@ const Sidebar = ({ role = "admin" }) => {
     ],
     "admin-sales": [
       { name: "Dashboard", path: "/admin/sales/dashboard", icon: "dashboard" },
-      { name: "Deals", path: "/admin/sales/deals", icon: "deals" },
       { 
         name: "Leads", 
         path: "/admin/sales/leads", 
@@ -85,12 +90,60 @@ const Sidebar = ({ role = "admin" }) => {
           { name: "Download Lead", path: "/admin/sales/leads/download-lead", icon: "download" },
         ]
       },
-      { name: "Stock", path: "/admin/sales/stock", icon: "stock" },
-      { name: "Stock Report", path: "/admin/sales/stock-report", icon: "reports" },
-      { name: "Follow Up Tasks", path: "/admin/sales/follow-up-tasks", icon: "tasks" },
-      { name: "Reports", path: "/admin/sales/reports", icon: "reports" },
-      { name: "Activity Report", path: "/admin/sales/activity-report", icon: "reports" },
-      { name: "Advertisement", path: "/admin/sales/advertisement", icon: "advertisement" },
+      { 
+        name: "Stock", 
+        path: "/admin/sales/stock/entry", 
+        icon: "stock",
+        subMenu: [
+          { name: "Stock Entry", path: "/admin/sales/stock/entry", icon: "stock" },
+          { name: "Stock Summary", path: "/admin/sales/stock/summary", icon: "stock" },
+          { name: "Stock Usage", path: "/admin/sales/stock/usage", icon: "stock" },
+        ]
+      },
+      { 
+        name: "Stock Report", 
+        path: "/admin/sales/stock/report", 
+        icon: "reports",
+        subMenu: [
+          { name: "Stock Report", path: "/admin/sales/stock/report", icon: "reports" },
+        ]
+      },
+      { 
+        name: "Invoice", 
+        path: "/admin/sales/invoice/new", 
+        icon: "reports",
+        subMenu: [
+          { name: "New Invoice", path: "/admin/sales/invoice/new", icon: "reports" },
+          { name: "Invoice History", path: "/admin/sales/invoice/history", icon: "reports" },
+        ]
+      },
+      { 
+        name: "Project", 
+        path: "/admin/sales/project/ongoing", 
+        icon: "tasks",
+        subMenu: [
+          { name: "Ongoing", path: "/admin/sales/project/ongoing", icon: "tasks" },
+          { name: "Completed", path: "/admin/sales/project/completed", icon: "tasks" },
+        ]
+      },
+      { 
+        name: "Advertisement", 
+        path: "/admin/sales/advertisement/add", 
+        icon: "advertisement",
+        subMenu: [
+          { name: "Add Advertisement", path: "/admin/sales/advertisement/add", icon: "advertisement" },
+          { name: "Advertisement List", path: "/admin/sales/advertisement/list", icon: "advertisement" },
+        ]
+      },
+      { 
+        name: "Activity Report", 
+        path: "/admin/sales/activity-report", 
+        icon: "reports",
+        subMenu: [
+          { name: "Reports", path: "/admin/sales/activity-report", icon: "reports" },
+          { name: "Conversation Chart", path: "/admin/sales/activity-report/chart", icon: "reports" },
+        ]
+      },
     ],
     customer: [
       { name: "Dashboard", path: "/customer/dashboard", icon: "dashboard" },
