@@ -1,11 +1,18 @@
 const transporter = require("../config/mail");
 
-exports.sendOTP = async (email, otp) => {
+// Send Welcome Email (No OTP)
+exports.sendWelcomeEmail = async (email, name) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Your OTP for Registration",
-    text: `Your OTP is: ${otp}`,
+    subject: "Welcome to Sales CRM!",
+    html: `
+      <h2>Hello ${name},</h2>
+      <p>Thank you for registering with our System.</p>
+      <p>Your account has been created successfully.</p>
+      <br/>
+      <p>Regards,<br/>Sales CRM Team</p>
+    `,
   };
 
   await transporter.sendMail(mailOptions);

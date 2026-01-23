@@ -9,6 +9,12 @@ import "./styles/dashboard.css";
 import "./styles/responsive.css";
 import "./App.css";
 
+// ✅ BASIC PAGES (YOUR AUTH + HOME)
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
 // ✅ LAYOUT
 import MainLayout from "./components/layout/MainLayout";
 
@@ -44,10 +50,23 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* DEFAULT ROUTE */}
-        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
-        {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
+        {/* ======================== */}
+        {/*  BASIC PUBLIC ROUTES     */}
+        {/* ======================== */}
+
+        {/* Default route → Home */}
+        <Route path="/" element={<Home />} />
+
+        {/* Login / Register / Forgot */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+
+        {/* ======================== */}
+        {/*  ADMIN CRM ROUTES        */}
+        {/* ======================== */}
         <Route
           path="/admin/crm/dashboard"
           element={
@@ -73,7 +92,11 @@ function App() {
           }
         />
 
-        {/* ✅ ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
+
+        {/* ======================== */}
+        {/*  ADMIN SALES ROUTES      */}
+        {/* ======================== */}
+
         <Route
           path="/admin/sales/dashboard"
           element={
@@ -82,6 +105,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/deals"
           element={
@@ -90,6 +114,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/stock"
           element={
@@ -98,6 +123,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/stock-report"
           element={
@@ -106,6 +132,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/leads"
           element={
@@ -114,6 +141,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/leads/:id"
           element={
@@ -122,6 +150,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/leads/get-email"
           element={
@@ -130,6 +159,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/leads/get-phone"
           element={
@@ -138,6 +168,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/leads/download-lead"
           element={
@@ -146,6 +177,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/follow-up-tasks"
           element={
@@ -154,6 +186,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/reports"
           element={
@@ -162,6 +195,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/advertisement"
           element={
@@ -170,6 +204,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/admin/sales/activity-report"
           element={
@@ -179,7 +214,10 @@ function App() {
           }
         />
 
-        {/* ✅ CUSTOMER ROUTES (WITH SIDEBAR + NAVBAR) */}
+
+        {/* ======================== */}
+        {/*  CUSTOMER ROUTES         */}
+        {/* ======================== */}
         <Route
           path="/customer/dashboard"
           element={
@@ -188,6 +226,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/customer/invoices"
           element={
@@ -196,6 +235,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/customer/tickets"
           element={
@@ -204,6 +244,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/customer/profile"
           element={
@@ -212,6 +253,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/customer/support"
           element={
@@ -220,6 +262,7 @@ function App() {
             </MainLayout>
           }
         />
+
         <Route
           path="/customer/notifications"
           element={
@@ -228,6 +271,7 @@ function App() {
             </MainLayout>
           }
         />
+
       </Routes>
     </BrowserRouter>
   );

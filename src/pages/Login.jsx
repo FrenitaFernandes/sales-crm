@@ -1,13 +1,35 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { loginUser } from "../services/authService";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
 
-  const handleLogin = (e) => {
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    alert("Login clicked (API will be connected later)");
+
+    try {
+      const data = await loginUser({ email, password });
+      setMessage("Login successful!");
+
+      const role = data.user.role; // admin / customer
+
+      // Redirect based on role
+      setTimeout(() => {
+        if (role === "admin") {
+          navigate("/admin/sales/dashboard");
+        } else if (role === "customer") {
+          navigate("/customer/dashboard");
+        }
+      }, 800);
+
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Login failed");
+    }
   };
 
   return (
@@ -17,6 +39,16 @@ function Login() {
         className="bg-white p-8 rounded-lg shadow-md w-96"
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+
+        {message && (
+          <p
+            className={`text-center text-sm mb-3 ${
+              message.includes("failed") ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            {message}
+          </p>
+        )}
 
         <input
           type="email"
@@ -45,10 +77,7 @@ function Login() {
 
         {/* Forgot Password */}
         <div className="text-center mt-3">
-          <Link
-            to="/forgot-password"
-            className="text-blue-600 hover:underline"
-          >
+          <Link to="/forgot-password" className="text-blue-600 hover:underline">
             Forgot Password?
           </Link>
         </div>

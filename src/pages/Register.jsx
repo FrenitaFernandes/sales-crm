@@ -1,23 +1,35 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match!");
+      return;
+    }
+
     try {
       const data = await registerUser({ name, email, password });
       setMessage(data.message);
+
+      // Redirect to login page after success
+      setTimeout(() => {
+        navigate("/login");
+      }, 1000);
+
     } catch (error) {
-      setMessage(
-        error.response?.data?.message || "Registration failed"
-      );
+      setMessage(error.response?.data?.message || "Registration failed");
     }
   };
 
@@ -31,8 +43,15 @@ function Register() {
           Customer Registration
         </h2>
 
+        {/* SUCCESS / ERROR MESSAGE */}
         {message && (
-          <p className="text-center text-sm text-green-600 mb-3">
+          <p
+            className={`text-center text-sm mb-3 ${
+              message === "Passwords do not match!"
+                ? "text-red-600"
+                : "text-green-600"
+            }`}
+          >
             {message}
           </p>
         )}
@@ -64,16 +83,21 @@ function Register() {
           required
         />
 
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          className="w-full p-2 mb-4 border rounded"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+        />
+
         <button
           type="submit"
           className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
         >
           Register
         </button>
-
-        <p className="text-sm text-gray-500 mt-3 text-center">
-          Only customers can register
-        </p>
 
         <p className="text-center text-sm text-gray-600 mt-2">
           Already have an account?{" "}

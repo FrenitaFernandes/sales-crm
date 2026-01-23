@@ -1,9 +1,9 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
-const { sendOTP } = require("../services/emailService");
+const { sendWelcomeEmail } = require("../services/emailService");
 
 // ===============================
-// REGISTER (CUSTOMER ONLY + OTP)
+// REGISTER (CUSTOMER ONLY)
 // ===============================
 const registerUser = async (req, res) => {
   try {
@@ -13,6 +13,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please fill all required fields" });
     }
 
+    // check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
@@ -21,32 +22,24 @@ const registerUser = async (req, res) => {
     // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // generate OTP (6 digits)
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // OTP expires in 5 min
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
-
-    // create CUSTOMER only
+    // create user (customer only)
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       role: "customer",
-      otp,
-      otpExpiry,
     });
 
-    // send OTP to email
-    await sendOTP(email, otp);
+    // send welcome email
+    await sendWelcomeEmail(email, name);
 
     res.status(201).json({
-      message: "OTP sent to your email",
+      message: "Registration successful! Welcome email sent.",
       userId: user._id,
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Registration Error:", error);
     res.status(500).json({ message: "Registration failed" });
   }
 };
@@ -59,10 +52,7 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(
-        400,
-        json({ message: "Please enter email and password" })
-      );
+      return res.status(400).json({ message: "Please enter email and password" });
     }
 
     const user = await User.findOne({ email });
@@ -81,11 +71,12 @@ const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role, // admin or customer
+        role: user.role,
       },
     });
 
   } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
