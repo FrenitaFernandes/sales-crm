@@ -32,10 +32,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    otp: {
+      type: String,
+    },
+    otpExpiry: {
+      type: Date,
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("User", userSchema);
