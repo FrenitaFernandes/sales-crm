@@ -246,7 +246,7 @@ function App() {
         <Route
           path="/customer/dashboard"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <CustomerDashboard />
             </MainLayout>
           }
@@ -254,7 +254,7 @@ function App() {
         <Route
           path="/customer/invoices"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Invoices />
             </MainLayout>
           }
@@ -262,7 +262,7 @@ function App() {
         <Route
           path="/customer/tickets"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Tickets />
             </MainLayout>
           }
@@ -270,7 +270,7 @@ function App() {
         <Route
           path="/customer/profile"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Profile />
             </MainLayout>
           }
@@ -278,7 +278,7 @@ function App() {
         <Route
           path="/customer/support"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Support />
             </MainLayout>
           }
@@ -286,7 +286,7 @@ function App() {
         <Route
           path="/customer/notifications"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Notifications />
             </MainLayout>
           }
