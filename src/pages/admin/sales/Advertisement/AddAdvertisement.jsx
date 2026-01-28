@@ -1,9 +1,12 @@
-const Advertisement = () => {
+import React from 'react';
+
+const AddAdvertisement = () => {
   return (
-    <div>
-      {/* Advertisement content will be added here */}
+    <div className="add-advertisement-container">
+      <h1>Add Advertisement</h1>
+      <p>Add advertisement page</p>
     </div>
   );
 };
 
-export default Advertisement;
+export default AddAdvertisement;

@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
 
 const Customer = require("../models/Customer.js");
 const ServiceRequest = require("../models/ServiceRequest.js");
+const User = require("../models/user.js");
 
 // GET: Dashboard stats
 router.get("/dashboard", async (req, res) => {
@@ -35,6 +37,16 @@ router.get("/seed", async (req, res) => {
   try {
     await Customer.deleteMany({});
     await ServiceRequest.deleteMany({});
+    await User.deleteMany({}); // Clear existing users
+
+    // Create admin user
+    const hashedAdminPassword = await bcrypt.hash("admin123", 10);
+    await User.create({
+      name: "Admin",
+      email: "admin@gmail.com",
+      password: hashedAdminPassword,
+      role: "admin"
+    });
 
     const customers = await Customer.insertMany([
       {
