@@ -1,21 +1,34 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const StockItemSchema = new mongoose.Schema({
-  itemName: String,
-  qty: Number,
-  unitPrice: Number,
-  total: Number,
+const stockEntrySchema = new mongoose.Schema({
+  itemName: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true
+  },
+  unit: {
+    type: String,
+    required: true
+  },
+  price: {
+    type: Number,
+    required: true
+  },
+  supplier: {
+    type: String
+  },
+  entryDate: {
+    type: Date,
+    default: Date.now
+  },
+  description: {
+    type: String
+  }
+}, {
+  timestamps: true
 });
 
-const StockEntrySchema = new mongoose.Schema(
-  {
-    supplierName: String,
-    billNumber: String,
-    date: Date,
-    items: [StockItemSchema],
-    grandTotal: Number,
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("StockEntry", StockEntrySchema);
+module.exports = mongoose.model('StockEntry', stockEntrySchema);

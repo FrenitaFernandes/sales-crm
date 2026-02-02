@@ -69,7 +69,6 @@ export default function AdvertisementList() {
                   <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>
 
-                  {/* Thumbnail */}
                   <td className="text-center">
                     {ad.thumbnail ? (
                       <img

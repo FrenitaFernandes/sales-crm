@@ -1,12 +1,40 @@
-const AdvertisementSchema = new mongoose.Schema({
-  date: Date,
-  productName: String,
-  tagline: String,
-  description: String,
-  keywords: String,
-  productLink: String,
-  type: String,
-  targetArea: String,
-  targetAudience: String,
-  thumbnail: String, // file path
+const mongoose = require('mongoose');
+
+const advertisementSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    required: true
+  },
+  productName: {
+    type: String,
+    required: true
+  },
+  tagline: {
+    type: String
+  },
+  description: {
+    type: String
+  },
+  keywords: {
+    type: String
+  },
+  productLink: {
+    type: String
+  },
+  type: {
+    type: String
+  },
+  targetArea: {
+    type: String
+  },
+  targetAudience: {
+    type: String
+  },
+  thumbnail: {
+    type: String
+  }
+}, {
+  timestamps: true
 });
+
+module.exports = mongoose.model('Advertisement', advertisementSchema);
