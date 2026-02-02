@@ -1,41 +1,34 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Please provide a name"],
-      trim: true,
+      required: true,
     },
     email: {
       type: String,
-      required: [true, "Please provide an email"],
+      required: true,
       unique: true,
       lowercase: true,
-      trim: true,
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        "Please provide a valid email",
-      ],
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
-      minlength: 6,
+      required: true,
     },
     role: {
       type: String,
       enum: ["admin", "customer"],
       default: "customer",
     },
+    phone: String,
+    address: String,
     isActive: {
       type: Boolean,
       default: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model("User", UserSchema);
