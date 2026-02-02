@@ -500,4 +500,29 @@ router.get("/activity/logs", async (req, res) => {
   }
 });
 
+// -----------------------------------------------------
+// UPDATE PROJECT (status, dates, title, etc.)
+// -----------------------------------------------------
+router.put("/project/:id", async (req, res) => {
+  try {
+    const updated = await Project.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({
+      message: "Project updated successfully",
+      project: updated,
+    });
+  } catch (err) {
+    console.error("Project update error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

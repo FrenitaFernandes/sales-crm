@@ -1,15 +1,12 @@
-const mongoose = require("mongoose");
-
-const AdvertisementSchema = new mongoose.Schema(
-  {
-    title: String,
-    platform: String,
-    description: String,
-    startDate: Date,
-    endDate: Date,
-    budget: Number,
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("Advertisement", AdvertisementSchema);
+const AdvertisementSchema = new mongoose.Schema({
+  date: Date,
+  productName: String,
+  tagline: String,
+  description: String,
+  keywords: String,
+  productLink: String,
+  type: String,
+  targetArea: String,
+  targetAudience: String,
+  thumbnail: String, // file path
+});
