@@ -1,51 +1,56 @@
-import { Card, Row, Col, Button } from "react-bootstrap";
-import { MdReceipt, MdNotifications, MdHelpOutline } from "react-icons/md";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { BarChart3, FileText, Bell, Ticket, User } from "lucide-react";
 
-const Dashboard = () => {
-  const quickLinks = [
-    { title: "Invoices", count: "5", icon: <MdReceipt size={28} />, link: "/customer/invoices" },
-    { title: "Notifications", count: "3", icon: <MdNotifications size={28} />, link: "/customer/notifications" },
-    { title: "Support Tickets", count: "2", icon: <MdHelpOutline size={28} />, link: "/customer/tickets" },
-  ];
+function Dashboard() {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    axios.get("/api/customer/dashboard")
+      .then(res => setStats(res.data))
+      .catch(err => console.log(err));
+  }, []);
 
   return (
-    <div>
-      <h2 className="mb-4">Welcome to Your Dashboard</h2>
-      <p className="text-muted mb-4">Manage your account and services</p>
-      
-      <Row className="g-4">
-        {quickLinks.map((link, index) => (
-          <Col lg={4} md={6} sm={12} key={index}>
-            <Card className="quick-link-card h-100 shadow-sm">
-              <Card.Body className="text-center">
-                <div className="mb-3 text-primary" style={{ fontSize: "32px" }}>
-                  {link.icon}
-                </div>
-                <h5 className="mb-2">{link.title}</h5>
-                <p className="text-muted mb-3">{link.count} items</p>
-                <Button variant="outline-primary" size="sm" href={link.link}>
-                  View All
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-semibold flex gap-2 items-center">
+        <BarChart3 /> Dashboard
+      </h1>
 
-      <Row className="mt-5">
-        <Col lg={12}>
-          <Card className="shadow-sm">
-            <Card.Header className="bg-light">
-              <h5 className="mb-0">Recent Orders</h5>
-            </Card.Header>
-            <Card.Body>
-              <p className="text-muted">No recent orders.</p>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-5 bg-white shadow rounded-xl">
+          <p className="text-gray-500">Invoices</p>
+          <p className="text-2xl font-bold">{stats?.invoiceCount || 0}</p>
+        </div>
+        <div className="p-5 bg-white shadow rounded-xl">
+          <p className="text-gray-500">Notifications</p>
+          <p className="text-2xl font-bold">{stats?.notifications || 0}</p>
+        </div>
+        <div className="p-5 bg-white shadow rounded-xl">
+          <p className="text-gray-500">Active Tickets</p>
+          <p className="text-2xl font-bold">{stats?.activeTickets || 0}</p>
+        </div>
+        <div className="p-5 bg-white shadow rounded-xl">
+          <p className="text-gray-500">Profile Completion</p>
+          <p className="text-2xl font-bold">{stats?.profileCompletion || "80%"}</p>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white p-6 shadow rounded-xl">
+        <h2 className="text-xl font-semibold mb-4 flex gap-2 items-center">
+          <Bell /> Recent Activity
+        </h2>
+
+        <ul className="space-y-3">
+          {(stats?.activity || []).map((item, i) => (
+            <li key={i} className="border-b pb-2">{item}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
-};
+}
 
 export default Dashboard;
