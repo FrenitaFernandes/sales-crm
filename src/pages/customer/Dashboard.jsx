@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { BarChart3, FileText, Bell, Ticket, User } from "lucide-react";
+import { BarChart3, Bell } from "lucide-react";
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
