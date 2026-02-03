@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
+import { FaArrowLeft } from "react-icons/fa";
 
 function Register() {
   const [name, setName] = useState("");
@@ -23,27 +24,32 @@ function Register() {
       const data = await registerUser({ name, email, password });
       setMessage(data.message);
 
-      // Redirect to login page after success
       setTimeout(() => {
         navigate("/login");
       }, 1000);
-
     } catch (error) {
       setMessage(error.response?.data?.message || "Registration failed");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-100 to-blue-100">
       <form
         onSubmit={handleRegister}
-        className="bg-white p-8 rounded-lg shadow-md w-96"
+        className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
       >
+        {/* Back to Home */}
+        <Link
+          to="/"
+          className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-green-600 hover:bg-green-600 hover:text-white transition flex items-center gap-2"
+        >
+          <FaArrowLeft size={12} /> Home
+        </Link>
+
         <h2 className="text-2xl font-bold mb-6 text-center">
           Customer Registration
         </h2>
 
-        {/* SUCCESS / ERROR MESSAGE */}
         {message && (
           <p
             className={`text-center text-sm mb-3 ${
@@ -94,7 +100,7 @@ function Register() {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
         >
           Register
         </button>

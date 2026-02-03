@@ -35,6 +35,7 @@ function ForgotPassword() {
         <p className="text-center text-sm text-gray-500 mt-4">
           You will receive an email with instructions.
         </p>
+        
       </form>
     </div>
   );
