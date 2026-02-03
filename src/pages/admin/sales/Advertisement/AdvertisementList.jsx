@@ -22,29 +22,27 @@ export default function AdvertisementList() {
       <h2 className="mt-4 mb-3">Advertisement List</h2>
 
       <div className="table-responsive shadow-sm bg-white p-3 rounded">
-
         <table className="table table-bordered table-striped">
           <thead className="table-primary text-center">
             <tr>
               <th>S.No</th>
               <th>Date</th>
-              <th>Product/Service</th>
+              <th>Product Name</th>
               <th>Tagline</th>
               <th>Description</th>
               <th>Keywords</th>
               <th>Product Link</th>
               <th>Type</th>
-              <th>Targeting Area</th>
-              <th>Targeting Audience</th>
-              <th>Audience Thumbnail</th>
-              <th>Action</th>
+              <th>Target Area</th>
+              <th>Target Audience</th>
+              <th>Thumbnail</th>
             </tr>
           </thead>
 
           <tbody>
             {ads.length === 0 ? (
               <tr>
-                <td colSpan="12" className="text-center py-3">
+                <td colSpan="11" className="text-center py-3">
                   No advertisements found
                 </td>
               </tr>
@@ -52,24 +50,27 @@ export default function AdvertisementList() {
               ads.map((ad, index) => (
                 <tr key={ad._id}>
                   <td className="text-center">{index + 1}</td>
-
-                  <td>{new Date(ad.date).toLocaleDateString()}</td>
-
+                  <td>
+                    {ad.date
+                      ? new Date(ad.date).toLocaleDateString()
+                      : "-"}
+                  </td>
                   <td>{ad.productName}</td>
                   <td>{ad.tagline}</td>
                   <td>{ad.description}</td>
                   <td>{ad.keywords}</td>
                   <td>
-                    <a href={ad.productLink} target="_blank" rel="noreferrer">
-                      {ad.productLink}
-                    </a>
+                    {ad.productLink ? (
+                      <a href={ad.productLink} target="_blank" rel="noreferrer">
+                        {ad.productLink}
+                      </a>
+                    ) : (
+                      "-"
+                    )}
                   </td>
-
                   <td>{ad.type}</td>
                   <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>
-
-                  {/* Thumbnail */}
                   <td className="text-center">
                     {ad.thumbnail ? (
                       <img
@@ -83,16 +84,11 @@ export default function AdvertisementList() {
                       "No image"
                     )}
                   </td>
-
-                  <td className="text-center">
-                    <button className="btn btn-primary btn-sm">VIEW</button>
-                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-
       </div>
     </div>
   );

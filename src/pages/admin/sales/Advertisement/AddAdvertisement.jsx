@@ -26,7 +26,6 @@ export default function AddAdvertisement() {
     try {
       await axios.post("http://localhost:5000/api/admin/advertisement", form);
       setMessage("Advertisement added successfully!");
-
       setForm({
         productName: "",
         tagline: "",
@@ -48,11 +47,9 @@ export default function AddAdvertisement() {
   return (
     <div className="p-4 bg-white shadow rounded">
       <h2 className="text-2xl mb-3">Add Advertisement</h2>
-
-      {message && <p className="text-success">{message}</p>}
+      {message && <p>{message}</p>}
 
       <form onSubmit={handleSubmit}>
-
         <div className="row">
           <div className="col-4 mb-3">
             <label>Product / Application</label>

@@ -1,40 +1,43 @@
 const mongoose = require('mongoose');
 
-const advertisementSchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    required: true
+const advertisementSchema = new mongoose.Schema(
+  {
+    date: {
+      type: Date,
+      required: true
+    },
+    productName: {
+      type: String,
+      required: true
+    },
+    tagline: {
+      type: String
+    },
+    description: {
+      type: String
+    },
+    keywords: {
+      type: String
+    },
+    productLink: {
+      type: String
+    },
+    type: {
+      type: String
+    },
+    targetArea: {
+      type: String
+    },
+    targetAudience: {
+      type: String
+    },
+    thumbnail: {
+      type: String
+    }
   },
-  productName: {
-    type: String,
-    required: true
-  },
-  tagline: {
-    type: String
-  },
-  description: {
-    type: String
-  },
-  keywords: {
-    type: String
-  },
-  productLink: {
-    type: String
-  },
-  type: {
-    type: String
-  },
-  targetArea: {
-    type: String
-  },
-  targetAudience: {
-    type: String
-  },
-  thumbnail: {
-    type: String
+  {
+    timestamps: true
   }
-}, {
-  timestamps: true
-});
+);
 
 module.exports = mongoose.model('Advertisement', advertisementSchema);
