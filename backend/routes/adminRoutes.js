@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const Customer = require("../models/Customer.js");
 const ServiceRequest = require("../models/ServiceRequest.js");
 const User = require("../models/user.js");
+const Advertisement = require("../models/Advertisement.js");
 
 // GET: Dashboard stats
 router.get("/dashboard", async (req, res) => {

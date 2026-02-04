@@ -51,8 +51,8 @@ export default function AdvertisementList() {
                 <tr key={ad._id}>
                   <td className="text-center">{index + 1}</td>
                   <td>
-                    {ad.startDate
-                      ? new Date(ad.startDate).toLocaleDateString()
+                    {ad.date
+                      ? new Date(ad.date).toLocaleDateString()
                       : "-"}
                   </td>
                   <td>{ad.productName}</td>

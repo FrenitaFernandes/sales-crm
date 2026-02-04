@@ -34,3 +34,4 @@ backend/.env
 # env files
 .env
 .env.*
+"sales-crm/" 
