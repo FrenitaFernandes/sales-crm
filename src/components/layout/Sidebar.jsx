@@ -169,7 +169,7 @@ const Sidebar = ({ role = "admin" }) => {
   const logoText = role === "customer" ? "Customer" : "Admin";
 
   return (
-    <aside className="w-64 min-h-screen bg-gradient-to-b from-slate-800 to-slate-900 text-white p-5 overflow-y-auto shadow-2xl">
+    <aside className="sidebar-wrapper w-64 bg-gradient-to-b from-slate-800 to-slate-900 text-white p-5 overflow-y-auto shadow-2xl">
       <div className="mb-6 pb-4 border-b border-white border-opacity-10">
         <h2 className="text-2xl font-bold text-center m-0 text-white tracking-widest">{logoText}</h2>
         <p className="text-xs text-slate-400 m-0 text-center">
