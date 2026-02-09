@@ -2,65 +2,41 @@ const mongoose = require('mongoose');
 
 const advertisementSchema = new mongoose.Schema(
   {
-    title: {
-      type: String,
-      required: true,
+    date: {
+      type: Date,
+      required: true
     },
     productName: {
       type: String,
+      required: true
     },
     tagline: {
-      type: String,
+      type: String
     },
     description: {
-      type: String,
+      type: String
     },
     keywords: {
-      type: String,
-    },
-    platform: {
-      type: String,
-    },
-    type: {
-      type: String,
-    },
-    targetArea: {
-      type: String,
-    },
-    targetAudience: {
-      type: String,
+      type: String
     },
     productLink: {
-      type: String,
+      type: String
+    },
+    type: {
+      type: String
+    },
+    targetArea: {
+      type: String
+    },
+    targetAudience: {
+      type: String
     },
     thumbnail: {
-      type: String, // file path
-    },
-    budget: {
-      type: Number,
-    },
-    startDate: {
-      type: Date,
-    },
-    endDate: {
-      type: Date,
-    },
-    status: {
-      type: String,
-      enum: ['active', 'paused', 'completed', 'draft'],
-      default: 'draft',
-    },
-    impressions: {
-      type: Number,
-      default: 0,
-    },
-    clicks: {
-      type: Number,
-      default: 0,
-    },
+      type: String
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 

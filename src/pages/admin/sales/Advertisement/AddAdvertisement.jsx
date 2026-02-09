@@ -12,7 +12,7 @@ export default function AddAdvertisement() {
     targetArea: "",
     targetAudience: "",
     thumbnail: "",
-    startDate: "",
+    date: "",
   });
 
   const [message, setMessage] = useState("");
@@ -36,7 +36,7 @@ export default function AddAdvertisement() {
         targetArea: "",
         targetAudience: "",
         thumbnail: "",
-        startDate: "",
+        date: "",
       });
     } catch (err) {
       console.error(err);
@@ -50,37 +50,131 @@ export default function AddAdvertisement() {
       {message && <p>{message}</p>}
 
       <form onSubmit={handleSubmit}>
-        <input name="productName" placeholder="Product Name" className="form-control mb-2"
-          value={form.productName} onChange={handleChange} />
+        <div className="row">
+          <div className="col-4 mb-3">
+            <label>Product / Application</label>
+            <input 
+              type="text" 
+              name="productName" 
+              className="form-control"
+              value={form.productName} 
+              onChange={handleChange} 
+              required
+            />
+          </div>
 
-        <input name="tagline" placeholder="Tagline" className="form-control mb-2"
-          value={form.tagline} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Tagline</label>
+            <input 
+              type="text" 
+              name="tagline" 
+              className="form-control"
+              value={form.tagline} 
+              onChange={handleChange} 
+            />
+          </div>
 
-        <textarea name="description" placeholder="Description" className="form-control mb-2"
-          value={form.description} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Date</label>
+            <input 
+              type="date" 
+              name="date" 
+              className="form-control"
+              value={form.date} 
+              onChange={handleChange} 
+              required
+            />
+          </div>
+        </div>
 
-        <input name="keywords" placeholder="Keywords" className="form-control mb-2"
-          value={form.keywords} onChange={handleChange} />
+        <div className="mb-3">
+          <label>Description</label>
+          <textarea 
+            name="description" 
+            className="form-control"
+            value={form.description} 
+            onChange={handleChange}
+            rows="3"
+          ></textarea>
+        </div>
 
-        <input name="productLink" placeholder="Product Link" className="form-control mb-2"
-          value={form.productLink} onChange={handleChange} />
+        <div className="row">
+          <div className="col-4 mb-3">
+            <label>Keywords</label>
+            <input 
+              type="text" 
+              name="keywords" 
+              className="form-control"
+              value={form.keywords} 
+              onChange={handleChange} 
+              placeholder="e.g., software, tech, digital"
+            />
+          </div>
 
-        <input name="type" placeholder="Type" className="form-control mb-2"
-          value={form.type} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Product Link</label>
+            <input 
+              type="url" 
+              name="productLink" 
+              className="form-control"
+              value={form.productLink} 
+              onChange={handleChange} 
+              placeholder="https://example.com"
+            />
+          </div>
 
-        <input name="targetArea" placeholder="Target Area" className="form-control mb-2"
-          value={form.targetArea} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Type</label>
+            <input 
+              type="text" 
+              name="type" 
+              className="form-control"
+              value={form.type} 
+              onChange={handleChange} 
+              placeholder="e.g., Banner, Video, Social"
+            />
+          </div>
+        </div>
 
-        <input name="targetAudience" placeholder="Target Audience" className="form-control mb-2"
-          value={form.targetAudience} onChange={handleChange} />
+        <div className="row">
+          <div className="col-4 mb-3">
+            <label>Targeting Area</label>
+            <input 
+              type="text" 
+              name="targetArea" 
+              className="form-control"
+              value={form.targetArea} 
+              onChange={handleChange} 
+              placeholder="e.g., North America, Europe"
+            />
+          </div>
 
-        <input name="thumbnail" placeholder="Thumbnail path" className="form-control mb-2"
-          value={form.thumbnail} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Targeting Audience</label>
+            <input 
+              type="text" 
+              name="targetAudience" 
+              className="form-control"
+              value={form.targetAudience} 
+              onChange={handleChange} 
+              placeholder="e.g., Business professionals"
+            />
+          </div>
 
-        <input type="date" name="startDate" className="form-control mb-3"
-          value={form.startDate} onChange={handleChange} />
+          <div className="col-4 mb-3">
+            <label>Audience Thumbnail URL</label>
+            <input 
+              type="text" 
+              name="thumbnail" 
+              className="form-control"
+              value={form.thumbnail} 
+              onChange={handleChange} 
+              placeholder="Image URL or path"
+            />
+          </div>
+        </div>
 
-        <button className="btn btn-primary">Submit</button>
+        <button type="submit" className="btn btn-primary">Submit</button>
       </form>
     </div>
   );
