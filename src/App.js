@@ -9,12 +9,6 @@ import "./styles/dashboard.css";
 import "./styles/responsive.css";
 import "./App.css";
 
-// ✅ BASIC PAGES (YOUR AUTH + HOME)
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-
 // ✅ LAYOUT
 import MainLayout from "./components/layout/MainLayout";
 
@@ -25,18 +19,29 @@ import ServiceRequests from "./pages/admin/crm/ServiceRequests";
 
 // ADMIN SALES PAGES
 import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
-import Deals from "./pages/admin/sales/Deals";
-import Stock from "./pages/admin/sales/Stock";
-import StockReport from "./pages/admin/sales/StockReport";
-import Leads from "./pages/admin/sales/Leads";
-import LeadDetails from "./pages/admin/sales/LeadDetails";
-import GetEmail from "./pages/admin/sales/GetEmail";
-import GetPhone from "./pages/admin/sales/GetPhone";
-import DownloadLead from "./pages/admin/sales/DownloadLead";
-import FollowUpTasks from "./pages/admin/sales/FollowUpTasks";
-import Reports from "./pages/admin/sales/Reports";
-import Advertisement from "./pages/admin/sales/Advertisement";
-import ActivityReport from "./pages/admin/sales/ActivityReport";
+// Leads
+import Leads from "./pages/admin/sales/Leads/Leads";
+import LeadDetails from "./pages/admin/sales/Leads/LeadDetails";
+import GetEmail from "./pages/admin/sales/Leads/GetEmail";
+import GetPhone from "./pages/admin/sales/Leads/GetPhone";
+import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
+// Stock
+import StockEntry from "./pages/admin/sales/Stock/StockEntry";
+import StockSummary from "./pages/admin/sales/Stock/StockSummary";
+import StockUsage from "./pages/admin/sales/Stock/StockUsage";
+import StockReport from "./pages/admin/sales/Stock Report/StockReport";
+// Invoice
+import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
+import InvoiceHistory from "./pages/admin/sales/Invoice/InvoiceHistory";
+// Project
+import ProjectOngoing from "./pages/admin/sales/Project/Ongoing";
+import ProjectCompleted from "./pages/admin/sales/Project/Completed";
+// Advertisement
+import AddAdvertisement from "./pages/admin/sales/Advertisement/AddAdvertisement";
+import AdvertisementList from "./pages/admin/sales/Advertisement/AdvertisementList";
+// Activity Report
+import ActivityReport from "./pages/admin/sales/ActivityReport/Reports";
+import ProjectConversationChart from "./pages/admin/sales/ActivityReport/ProjectConversationChart";
 
 // CUSTOMER PAGES
 import CustomerDashboard from "./pages/customer/Dashboard";
@@ -50,23 +55,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* DEFAULT ROUTE */}
+        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
 
-        {/* ======================== */}
-        {/*  BASIC PUBLIC ROUTES     */}
-        {/* ======================== */}
-
-        {/* Default route → Home */}
-        <Route path="/" element={<Home />} />
-
-        {/* Login / Register / Forgot */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-
-
-        {/* ======================== */}
-        {/*  ADMIN CRM ROUTES        */}
-        {/* ======================== */}
+        {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
           path="/admin/crm/dashboard"
           element={
@@ -92,11 +84,7 @@ function App() {
           }
         />
 
-
-        {/* ======================== */}
-        {/*  ADMIN SALES ROUTES      */}
-        {/* ======================== */}
-
+        {/* ✅ ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
           path="/admin/sales/dashboard"
           element={
@@ -105,34 +93,8 @@ function App() {
             </MainLayout>
           }
         />
-
-        <Route
-          path="/admin/sales/deals"
-          element={
-            <MainLayout>
-              <Deals />
-            </MainLayout>
-          }
-        />
-
-        <Route
-          path="/admin/sales/stock"
-          element={
-            <MainLayout>
-              <Stock />
-            </MainLayout>
-          }
-        />
-
-        <Route
-          path="/admin/sales/stock-report"
-          element={
-            <MainLayout>
-              <StockReport />
-            </MainLayout>
-          }
-        />
-
+        
+        {/* Leads Routes */}
         <Route
           path="/admin/sales/leads"
           element={
@@ -141,7 +103,6 @@ function App() {
             </MainLayout>
           }
         />
-
         <Route
           path="/admin/sales/leads/:id"
           element={
@@ -150,7 +111,6 @@ function App() {
             </MainLayout>
           }
         />
-
         <Route
           path="/admin/sales/leads/get-email"
           element={
@@ -159,7 +119,6 @@ function App() {
             </MainLayout>
           }
         />
-
         <Route
           path="/admin/sales/leads/get-phone"
           element={
@@ -168,7 +127,6 @@ function App() {
             </MainLayout>
           }
         />
-
         <Route
           path="/admin/sales/leads/download-lead"
           element={
@@ -177,34 +135,96 @@ function App() {
             </MainLayout>
           }
         />
-
+        
+        {/* Stock Routes */}
         <Route
-          path="/admin/sales/follow-up-tasks"
+          path="/admin/sales/stock/entry"
           element={
             <MainLayout>
-              <FollowUpTasks />
+              <StockEntry />
             </MainLayout>
           }
         />
-
         <Route
-          path="/admin/sales/reports"
+          path="/admin/sales/stock/summary"
           element={
             <MainLayout>
-              <Reports />
+              <StockSummary />
             </MainLayout>
           }
         />
-
         <Route
-          path="/admin/sales/advertisement"
+          path="/admin/sales/stock/usage"
           element={
             <MainLayout>
-              <Advertisement />
+              <StockUsage />
             </MainLayout>
           }
         />
-
+        <Route
+          path="/admin/sales/stock/report"
+          element={
+            <MainLayout>
+              <StockReport />
+            </MainLayout>
+          }
+        />
+        
+        {/* Invoice Routes */}
+        <Route
+          path="/admin/sales/invoice/new"
+          element={
+            <MainLayout>
+              <NewInvoice />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/invoice/history"
+          element={
+            <MainLayout>
+              <InvoiceHistory />
+            </MainLayout>
+          }
+        />
+        
+        {/* Project Routes */}
+        <Route
+          path="/admin/sales/project/ongoing"
+          element={
+            <MainLayout>
+              <ProjectOngoing />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/project/completed"
+          element={
+            <MainLayout>
+              <ProjectCompleted />
+            </MainLayout>
+          }
+        />
+        
+        {/* Advertisement Routes */}
+        <Route
+          path="/admin/sales/advertisement/add"
+          element={
+            <MainLayout>
+              <AddAdvertisement />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/sales/advertisement/list"
+          element={
+            <MainLayout>
+              <AdvertisementList />
+            </MainLayout>
+          }
+        />
+        
+        {/* Activity Report Routes */}
         <Route
           path="/admin/sales/activity-report"
           element={
@@ -213,65 +233,64 @@ function App() {
             </MainLayout>
           }
         />
+        <Route
+          path="/admin/sales/activity-report/chart"
+          element={
+            <MainLayout>
+              <ProjectConversationChart />
+            </MainLayout>
+          }
+        />
 
-
-        {/* ======================== */}
-        {/*  CUSTOMER ROUTES         */}
-        {/* ======================== */}
+        {/* ✅ CUSTOMER ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
           path="/customer/dashboard"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <CustomerDashboard />
             </MainLayout>
           }
         />
-
         <Route
           path="/customer/invoices"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Invoices />
             </MainLayout>
           }
         />
-
         <Route
           path="/customer/tickets"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Tickets />
             </MainLayout>
           }
         />
-
         <Route
           path="/customer/profile"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Profile />
             </MainLayout>
           }
         />
-
         <Route
           path="/customer/support"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Support />
             </MainLayout>
           }
         />
-
         <Route
           path="/customer/notifications"
           element={
-            <MainLayout>
+            <MainLayout role="customer">
               <Notifications />
             </MainLayout>
           }
         />
-
       </Routes>
     </BrowserRouter>
   );

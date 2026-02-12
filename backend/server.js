@@ -7,11 +7,15 @@ const cors = require("cors");
 
 const connectDB = require("./utils/db");
 
-// Routes
+// Import Routes
 const authRoutes = require("./routes/authRoutes");
 const testRoutes = require("./routes/testRoutes");
+const adminRoutes = require("./routes/adminRoutes");  // ✅ ADD THIS
 
-dotenv.config();
+// Load Environment
+dotenv.config({
+  path: process.env.NODE_ENV === "production" ? ".env.prod" : ".env.draft",
+});
 
 const app = express();
 
@@ -25,8 +29,9 @@ connectDB();
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
+app.use("/api/admin", adminRoutes);   // ✅ IMPORTANT
 
-// Health Check Route
+// Health Check
 app.get("/", (req, res) => {
   res.status(200).send("CRM Backend is running ✅");
 });

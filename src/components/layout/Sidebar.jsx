@@ -49,6 +49,12 @@ const Sidebar = ({ role = "admin" }) => {
   
   const [openSubMenus, setOpenSubMenus] = useState({
     leads: false,
+    stock: false,
+    "stock report": false,
+    invoice: false,
+    project: false,
+    advertisement: false,
+    "activity report": false,
   });
 
   const toggleSection = (section) => {
@@ -73,7 +79,6 @@ const Sidebar = ({ role = "admin" }) => {
     ],
     "admin-sales": [
       { name: "Dashboard", path: "/admin/sales/dashboard", icon: "dashboard" },
-      { name: "Deals", path: "/admin/sales/deals", icon: "deals" },
       { 
         name: "Leads", 
         path: "/admin/sales/leads", 
@@ -85,12 +90,60 @@ const Sidebar = ({ role = "admin" }) => {
           { name: "Download Lead", path: "/admin/sales/leads/download-lead", icon: "download" },
         ]
       },
-      { name: "Stock", path: "/admin/sales/stock", icon: "stock" },
-      { name: "Stock Report", path: "/admin/sales/stock-report", icon: "reports" },
-      { name: "Follow Up Tasks", path: "/admin/sales/follow-up-tasks", icon: "tasks" },
-      { name: "Reports", path: "/admin/sales/reports", icon: "reports" },
-      { name: "Activity Report", path: "/admin/sales/activity-report", icon: "reports" },
-      { name: "Advertisement", path: "/admin/sales/advertisement", icon: "advertisement" },
+      { 
+        name: "Stock", 
+        path: "/admin/sales/stock/entry", 
+        icon: "stock",
+        subMenu: [
+          { name: "Stock Entry", path: "/admin/sales/stock/entry", icon: "stock" },
+          { name: "Stock Summary", path: "/admin/sales/stock/summary", icon: "stock" },
+          { name: "Stock Usage", path: "/admin/sales/stock/usage", icon: "stock" },
+        ]
+      },
+      { 
+        name: "Stock Report", 
+        path: "/admin/sales/stock/report", 
+        icon: "reports",
+        subMenu: [
+          { name: "Stock Report", path: "/admin/sales/stock/report", icon: "reports" },
+        ]
+      },
+      { 
+        name: "Invoice", 
+        path: "/admin/sales/invoice/new", 
+        icon: "reports",
+        subMenu: [
+          { name: "New Invoice", path: "/admin/sales/invoice/new", icon: "reports" },
+          { name: "Invoice History", path: "/admin/sales/invoice/history", icon: "reports" },
+        ]
+      },
+      { 
+        name: "Project", 
+        path: "/admin/sales/project/ongoing", 
+        icon: "tasks",
+        subMenu: [
+          { name: "Ongoing", path: "/admin/sales/project/ongoing", icon: "tasks" },
+          { name: "Completed", path: "/admin/sales/project/completed", icon: "tasks" },
+        ]
+      },
+      { 
+        name: "Advertisement", 
+        path: "/admin/sales/advertisement/add", 
+        icon: "advertisement",
+        subMenu: [
+          { name: "Add Advertisement", path: "/admin/sales/advertisement/add", icon: "advertisement" },
+          { name: "Advertisement List", path: "/admin/sales/advertisement/list", icon: "advertisement" },
+        ]
+      },
+      { 
+        name: "Activity Report", 
+        path: "/admin/sales/activity-report", 
+        icon: "reports",
+        subMenu: [
+          { name: "Reports", path: "/admin/sales/activity-report", icon: "reports" },
+          { name: "Conversation Chart", path: "/admin/sales/activity-report/chart", icon: "reports" },
+        ]
+      },
     ],
     customer: [
       { name: "Dashboard", path: "/customer/dashboard", icon: "dashboard" },
@@ -106,7 +159,7 @@ const Sidebar = ({ role = "admin" }) => {
   const allSections = [
     { key: "admin-sales", title: "Sales", roles: ["admin"] },
     { key: "admin-crm", title: "CRM", roles: ["admin"] },
-    { key: "customer", title: "Customer", roles: ["customer"] },
+    { key: "customer", title: "Customer Portal", roles: ["customer"] },
   ];
 
   // Filter sections based on current role
@@ -125,23 +178,45 @@ const Sidebar = ({ role = "admin" }) => {
       </div>
 
       <nav className="flex flex-col gap-2.5">
-        {sections.map((section) => (
-          <div key={section.key} className="mb-2.5">
-            <button
-              onClick={() => toggleSection(section.key)}
-              className="w-full flex justify-between items-center p-3 bg-gradient-to-r from-slate-700 to-slate-600 text-white border-0 rounded-md cursor-pointer text-sm font-semibold mb-1 hover:from-slate-600 hover:to-slate-500 hover:translate-x-0.5 transition-all text-left"
-            >
-              <span>{section.title}</span>
-              <span className="text-xs transition-transform">
-                {openSections[section.key] ? (
-                  <MdKeyboardArrowUp size={18} />
-                ) : (
-                  <MdKeyboardArrowDown size={18} />
-                )}
-              </span>
-            </button>
+        {/* Customer role: show direct menu without sections */}
+        {role === "customer" ? (
+          <div className="flex flex-col gap-1.25">
+            {menus.customer?.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 text-slate-300 no-underline rounded-md text-sm transition-all border-l-4 border-transparent hover:bg-white hover:bg-opacity-10 hover:text-white hover:border-l-blue-600 hover:pl-4.5 ${
+                    isActive
+                      ? "bg-blue-600 text-white border-l-blue-700 font-semibold"
+                      : ""
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center text-lg min-w-max">{getIcon(item.icon)}</span>
+                <span>{item.name}</span>
+              </NavLink>
+            ))}
+          </div>
+        ) : (
+          /* Admin role: show sections with dropdown */
+          sections.map((section) => (
+            <div key={section.key} className="mb-2.5">
+              <button
+                onClick={() => toggleSection(section.key)}
+                className="w-full flex justify-between items-center p-3 bg-gradient-to-r from-slate-700 to-slate-600 text-white border-0 rounded-md cursor-pointer text-sm font-semibold mb-1 hover:from-slate-600 hover:to-slate-500 hover:translate-x-0.5 transition-all text-left"
+              >
+                <span>{section.title}</span>
+                <span className="text-xs transition-transform">
+                  {openSections[section.key] ? (
+                    <MdKeyboardArrowUp size={18} />
+                  ) : (
+                    <MdKeyboardArrowDown size={18} />
+                  )}
+                </span>
+              </button>
 
-            {openSections[section.key] && (
+              {openSections[section.key] && (
               <div className="pl-2.5 flex flex-col gap-1.25">
                 {menus[section.key]?.map((item) => (
                   <div key={item.path}>
@@ -203,8 +278,9 @@ const Sidebar = ({ role = "admin" }) => {
                 ))}
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          ))
+        )}
       </nav>
     </aside>
   );
