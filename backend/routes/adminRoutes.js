@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const Customer = require("../models/Customer.js");
 const ServiceRequest = require("../models/ServiceRequest.js");
 const User = require("../models/user.js");
+const Advertisement = require("../models/Advertisement.js");
 
 // GET: Dashboard stats
 router.get("/dashboard", async (req, res) => {
@@ -509,6 +510,31 @@ router.get("/activity/logs", async (req, res) => {
     res.json(logs);
   } catch (err) {
     res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+// -----------------------------------------------------
+// UPDATE PROJECT (status, dates, title, etc.)
+// -----------------------------------------------------
+router.put("/project/:id", async (req, res) => {
+  try {
+    const updated = await Project.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({
+      message: "Project updated successfully",
+      project: updated,
+    });
+  } catch (err) {
+    console.error("Project update error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
