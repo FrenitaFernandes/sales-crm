@@ -26,7 +26,7 @@ connectDB();
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
-app.use("/api/admin", adminRoutes);   // ✅ IMPORTANT
+app.use("/api/admin", adminRoutes);  
 
 // Health Check
 app.get("/", (req, res) => {
