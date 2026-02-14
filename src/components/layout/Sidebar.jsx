@@ -65,10 +65,17 @@ const Sidebar = ({ role = "admin" }) => {
   };
 
   const toggleSubMenu = (menuKey) => {
-    setOpenSubMenus((prev) => ({
-      ...prev,
-      [menuKey]: !prev[menuKey],
-    }));
+    setOpenSubMenus((prev) => {
+      const isOpen = prev[menuKey];
+      const nextState = Object.keys(prev).reduce((acc, key) => {
+        acc[key] = false;
+        return acc;
+      }, {});
+
+      nextState[menuKey] = !isOpen;
+
+      return nextState;
+    });
   };
 
   const menus = {
@@ -76,6 +83,7 @@ const Sidebar = ({ role = "admin" }) => {
       { name: "Dashboard", path: "/admin/crm/dashboard", icon: "dashboard" },
       { name: "Customer Details", path: "/admin/crm/customer-details", icon: "customers" },
       { name: "Service Requests", path: "/admin/crm/service-requests", icon: "tickets" },
+      { name: "Notifications", path: "/admin/crm/notifications", icon: "notifications" },
     ],
     "admin-sales": [
       { name: "Dashboard", path: "/admin/sales/dashboard", icon: "dashboard" },
@@ -85,8 +93,6 @@ const Sidebar = ({ role = "admin" }) => {
         icon: "leads",
         subMenu: [
           { name: "Leads", path: "/admin/sales/leads", icon: "leads" },
-          { name: "Get Email", path: "/admin/sales/leads/get-email", icon: "email" },
-          { name: "Get Phone", path: "/admin/sales/leads/get-phone", icon: "phone" },
           { name: "Download Lead", path: "/admin/sales/leads/download-lead", icon: "download" },
         ]
       },
