@@ -33,14 +33,12 @@ import StockReport from "./pages/admin/sales/Stock Report/StockReport";
 import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
 import InvoiceHistory from "./pages/admin/sales/Invoice/InvoiceHistory";
 // Project
-import ProjectOngoing from "./pages/admin/sales/Project/Ongoing";
-import ProjectCompleted from "./pages/admin/sales/Project/Completed";
+import Projects from "./pages/admin/sales/Project/Projects";
 // Advertisement
 import AddAdvertisement from "./pages/admin/sales/Advertisement/AddAdvertisement";
 import AdvertisementList from "./pages/admin/sales/Advertisement/AdvertisementList";
 // Activity Report
 import ActivityReport from "./pages/admin/sales/ActivityReport/Reports";
-import ProjectConversationChart from "./pages/admin/sales/ActivityReport/ProjectConversationChart";
 
 // CUSTOMER PAGES
 import CustomerDashboard from "./pages/customer/Dashboard";
@@ -193,20 +191,12 @@ function App() {
           }
         />
         
-        {/* Project Routes */}
+        {/* Project Route */}
         <Route
-          path="/admin/sales/project/ongoing"
+          path="/admin/sales/project"
           element={
             <MainLayout>
-              <ProjectOngoing />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/project/completed"
-          element={
-            <MainLayout>
-              <ProjectCompleted />
+              <Projects />
             </MainLayout>
           }
         />
@@ -235,14 +225,6 @@ function App() {
           element={
             <MainLayout>
               <ActivityReport />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/activity-report/chart"
-          element={
-            <MainLayout>
-              <ProjectConversationChart />
             </MainLayout>
           }
         />

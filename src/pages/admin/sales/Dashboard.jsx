@@ -40,6 +40,8 @@ const summaryData = [
   { name: "Mar", google: 50, facebook: 40, instagram: 30, linkedin: 18 },
 ];
 
+const stockRemaining = 340;
+
 /* ---------- COMPONENT ---------- */
 
 const Dashboard = () => {
@@ -49,13 +51,12 @@ const Dashboard = () => {
       <h1 className="text-2xl font-semibold mb-5">Sales Dashboard</h1>
 
       {/* TOP METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {[
           ["Total Leads", 120],
           ["Follow-ups Today", 15],
           ["Converted Leads", 40],
-          ["Advertisements", 8],
-          ["Companies", 5],
+          ["Stock Remaining", stockRemaining],
           ["Pending Tasks", 12],
         ].map(([label, value]) => (
           <div key={label} className="bg-white p-3 rounded shadow-sm">
@@ -119,6 +120,7 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
 
       {/* SUMMARY BAR CHART */}
       <div className="bg-white p-3 rounded shadow-sm">

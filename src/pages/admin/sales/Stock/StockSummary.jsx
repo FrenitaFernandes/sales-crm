@@ -42,11 +42,18 @@ const StockSummary = () => {
     0
   );
 
+  // Generate Report Handler
+  const handleGenerateReport = () => {
+    console.log("Generating stock report...", filteredStock);
+    alert("Stock report generated! (Check console)");
+    // TODO: Implement PDF/Excel generation or navigate to report page
+  };
+
   return (
     <div className="p-6 bg-white rounded shadow-sm">
       <h2 className="text-2xl font-semibold mb-6">Stock Summary</h2>
 
-      {/* SEARCH */}
+      {/* SEARCH + REPORT BUTTON */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
         <input
           type="text"
@@ -56,9 +63,17 @@ const StockSummary = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <h4 className="text-lg font-semibold">
-          Total Stock Value: ₹ {totalStockValue.toLocaleString()}
-        </h4>
+        <div className="flex items-center gap-4">
+          <h4 className="text-lg font-semibold">
+            Total Stock Value: ₹ {totalStockValue.toLocaleString()}
+          </h4>
+          <button
+            onClick={handleGenerateReport}
+            className="btn btn-primary"
+          >
+            Generate Report
+          </button>
+        </div>
       </div>
 
       {/* TABLE */}
