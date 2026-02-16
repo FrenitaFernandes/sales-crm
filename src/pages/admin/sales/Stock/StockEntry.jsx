@@ -4,6 +4,7 @@ const StockEntry = () => {
   const [supplierName, setSupplierName] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [date, setDate] = useState("");
+  const [category, setCategory] = useState("");
 
   const [items, setItems] = useState([
     { itemName: "", qty: "", unitPrice: "", total: 0 },
@@ -35,6 +36,7 @@ const StockEntry = () => {
       supplierName,
       billNumber,
       date,
+      category,
       items,
       grandTotal,
     };
@@ -47,8 +49,8 @@ const StockEntry = () => {
     <div className="p-6 bg-white rounded shadow-sm">
       <h2 className="text-2xl font-semibold mb-6">Stock Entry</h2>
 
-      {/* Supplier + Bill + Date */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Supplier + Bill + Date + Category */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div>
           <label className="text-sm font-medium">Supplier Name</label>
           <input
@@ -79,6 +81,20 @@ const StockEntry = () => {
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Category</label>
+          <select
+            className="form-control mt-1"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">None</option>
+            <option value="IoT Products">IoT Products</option>
+            <option value="IoT Solutions">IoT Solutions</option>
+            <option value="Services">Services</option>
+          </select>
         </div>
       </div>
 

@@ -13,13 +13,29 @@ export default function NewInvoice() {
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
-		setForm((prev) => ({ ...prev, [name]: value }));
+		
+		// Auto-update due date when invoice date changes (30 days later)
+		if (name === "date" && value) {
+			const invoiceDate = new Date(value);
+			const dueDate = new Date(invoiceDate);
+			dueDate.setDate(dueDate.getDate() + 30);
+			const formattedDueDate = dueDate.toISOString().split('T')[0];
+			setForm((prev) => ({ ...prev, [name]: value, dueDate: formattedDueDate }));
+		} else {
+			setForm((prev) => ({ ...prev, [name]: value }));
+		}
 	};
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		// Placeholder submit to avoid runtime errors until API wiring is added.
 		console.log("New invoice submitted", form);
+	};
+
+	const handleEdit = () => {
+		console.log("Edit invoice", form);
+		alert("Edit functionality - Invoice data ready for editing");
+		// TODO: Implement edit logic
 	};
 
 	return (
@@ -119,9 +135,18 @@ export default function NewInvoice() {
 					/>
 				</div>
 
-				<button type="submit" className="btn btn-primary">
-					Save Invoice
-				</button>
+				<div className="flex gap-3">
+					<button type="submit" className="btn btn-primary">
+						Save Invoice
+					</button>
+					<button 
+						type="button" 
+						className="btn btn-secondary"
+						onClick={handleEdit}
+					>
+						Edit Invoice
+					</button>
+				</div>
 			</form>
 		</div>
 	);
