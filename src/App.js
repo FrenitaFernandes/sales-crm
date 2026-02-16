@@ -32,9 +32,6 @@ import StockReport from "./pages/admin/sales/Stock Report/StockReport";
 // Invoice
 import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
 import InvoiceHistory from "./pages/admin/sales/Invoice/InvoiceHistory";
-// Project
-import ProjectOngoing from "./pages/admin/sales/Project/Ongoing";
-import ProjectCompleted from "./pages/admin/sales/Project/Completed";
 // Advertisement
 import AddAdvertisement from "./pages/admin/sales/Advertisement/AddAdvertisement";
 import AdvertisementList from "./pages/admin/sales/Advertisement/AdvertisementList";
@@ -189,24 +186,6 @@ function App() {
           element={
             <MainLayout>
               <InvoiceHistory />
-            </MainLayout>
-          }
-        />
-        
-        {/* Project Routes */}
-        <Route
-          path="/admin/sales/project/ongoing"
-          element={
-            <MainLayout>
-              <ProjectOngoing />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/project/completed"
-          element={
-            <MainLayout>
-              <ProjectCompleted />
             </MainLayout>
           }
         />
