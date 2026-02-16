@@ -16,14 +16,13 @@ import MainLayout from "./components/layout/MainLayout";
 import AdminCRMDashboard from "./pages/admin/crm/Dashboard";
 import CustomerDetails from "./pages/admin/crm/CustomerDetails";
 import ServiceRequests from "./pages/admin/crm/ServiceRequests";
+import CRMNotifications from "./pages/admin/crm/Notifications";
 
 // ADMIN SALES PAGES
 import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
 // Leads
 import Leads from "./pages/admin/sales/Leads/Leads";
 import LeadDetails from "./pages/admin/sales/Leads/LeadDetails";
-import GetEmail from "./pages/admin/sales/Leads/GetEmail";
-import GetPhone from "./pages/admin/sales/Leads/GetPhone";
 import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
 // Stock
 import StockEntry from "./pages/admin/sales/Stock/StockEntry";
@@ -83,6 +82,14 @@ function App() {
             </MainLayout>
           }
         />
+        <Route
+          path="/admin/crm/notifications"
+          element={
+            <MainLayout>
+              <CRMNotifications />
+            </MainLayout>
+          }
+        />
 
         {/* ✅ ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
@@ -108,22 +115,6 @@ function App() {
           element={
             <MainLayout>
               <LeadDetails />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/get-email"
-          element={
-            <MainLayout>
-              <GetEmail />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/get-phone"
-          element={
-            <MainLayout>
-              <GetPhone />
             </MainLayout>
           }
         />
