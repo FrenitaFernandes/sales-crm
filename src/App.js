@@ -51,12 +51,26 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 
+
+
+//home,reg,login,forgotpassword
+
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         {/* DEFAULT ROUTE */}
-        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
+        {/* PUBLIC ROUTES */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
