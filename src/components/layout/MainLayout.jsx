@@ -42,7 +42,7 @@ const MainLayout = ({
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <div className={`relative z-50 ${sidebarOpen ? "block" : "hidden"} md:block`}>
+      <div className={`relative z-50 transition-all ${sidebarOpen ? "block" : "hidden"}`}>
         <Sidebar role={role} />
       </div>
 
