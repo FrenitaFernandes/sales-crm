@@ -6,7 +6,6 @@ const Reports = () => {
       { label: "Leads Added", value: 42 },
       { label: "Calls Made", value: 18 },
       { label: "Emails Sent", value: 66 },
-      { label: "Meetings", value: 7 },
     ],
     []
   );
