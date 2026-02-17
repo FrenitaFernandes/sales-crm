@@ -47,6 +47,8 @@ import Tickets from "./pages/customer/Tickets";
 import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
+import CustomizeProject from "./pages/customer/CustomizeProject";
+
 
 function App() {
   return (
@@ -264,6 +266,15 @@ function App() {
             </MainLayout>
           }
         />
+        <Route
+        path="/customer/customize-project"
+        element={
+        <MainLayout role="customer">
+        <CustomizeProject />
+        </MainLayout>
+    }
+    />
+
       </Routes>
     </BrowserRouter>
   );
