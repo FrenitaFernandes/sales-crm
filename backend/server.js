@@ -6,8 +6,7 @@ const connectDB = require("./utils/db");
 
 // Import Routes
 const authRoutes = require("./routes/authRoutes");
-const testRoutes = require("./routes/testRoutes");
-const adminRoutes = require("./routes/adminRoutes");  // ✅ ADD THIS
+const adminRoutes = require("./routes/adminRoutes");
 
 // Load Environment
 dotenv.config({
@@ -25,7 +24,6 @@ connectDB();
 
 // API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/test", testRoutes);
 app.use("/api/admin", adminRoutes);  
 
 // Health Check
