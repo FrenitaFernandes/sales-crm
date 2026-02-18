@@ -32,12 +32,13 @@ import StockReport from "./pages/admin/sales/Stock Report/StockReport";
 // Invoice
 import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
 import InvoiceHistory from "./pages/admin/sales/Invoice/InvoiceHistory";
+// Project
+import Projects from "./pages/admin/sales/Project/Projects";
 // Advertisement
 import AddAdvertisement from "./pages/admin/sales/Advertisement/AddAdvertisement";
 import AdvertisementList from "./pages/admin/sales/Advertisement/AdvertisementList";
 // Activity Report
 import ActivityReport from "./pages/admin/sales/ActivityReport/Reports";
-import ProjectConversationChart from "./pages/admin/sales/ActivityReport/ProjectConversationChart";
 
 // CUSTOMER PAGES
 import CustomerDashboard from "./pages/customer/Dashboard";
@@ -189,7 +190,16 @@ function App() {
             </MainLayout>
           }
         />
-        
+
+        {/* Project Route */}
+        <Route
+          path="/admin/sales/project"
+          element={
+            <MainLayout>
+              <Projects />
+            </MainLayout>
+          }
+        />
         {/* Advertisement Routes */}
         <Route
           path="/admin/sales/advertisement/add"
@@ -214,14 +224,6 @@ function App() {
           element={
             <MainLayout>
               <ActivityReport />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/activity-report/chart"
-          element={
-            <MainLayout>
-              <ProjectConversationChart />
             </MainLayout>
           }
         />

@@ -125,12 +125,8 @@ const Sidebar = ({ role = "admin" }) => {
       },
       { 
         name: "Project", 
-        path: "/admin/sales/project/ongoing", 
-        icon: "tasks",
-        subMenu: [
-          { name: "Ongoing", path: "/admin/sales/project/ongoing", icon: "tasks" },
-          { name: "Completed", path: "/admin/sales/project/completed", icon: "tasks" },
-        ]
+        path: "/admin/sales/project", 
+        icon: "tasks"
       },
       { 
         name: "Advertisement", 
@@ -147,7 +143,6 @@ const Sidebar = ({ role = "admin" }) => {
         icon: "reports",
         subMenu: [
           { name: "Reports", path: "/admin/sales/activity-report", icon: "reports" },
-          { name: "Conversation Chart", path: "/admin/sales/activity-report/chart", icon: "reports" },
         ]
       },
     ],
