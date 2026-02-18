@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authService";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
 
@@ -37,7 +38,6 @@ function Login() {
         onSubmit={handleLogin}
         className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
       >
-        {/* Back to Home */}
         <Link
           to="/"
           className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center gap-2"
@@ -66,14 +66,25 @@ function Login() {
           required
         />
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full p-2 mb-4 border rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        {/* Password */}
+        <div className="relative mb-4">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            className="w-full p-2 pr-12 border rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}
+          </button>
+        </div>
 
         <button
           type="submit"

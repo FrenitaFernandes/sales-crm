@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,9 @@ function ForgotPassword() {
         onSubmit={handleForgot}
         className="bg-white p-8 rounded-lg shadow-md w-96"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Forgot Password</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Forgot Password
+        </h2>
 
         <input
           type="email"
@@ -35,7 +38,16 @@ function ForgotPassword() {
         <p className="text-center text-sm text-gray-500 mt-4">
           You will receive an email with instructions.
         </p>
-        
+
+        {/* Back to Login */}
+        <div className="text-center mt-4">
+          <Link
+            to="/login"
+            className="text-blue-600 hover:underline text-sm"
+          >
+            ← Back to Login
+          </Link>
+        </div>
       </form>
     </div>
   );

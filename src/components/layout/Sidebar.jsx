@@ -153,6 +153,8 @@ const Sidebar = ({ role = "admin" }) => {
       { name: "Profile", path: "/customer/profile", icon: "profile" },
       { name: "Support", path: "/customer/support", icon: "support" },
       { name: "Notifications", path: "/customer/notifications", icon: "notifications" },
+      { name: "Customization", path: "/customer/customization", icon: "customize" },
+
     ],
   };
 

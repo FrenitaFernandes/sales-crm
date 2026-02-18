@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const navigate = useNavigate();
 
@@ -21,7 +25,13 @@ function Register() {
     }
 
     try {
-      const data = await registerUser({ name, email, password });
+      const data = await registerUser({
+        name,
+        email,
+        phone: countryCode + phone,
+        password,
+      });
+
       setMessage(data.message);
 
       setTimeout(() => {
@@ -38,7 +48,6 @@ function Register() {
         onSubmit={handleRegister}
         className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
       >
-        {/* Back to Home */}
         <Link
           to="/"
           className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-green-600 hover:bg-green-600 hover:text-white transition flex items-center gap-2"
@@ -51,13 +60,7 @@ function Register() {
         </h2>
 
         {message && (
-          <p
-            className={`text-center text-sm mb-3 ${
-              message === "Passwords do not match!"
-                ? "text-red-600"
-                : "text-green-600"
-            }`}
-          >
+          <p className="text-center text-sm mb-3 text-red-600">
             {message}
           </p>
         )}
@@ -80,23 +83,70 @@ function Register() {
           required
         />
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full p-2 mb-4 border rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        {/* Phone */}
+        <div className="flex mb-4 gap-2">
+          <select
+            className="border rounded p-2"
+            value={countryCode}
+            onChange={(e) => setCountryCode(e.target.value)}
+          >
+            <option value="+91">🇮🇳 +91</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+971">🇦🇪 +971</option>
+          </select>
 
-        <input
-          type="password"
-          placeholder="Confirm Password"
-          className="w-full p-2 mb-4 border rounded"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
+          <input
+            type="tel"
+            placeholder="Contact Number"
+            className="flex-1 p-2 border rounded"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+        </div>
+
+        {/* Password */}
+        <div className="relative mb-4">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            className="w-full p-2 pr-12 border rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}
+          </button>
+        </div>
+
+        {/* Confirm Password */}
+        <div className="relative mb-4">
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Confirm Password"
+            className="w-full p-2 pr-12 border rounded"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            onClick={() =>
+              setShowConfirmPassword(!showConfirmPassword)
+            }
+          >
+            {showConfirmPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}
+          </button>
+        </div>
 
         <button
           type="submit"
