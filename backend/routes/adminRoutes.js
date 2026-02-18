@@ -113,61 +113,7 @@ router.get("/customers/:id", async (req, res) => {
   }
 });
 
-router.get("/service-requests", async (req, res) => {
-  try {
-    const requests = await ServiceRequest.find()
-      .populate("customerId", "name email phone")
-      .sort({ createdAt: -1 });
 
-    res.json(requests);
-  } catch (err) {
-    console.error("Fetch service requests error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.post("/service-requests", async (req, res) => {
-  try {
-    const { customerId, title, description } = req.body;
-
-    if (!customerId || !title) {
-      return res.status(400).json({ message: "customerId and title are required" });
-    }
-
-    const newRequest = await ServiceRequest.create({
-      customerId,
-      title,
-      description,
-      status: "Pending",
-    });
-
-    res.status(201).json({ message: "✅ Service request created", request: newRequest });
-  } catch (err) {
-    console.error("Create service request error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.put("/service-requests/:id/status", async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    if (!status) return res.status(400).json({ message: "Status is required" });
-
-    const updated = await ServiceRequest.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
-    if (!updated) return res.status(404).json({ message: "Request not found" });
-
-    res.json({ message: "✅ Status updated", request: updated });
-  } catch (err) {
-    console.error("Update status error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 // ✅ Get all service requests
 router.get("/service-requests", async (req, res) => {
   try {
@@ -226,26 +172,7 @@ router.post("/service-requests", async (req, res) => {
   }
 });
 
-// ✅ Update status
-router.put("/service-requests/:id/status", async (req, res) => {
-  try {
-    const { status } = req.body;
-    if (!status) return res.status(400).json({ message: "Status is required" });
 
-    const updated = await ServiceRequest.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    ).populate("customerId", "name email phone status");
-
-    if (!updated) return res.status(404).json({ message: "Request not found" });
-
-    res.json({ message: "✅ Status updated", request: updated });
-  } catch (err) {
-    console.error("Update status error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 // ✅ Update status
 router.put("/service-requests/:id/status", async (req, res) => {

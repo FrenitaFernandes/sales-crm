@@ -16,14 +16,13 @@ import MainLayout from "./components/layout/MainLayout";
 import AdminCRMDashboard from "./pages/admin/crm/Dashboard";
 import CustomerDetails from "./pages/admin/crm/CustomerDetails";
 import ServiceRequests from "./pages/admin/crm/ServiceRequests";
+import CRMNotifications from "./pages/admin/crm/Notifications";
 
 // ADMIN SALES PAGES
 import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
 // Leads
 import Leads from "./pages/admin/sales/Leads/Leads";
 import LeadDetails from "./pages/admin/sales/Leads/LeadDetails";
-import GetEmail from "./pages/admin/sales/Leads/GetEmail";
-import GetPhone from "./pages/admin/sales/Leads/GetPhone";
 import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
 // Stock
 import StockEntry from "./pages/admin/sales/Stock/StockEntry";
@@ -33,9 +32,6 @@ import StockReport from "./pages/admin/sales/Stock Report/StockReport";
 // Invoice
 import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
 import InvoiceHistory from "./pages/admin/sales/Invoice/InvoiceHistory";
-// Project
-import ProjectOngoing from "./pages/admin/sales/Project/Ongoing";
-import ProjectCompleted from "./pages/admin/sales/Project/Completed";
 // Advertisement
 import AddAdvertisement from "./pages/admin/sales/Advertisement/AddAdvertisement";
 import AdvertisementList from "./pages/admin/sales/Advertisement/AdvertisementList";
@@ -51,12 +47,26 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 
+
+
+//home,reg,login,forgotpassword
+
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         {/* DEFAULT ROUTE */}
-        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
+        {/* PUBLIC ROUTES */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
@@ -80,6 +90,14 @@ function App() {
           element={
             <MainLayout>
               <ServiceRequests />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/crm/notifications"
+          element={
+            <MainLayout>
+              <CRMNotifications />
             </MainLayout>
           }
         />
@@ -108,22 +126,6 @@ function App() {
           element={
             <MainLayout>
               <LeadDetails />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/get-email"
-          element={
-            <MainLayout>
-              <GetEmail />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/get-phone"
-          element={
-            <MainLayout>
-              <GetPhone />
             </MainLayout>
           }
         />
@@ -184,24 +186,6 @@ function App() {
           element={
             <MainLayout>
               <InvoiceHistory />
-            </MainLayout>
-          }
-        />
-        
-        {/* Project Routes */}
-        <Route
-          path="/admin/sales/project/ongoing"
-          element={
-            <MainLayout>
-              <ProjectOngoing />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/project/completed"
-          element={
-            <MainLayout>
-              <ProjectCompleted />
             </MainLayout>
           }
         />

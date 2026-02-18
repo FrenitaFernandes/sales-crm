@@ -1,5 +1,12 @@
 /* Sidebar now uses Tailwind CSS - minimal styling below */
 
+.sidebar-wrapper {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overscroll-behavior: contain;
+}
+
 /* Scrollbar styling for sidebar */
 .sidebar-wrapper::-webkit-scrollbar {
   width: 6px;

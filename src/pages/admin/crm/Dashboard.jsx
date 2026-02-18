@@ -17,7 +17,6 @@ import {
 const API_BASE = "http://localhost:5000/api/admin";
 
 function formatDateLabel(yyyyMMdd) {
-  // "2026-01-20" -> "20 Jan"
   const d = new Date(yyyyMMdd);
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 }
@@ -50,7 +49,6 @@ export default function Dashboard() {
     fetchAnalytics();
   }, []);
 
-  // ✅ Pie chart data
   const pieData = useMemo(() => {
     return [
       { name: "Pending", value: data.pendingRequests || 0 },
@@ -59,7 +57,6 @@ export default function Dashboard() {
     ];
   }, [data]);
 
-  // ✅ trend chart with missing days filled (so graph looks professional)
   const trendData = useMemo(() => {
     const days = 7;
     const map = new Map();
@@ -82,12 +79,10 @@ export default function Dashboard() {
     return result;
   }, [data]);
 
-  // Pie Colors (fixed professional colors)
   const pieColors = ["#f59e0b", "#3b82f6", "#22c55e"]; // yellow, blue, green
 
   return (
     <div className="p-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <div>
           <h2 className="text-2xl font-bold">Admin CRM Dashboard</h2>
@@ -112,12 +107,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Loading */}
       {loading ? (
         <p className="text-gray-500">Loading dashboard...</p>
       ) : (
         <>
-          {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white shadow rounded-xl p-4 flex gap-4 items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-700 text-xl">
@@ -160,15 +153,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Status Pie */}
             <div className="bg-white shadow rounded-xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Status Distribution</h3>
-                <span className="text-xs text-gray-500">
-                  Pending / In Progress / Completed
-                </span>
+                <span className="text-xs text-gray-500">Pending / In Progress / Completed</span>
               </div>
 
               <div style={{ width: "100%", height: 320 }}>
@@ -195,7 +184,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Trend Line */}
             <div className="bg-white shadow rounded-xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Requests Trend</h3>
@@ -216,7 +204,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Small summary strip */}
           <div className="bg-white shadow rounded-xl p-5 mt-2">
             <h3 className="font-bold text-lg mb-2">Quick Summary</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
