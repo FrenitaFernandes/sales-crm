@@ -18,6 +18,7 @@ import {
   MdEmail,
   MdPhone,
   MdDownload,
+  MdBuild,
 } from "react-icons/md";
 
 const iconMap = {
@@ -36,6 +37,7 @@ const iconMap = {
   email: <MdEmail className="icon" />,
   phone: <MdPhone className="icon" />,
   download: <MdDownload className="icon" />,
+  build: <MdBuild className="icon" />,
 };
 
 const getIcon = (name) => iconMap[name] || null;
@@ -153,6 +155,8 @@ const Sidebar = ({ role = "admin" }) => {
       { name: "Profile", path: "/customer/profile", icon: "profile" },
       { name: "Support", path: "/customer/support", icon: "support" },
       { name: "Notifications", path: "/customer/notifications", icon: "notifications" },
+      { name: "Customize Project", path: "/customer/customize-project", icon: "build" },
+
     ],
   };
 

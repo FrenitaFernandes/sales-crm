@@ -47,11 +47,9 @@ import Tickets from "./pages/customer/Tickets";
 import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
-
-
+import CustomizeProject from "./pages/customer/CustomizeProject";
 
 //home,reg,login,forgotpassword
-
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -62,9 +60,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* DEFAULT ROUTE */}
-        {/* PUBLIC ROUTES */}
+        {/* PUBLIC ROUTES (NO LAYOUT) */}
         <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -278,7 +276,15 @@ function App() {
             </MainLayout>
           }
         />
-        
+
+        <Route
+          path="/customer/customize-project"
+          element={
+            <MainLayout role="customer">
+              <CustomizeProject />
+            </MainLayout>
+          }
+        />
 
       </Routes>
     </BrowserRouter>
