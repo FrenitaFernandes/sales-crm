@@ -49,6 +49,12 @@ import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 import CustomizeProject from "./pages/customer/CustomizeProject";
 
+//home,reg,login,forgotpassword
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
 
 function App() {
   return (
@@ -274,6 +280,10 @@ function App() {
         </MainLayout>
     }
     />
+<<<<<<< HEAD
+=======
+        
+>>>>>>> member5-layout
 
       </Routes>
     </BrowserRouter>
