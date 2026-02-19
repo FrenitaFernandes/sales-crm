@@ -33,9 +33,20 @@ const ServiceRequests = () => {
 
   // create form
   const [customerId, setCustomerId] = useState("");
+  const [ticketId, setTicketId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
+  const [status, setStatus] = useState("Open");
+  const [enableChat, setEnableChat] = useState(false);
+  const [createdDate, setCreatedDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().slice(0, 16);
+  });
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedPreview, setUploadedPreview] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ show: true, msg, type });
@@ -108,30 +119,66 @@ const ServiceRequests = () => {
 
   const resetForm = () => {
     setCustomerId("");
+    setTicketId("");
+    setSubject("");
+    setCategory("");
     setTitle("");
     setDescription("");
     setPriority("Medium");
+    setStatus("Open");
+    setEnableChat(false);
+    const now = new Date();
+    setCreatedDate(now.toISOString().slice(0, 16));
+    setUploadedFile(null);
+    setUploadedPreview(null);
   };
 
   // ✅ create request
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    if (!customerId || !title.trim()) {
-      showToast("Please select customer and enter title.", "error");
+    if (!customerId || !subject.trim()) {
+      showToast("Please select customer and enter subject.", "error");
       return;
     }
 
+    // optimistic UI update: add to local list immediately
+    const optimistic = {
+      _id: `local-${Date.now()}`,
+      ticketId: ticketId || `TKT-${Date.now()}`,
+      subject: subject.trim(),
+      category,
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      status,
+      enableChat,
+      uploadedImage: uploadedPreview || null,
+      customerId: customers.find((c) => c._id === customerId) || { _id: customerId, name: 'Unknown' },
+      createdAt: createdDate ? new Date(createdDate).toISOString() : new Date().toISOString(),
+    };
+
+    setRequests((prev) => [optimistic, ...prev]);
     try {
-      const res = await fetch(`${API_BASE}/service-requests`, {
+      // Send JSON to simple backend endpoint (includes base64 preview if available)
+      const payload = {
+        customerId,
+        ticketId,
+        subject: subject.trim(),
+        category,
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        status,
+        enableChat,
+        createdDate: createdDate || new Date().toISOString(),
+        uploadedPreview: uploadedPreview || null,
+      };
+
+      const res = await fetch(`${API_BASE}/service-requests-simple`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId,
-          title: title.trim(),
-          description: description.trim(),
-          priority,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -297,6 +344,7 @@ const ServiceRequests = () => {
               <th className="p-3 border">Customer</th>
               <th className="p-3 border">Title</th>
               <th className="p-3 border">Priority</th>
+              <th className="p-3 border">Attachment</th>
               <th className="p-3 border">Created</th>
               <th className="p-3 border">Status</th>
               <th className="p-3 border">Actions</th>
@@ -331,6 +379,22 @@ const ServiceRequests = () => {
                     >
                       {r.priority || "Medium"}
                     </span>
+                  </td>
+
+                  <td className="p-3 border">
+                    {r.uploadedImage ? (
+                      <img
+                        src={
+                          r.uploadedImage.startsWith("http")
+                            ? r.uploadedImage
+                            : `${API_BASE.replace("/api/admin", "")}${r.uploadedImage}`
+                        }
+                        alt="thumb"
+                        className="h-12 w-12 object-cover rounded"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </td>
 
                   <td className="p-3 border text-sm">{formatDate(r.createdAt)}</td>
@@ -403,7 +467,7 @@ const ServiceRequests = () => {
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-xl p-5">
+          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-2xl p-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-bold">Create Service Request</h3>
               <button
@@ -417,9 +481,10 @@ const ServiceRequests = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-3">
+            <form onSubmit={handleCreate} className="space-y-4">
+              {/* Customer */}
               <div>
-                <label className="text-sm text-gray-600">Customer</label>
+                <label className="text-sm text-gray-600">Customer *</label>
                 <select
                   className="border p-2 rounded w-full"
                   value={customerId}
@@ -434,14 +499,51 @@ const ServiceRequests = () => {
                 </select>
               </div>
 
+              {/* Customer ID Display */}
+              {customerId && (
+                <div>
+                  <label className="text-sm text-gray-600">Customer ID</label>
+                  <input
+                    type="text"
+                    className="border p-2 rounded w-full bg-gray-50"
+                    value={customerId}
+                    readOnly
+                  />
+                </div>
+              )}
+
+              {/* Ticket ID and Subject */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-600">Title</label>
+                  <label className="text-sm text-gray-600">Ticket ID</label>
+                  <input
+                    className="border p-2 rounded w-full bg-gray-50"
+                    placeholder="Auto-generated"
+                    value={ticketId || `TKT-${Date.now()}`}
+                    onChange={(e) => setTicketId(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-600">Subject *</label>
                   <input
                     className="border p-2 rounded w-full"
-                    placeholder="Eg: Installation issue"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Category and Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-gray-600">Category</label>
+                  <input
+                    className="border p-2 rounded w-full"
+                    placeholder="Eg: Technical, Billing, Support"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                   />
                 </div>
 
@@ -452,30 +554,101 @@ const ServiceRequests = () => {
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
                   >
-                    {priorities.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
                   </select>
                 </div>
               </div>
 
+              {/* Status and Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-gray-600">Status</label>
+                  <select
+                    className="border p-2 rounded w-full"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-600">Date</label>
+                  <input
+                    type="datetime-local"
+                    className="border p-2 rounded w-full bg-gray-50"
+                    value={createdDate}
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
               <div>
                 <label className="text-sm text-gray-600">Description</label>
                 <textarea
                   className="border p-2 rounded w-full"
-                  rows={4}
+                  rows={3}
                   placeholder="Enter request description..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
+              {/* Image upload / attachment */}
+              <div>
+                <label className="text-sm text-gray-600">Attachment (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-2"
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    setUploadedFile(file);
+                    const reader = new FileReader();
+                    reader.onload = () => setUploadedPreview(reader.result);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+
+                {uploadedPreview && (
+                  <div className="mt-2">
+                    <img src={uploadedPreview} alt="attachment" className="max-h-48 rounded border" />
+                  </div>
+                )}
+              </div>
+
+              {/* Enable Chat Toggle */}
+              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded">
+                <label className="text-sm text-gray-600">Enable Chat</label>
                 <button
                   type="button"
-                  className="border px-4 py-2 rounded"
+                  onClick={() => setEnableChat(!enableChat)}
+                  className={`w-12 h-6 rounded-full transition ${
+                    enableChat ? "bg-blue-600" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full transition transform ${
+                      enableChat ? "translate-x-6" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+                <span className="text-sm font-medium">
+                  {enableChat ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  className="border px-4 py-2 rounded hover:bg-gray-100"
                   onClick={() => {
                     setShowCreate(false);
                     resetForm();
@@ -484,7 +657,7 @@ const ServiceRequests = () => {
                   Cancel
                 </button>
                 <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                  Create
+                  Create Request
                 </button>
               </div>
             </form>
@@ -507,14 +680,38 @@ const ServiceRequests = () => {
             </div>
 
             <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <h4 className="font-semibold">{viewRequest.ticketId || "-"}</h4>
+                {viewRequest.enableChat && (
+                  <span title="Chat enabled" className="text-blue-600 text-lg">💬</span>
+                )}
+              </div>
+
+              <p><b>Subject:</b> {viewRequest.subject || viewRequest.title || "-"}</p>
+              <p><b>Category:</b> {viewRequest.category || "-"}</p>
               <p><b>Customer:</b> {viewRequest.customerId?.name}</p>
+              <p><b>Customer ID:</b> {viewRequest.customerId?._id || "-"}</p>
               <p><b>Email:</b> {viewRequest.customerId?.email}</p>
               <p><b>Phone:</b> {viewRequest.customerId?.phone}</p>
-              <p><b>Title:</b> {viewRequest.title}</p>
               <p><b>Description:</b> {viewRequest.description || "—"}</p>
               <p><b>Priority:</b> {viewRequest.priority || "Medium"}</p>
               <p><b>Status:</b> {viewRequest.status}</p>
-              <p><b>Created:</b> {formatDate(viewRequest.createdAt)}</p>
+              <p><b>Created:</b> {formatDate(viewRequest.createdDate || viewRequest.createdAt)}</p>
+
+              {viewRequest.uploadedImage && (
+                <div>
+                  <p className="font-medium">Attachment</p>
+                  <img
+                    src={
+                      viewRequest.uploadedImage.startsWith("http")
+                        ? viewRequest.uploadedImage
+                        : `${API_BASE.replace("/api/admin", "")}${viewRequest.uploadedImage}`
+                    }
+                    alt="attachment"
+                    className="max-h-64 rounded border mt-2"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end mt-4">

@@ -1,0 +1,12 @@
+{
+  "customerId": "696dd3bfec3c415336ad843b",
+  "ticketId": "TKT-TEST-JSON",
+  "subject": "JSON test",
+  "category": "Testing",
+  "title": "JSON created title",
+  "description": "Created via JSON endpoint",
+  "priority": "Low",
+  "status": "Open",
+  "enableChat": true,
+  "createdDate": "2026-02-19T05:35:00Z"
+}
