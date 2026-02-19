@@ -60,8 +60,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* DEFAULT ROUTE */}
-        <Route path="/" element={<Navigate to="/admin/crm/dashboard" />} />
+        {/* PUBLIC ROUTES (NO LAYOUT) */}
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
@@ -280,12 +284,6 @@ function App() {
         </MainLayout>
     }
     />
-
-        {/* AUTH ROUTES (WITHOUT LAYOUT) */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
 
       </Routes>
     </BrowserRouter>
