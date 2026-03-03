@@ -1,48 +1,15 @@
-const mongoose = require('mongoose');
+import React from 'react';
+import './App.css';
 
-const projectSchema = new mongoose.Schema({
-  customerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Customer",
-    required: true
-  },
-  projectName: {
-    type: String,
-    required: true
-  },
-  clientName: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String
-  },
-  status: {
-    type: String,
-    enum: ['ongoing', 'completed', 'on-hold', 'cancelled'],
-    default: 'ongoing'
-  },
-  startDate: {
-    type: Date,
-    default: Date.now
-  },
-  endDate: {
-    type: Date
-  },
-  budget: {
-    type: Number
-  },
-  assignedTo: {
-    type: String
-  },
-  progress: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  }
-}, {
-  timestamps: true
-});
+function App() {
+  return (
+    <div className="App">
+      <header className="p-6">
+        <h1 className="text-2xl font-bold">Sales CRM</h1>
+        <p className="text-sm text-gray-600">Admin dashboard and CRM UI</p>
+      </header>
+    </div>
+  );
+}
 
-module.exports = mongoose.model('Project', projectSchema);
+export default App;

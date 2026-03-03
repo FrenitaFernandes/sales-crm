@@ -1,6 +1,14 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { sendWelcomeEmail } = require("../services/emailService");
+
+// ===============================
+// Generate JWT Token
+// ===============================
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
 
 // ===============================
 // REGISTER (CUSTOMER ONLY)
@@ -35,7 +43,13 @@ const registerUser = async (req, res) => {
 
     res.status(201).json({
       message: "Registration successful! Welcome email sent.",
-      userId: user._id,
+      token: generateToken(user._id),
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
 
   } catch (error) {
@@ -67,6 +81,7 @@ const loginUser = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
+      token: generateToken(user._id),
       user: {
         id: user._id,
         name: user.name,
