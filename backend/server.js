@@ -21,9 +21,6 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-// serve uploaded files
-const path = require("path");
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // DB Connection
 connectDB();
