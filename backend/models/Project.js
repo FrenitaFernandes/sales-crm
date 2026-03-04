@@ -35,6 +35,7 @@ const projectSchema = new mongoose.Schema({
   assignedTo: {
     type: String
   },
+  phone: String,
   progress: {
     type: Number,
     default: 0,

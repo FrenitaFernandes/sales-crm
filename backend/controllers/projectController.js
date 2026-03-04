@@ -87,6 +87,7 @@ exports.createProject = async (req, res) => {
       projectName,
       clientName,
       description,
+      phone: phone || undefined,
       status: status || "ongoing",
       startDate: startDate || Date.now(),
       endDate,
