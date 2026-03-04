@@ -9,6 +9,7 @@ const {
   addFollowUp,
   updateStatus,
   deleteLead,
+  getCustomerLeads,
 } = require("../controllers/leadController");
 
 const router = express.Router();
@@ -20,6 +21,8 @@ router.put("/:id", protect, updateLead);
 router.post("/:id/followup", protect, addFollowUp);
 router.put("/:id/status", protect, updateStatus);
 router.delete("/:id", protect, deleteLead);
+
+// customer-specific lookup must come before parameterized :id route
 router.get("/customer/:email", protect, getCustomerLeads);
 
 module.exports = router;
