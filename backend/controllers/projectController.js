@@ -84,10 +84,13 @@ exports.createProject = async (req, res) => {
       progress: progress || 0,
     });
 
+    // Populate customer details before returning
+    const populatedProject = await project.populate("customerId", "name email company phone");
+
     res.status(201).json({
       success: true,
       message: "Project created successfully",
-      data: project,
+      data: populatedProject,
     });
 
   } catch (error) {
