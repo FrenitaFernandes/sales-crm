@@ -19,7 +19,7 @@ const projectSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['ongoing', 'completed', 'on-hold', 'cancelled'],
+    enum: ['ongoing', 'completed', 'on-hold', 'cancelled', 'Ongoing', 'Completed'],
     default: 'ongoing'
   },
   startDate: {

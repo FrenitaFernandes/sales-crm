@@ -14,14 +14,27 @@ const CustomerDetails = () => {
     try {
       const res = await fetch("http://localhost:5000/api/admin/customers");
       const data = await res.json();
-      setCustomers(data);
+      // Normalize server response to an array.
+      // Some endpoints may return { customers: [...] } or a single object.
+      if (Array.isArray(data)) {
+        setCustomers(data);
+      } else if (data && Array.isArray(data.customers)) {
+        setCustomers(data.customers);
+      } else if (data && typeof data === "object") {
+        // if it's a single customer object, wrap it
+        setCustomers([data]);
+      } else {
+        setCustomers([]);
+      }
     } catch (error) {
       console.log("Customer fetch error:", error);
     }
   };
 
   // ✅ Filter customers
-  const filteredCustomers = customers.filter((c) =>
+  const list = Array.isArray(customers) ? customers : [];
+
+  const filteredCustomers = list.filter((c) =>
     (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
     (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
     (c.phone || "").includes(search)
