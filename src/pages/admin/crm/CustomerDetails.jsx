@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
 
 const CustomerDetails = () => {
   const [customers, setCustomers] = useState([]);
@@ -59,6 +60,23 @@ const CustomerDetails = () => {
       (c.phone || "").includes(search)
   );
 
+  const handleDeleteCustomer = async (id) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    await fetch(`http://localhost:5000/api/customers/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    fetchCustomers(); // refresh table
+  } catch (error) {
+    console.log("Delete error:", error);
+  }
+};
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Customer Details</h2>
@@ -91,13 +109,18 @@ const CustomerDetails = () => {
                   <td className="p-3 border">{c.email}</td>
                   <td className="p-3 border">{c.phone}</td>
                   <td className="p-3 border">{c.status}</td>
-                  <td className="p-3 border">
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                      onClick={() => handleViewCustomer(c)}
-                    >
-                      View
-                    </button>
+                  <td className="p-3 border flex gap-3 items-center">
+    <button
+      className="bg-blue-600 text-white px-3 py-1 rounded"
+      onClick={() => handleViewCustomer(c)}>
+      View
+    </button>
+
+    <button
+      className="text-red-600 hover:text-red-800"
+      onClick={() => handleDeleteCustomer(c._id)}>
+      <FaTrash />
+    </button>
                   </td>
                 </tr>
               ))
