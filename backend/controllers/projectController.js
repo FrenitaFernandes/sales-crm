@@ -5,6 +5,7 @@ const Customer = require("../models/Customer");
 // CREATE PROJECT
 // =============================
 exports.createProject = async (req, res) => {
+  console.log('[projectController] createProject body:', req.body);
   try {
     // In the front–end we send either a customerId (admin) or customerName (customer/admin)
     // and other fields. For customers the token gives us a user; we map that to a
@@ -103,17 +104,19 @@ exports.createProject = async (req, res) => {
     console.log("[projectController] createProject -> project.phone:", project.phone);
     console.log("[projectController] createProject -> customer.phone:", populatedProject.customerId?.phone);
 
-    // ensure response includes a top-level phone (project.phone or customer.phone)
+    // convert to plain object and ensure response includes a top-level phone
+    let resp;
     try {
-      populatedProject.phone = populatedProject.phone || populatedProject.customerId?.phone || null;
+      resp = populatedProject.toObject ? populatedProject.toObject() : JSON.parse(JSON.stringify(populatedProject));
     } catch (e) {
-      // ignore if not writable
+      resp = populatedProject;
     }
+    resp.phone = resp.phone || (resp.customerId && resp.customerId.phone) || null;
 
     res.status(201).json({
       success: true,
       message: "Project created successfully",
-      data: populatedProject,
+      data: resp,
     });
 
   } catch (error) {
