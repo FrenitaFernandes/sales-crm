@@ -20,5 +20,6 @@ router.put("/:id", protect, updateLead);
 router.post("/:id/followup", protect, addFollowUp);
 router.put("/:id/status", protect, updateStatus);
 router.delete("/:id", protect, deleteLead);
+router.get("/customer/:email", protect, getCustomerLeads);
 
 module.exports = router;

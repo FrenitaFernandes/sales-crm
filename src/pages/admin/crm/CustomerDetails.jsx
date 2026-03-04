@@ -4,43 +4,65 @@ const CustomerDetails = () => {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [projects, setProjects] = useState([]);
 
-  // ✅ Fetch customers list
   useEffect(() => {
     fetchCustomers();
   }, []);
 
   const fetchCustomers = async () => {
-  try {
-    const token = localStorage.getItem("token");
+    try {
+      const token = localStorage.getItem("token");
 
-    const res = await fetch("http://localhost:5000/api/customers", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const res = await fetch("http://localhost:5000/api/customers", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const data = await res.json();
-    setCustomers(data.data || []);
-  } catch (error) {
-    console.log("Customer fetch error:", error);
-  }
-};
+      const data = await res.json();
+      setCustomers(data.data || []);
+    } catch (error) {
+      console.log("Customer fetch error:", error);
+    }
+  };
 
-  // ✅ Filter customers
+  const handleViewCustomer = async (customer) => {
+    setSelectedCustomer(customer);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+        `http://localhost:5000/api/leads/customer/${customer.email}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      setProjects(data.data || []);
+    } catch (error) {
+      console.log("Project fetch error:", error);
+      setProjects([]);
+    }
+  };
+
   const list = Array.isArray(customers) ? customers : [];
 
-  const filteredCustomers = list.filter((c) =>
-    (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.phone || "").includes(search)
+  const filteredCustomers = list.filter(
+    (c) =>
+      (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.phone || "").includes(search)
   );
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Customer Details</h2>
 
-      {/* ✅ Search */}
       <input
         type="text"
         placeholder="Search by name, email or phone..."
@@ -49,7 +71,6 @@ const CustomerDetails = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* ✅ Table */}
       <div className="overflow-x-auto bg-white shadow rounded-lg">
         <table className="w-full border-collapse">
           <thead>
@@ -73,7 +94,7 @@ const CustomerDetails = () => {
                   <td className="p-3 border">
                     <button
                       className="bg-blue-600 text-white px-3 py-1 rounded"
-                      onClick={() => setSelectedCustomer(c)}
+                      onClick={() => handleViewCustomer(c)}
                     >
                       View
                     </button>
@@ -91,7 +112,6 @@ const CustomerDetails = () => {
         </table>
       </div>
 
-      {/* ✅ Customer Popup */}
       {selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-[90%] max-w-lg shadow-lg">
@@ -102,9 +122,25 @@ const CustomerDetails = () => {
             <p><b>Phone:</b> {selectedCustomer.phone}</p>
             <p><b>Status:</b> {selectedCustomer.status}</p>
 
+            <h4 className="mt-4 font-semibold">Projects</h4>
+
+            {projects.length > 0 ? (
+              projects.map((p) => (
+                <div key={p._id} className="border p-2 rounded mt-2">
+                  <p><b>Project:</b> {p.project || "N/A"}</p>
+                  <p><b>Status:</b> {p.status}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 mt-2">No projects assigned</p>
+            )}
+
             <button
               className="mt-4 bg-red-600 text-white px-4 py-2 rounded"
-              onClick={() => setSelectedCustomer(null)}
+              onClick={() => {
+                setSelectedCustomer(null);
+                setProjects([]);
+              }}
             >
               Close
             </button>

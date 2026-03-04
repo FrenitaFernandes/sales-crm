@@ -6,13 +6,47 @@ const Customer = require("../models/Customer");
 // ============================
 exports.createLead = async (req, res) => {
   try {
-    const { name, email, phone, source } = req.body;
+    const { name, email, phone, source, project, company, description } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Lead name is required" });
     }
 
-    const lead = await Lead.create({ name, email, phone, source });
+    const lead = await Lead.create({
+  name,
+  email,
+  phone,
+  source,
+  project,
+  company,
+  description
+});
+exports.getCustomerLeads = async (req, res) => {
+  try {
+    const leads = await Lead.find({ email: req.params.email });
+
+    res.json({
+      success: true,
+      data: leads
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching leads" });
+  }
+};
+// create customer if not already exists
+const Customer = require("../models/Customer");
+
+const existingCustomer = await Customer.findOne({ email });
+
+if (!existingCustomer) {
+  await Customer.create({
+    name,
+    email,
+    phone,
+    status: "Inactive",
+  });
+}
 
     res.status(201).json({
       success: true,
