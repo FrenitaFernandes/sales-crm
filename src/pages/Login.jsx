@@ -20,6 +20,9 @@ function Login() {
       localStorage.setItem("authToken", data.token);
       localStorage.setItem("token", data.token);
 
+      // persist token & role for later API calls
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("userRole", data.user.role);
       const role = data.user.role;
       localStorage.setItem("userRole", role);
 

@@ -4,8 +4,15 @@ const serviceRequestSchema = new mongoose.Schema(
   {
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
 
+    ticketId: { type: String, trim: true },
+    subject: { type: String, trim: true },
+    category: { type: String, trim: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
+
+    enableChat: { type: Boolean, default: false },
+    uploadedImage: { type: String },
+    createdDate: { type: Date },
 
     priority: {
       type: String,
@@ -15,7 +22,7 @@ const serviceRequestSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Completed"],
+      enum: ["Pending", "In Progress", "Completed", "Open", "Closed"],
       default: "Pending",
     },
   },

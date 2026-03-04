@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+console.log('Loading adminRoutes.js');
 const bcrypt = require("bcryptjs");
 
 const Customer = require("../models/Customer.js");
@@ -113,61 +114,7 @@ router.get("/customers/:id", async (req, res) => {
   }
 });
 
-router.get("/service-requests", async (req, res) => {
-  try {
-    const requests = await ServiceRequest.find()
-      .populate("customerId", "name email phone")
-      .sort({ createdAt: -1 });
 
-    res.json(requests);
-  } catch (err) {
-    console.error("Fetch service requests error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.post("/service-requests", async (req, res) => {
-  try {
-    const { customerId, title, description } = req.body;
-
-    if (!customerId || !title) {
-      return res.status(400).json({ message: "customerId and title are required" });
-    }
-
-    const newRequest = await ServiceRequest.create({
-      customerId,
-      title,
-      description,
-      status: "Pending",
-    });
-
-    res.status(201).json({ message: "✅ Service request created", request: newRequest });
-  } catch (err) {
-    console.error("Create service request error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.put("/service-requests/:id/status", async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    if (!status) return res.status(400).json({ message: "Status is required" });
-
-    const updated = await ServiceRequest.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
-    if (!updated) return res.status(404).json({ message: "Request not found" });
-
-    res.json({ message: "✅ Status updated", request: updated });
-  } catch (err) {
-    console.error("Update status error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 // ✅ Get all service requests
 router.get("/service-requests", async (req, res) => {
   try {
@@ -202,50 +149,158 @@ router.get("/service-requests", async (req, res) => {
   }
 });
 
-// ✅ Create new service request
-router.post("/service-requests", async (req, res) => {
+// ✅ Create new service request (supports file upload)
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+
+const uploadDir = path.join(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+// Debug: list registered routes (temporary)
+router.get('/routes-debug', (req, res) => {
   try {
-    const { customerId, title, description, priority } = req.body;
+    const routes = [];
+    router.stack.forEach((r) => {
+      if (r.route && r.route.path) {
+        const methods = Object.keys(r.route.methods).join(',');
+        routes.push({ path: r.route.path, methods });
+      }
+    });
+    res.json(routes);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+router.post("/service-requests", upload.single("attachment"), async (req, res) => {
+  try {
+    console.log('POST /service-requests called. hasFile=', !!req.file, 'bodyKeys=', Object.keys(req.body));
+    const body = req.body || {};
+    const { customerId, ticketId, subject, category, title, description, priority, status, enableChat, createdDate } = body;
 
     if (!customerId || !title) {
       return res.status(400).json({ message: "customerId and title are required" });
     }
 
+    // map frontend status values if necessary
+    let storeStatus = status;
+    if (status === "Open") storeStatus = "Pending";
+    if (status === "Closed") storeStatus = "Completed";
+
+    let uploadedImageUrl = null;
+    if (req.file) {
+      uploadedImageUrl = `/uploads/${req.file.filename}`;
+    }
+
     const newRequest = await ServiceRequest.create({
       customerId,
+      ticketId,
+      subject,
+      category,
       title,
       description,
       priority: priority || "Medium",
-      status: "Pending",
+      status: storeStatus || "Pending",
+      enableChat: enableChat === "true" || enableChat === true,
+      uploadedImage: uploadedImageUrl,
+      createdDate: createdDate ? new Date(createdDate) : new Date(),
     });
 
-    res.status(201).json({ message: "✅ Service request created", request: newRequest });
+    const populated = await ServiceRequest.findById(newRequest._id).populate("customerId", "name email phone status");
+
+    res.status(201).json({ message: "✅ Service request created", request: populated });
   } catch (err) {
-    console.error("Create service request error:", err);
+    console.error("Create service request error:", err && err.stack ? err.stack : err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ✅ Update status
-router.put("/service-requests/:id/status", async (req, res) => {
+// Fallback JSON create endpoint (no file) for quick testing
+router.post("/service-requests-json", async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!status) return res.status(400).json({ message: "Status is required" });
+    console.log('POST /service-requests-json called. bodyKeys=', Object.keys(req.body));
+    const { customerId, ticketId, subject, category, title, description, priority, status, enableChat, createdDate } = req.body;
 
-    const updated = await ServiceRequest.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    ).populate("customerId", "name email phone status");
+    if (!customerId || !title) {
+      return res.status(400).json({ message: "customerId and title are required" });
+    }
 
-    if (!updated) return res.status(404).json({ message: "Request not found" });
+    let storeStatus = status;
+    if (status === "Open") storeStatus = "Pending";
+    if (status === "Closed") storeStatus = "Completed";
 
-    res.json({ message: "✅ Status updated", request: updated });
+    const newRequest = await ServiceRequest.create({
+      customerId,
+      ticketId,
+      subject,
+      category,
+      title,
+      description,
+      priority: priority || "Medium",
+      status: storeStatus || "Pending",
+      enableChat: enableChat === true || enableChat === "true",
+      uploadedImage: null,
+      createdDate: createdDate ? new Date(createdDate) : new Date(),
+    });
+
+    const populated = await ServiceRequest.findById(newRequest._id).populate("customerId", "name email phone status");
+    res.status(201).json({ message: "✅ Service request created (json)", request: populated });
   } catch (err) {
-    console.error("Update status error:", err);
+    console.error("Create service request (json) error:", err && err.stack ? err.stack : err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// Simple JSON create endpoint that accepts base64 preview (no multer)
+router.post("/service-requests-simple", async (req, res) => {
+  try {
+    console.log('POST /service-requests-simple called. bodyKeys=', Object.keys(req.body));
+    const { customerId, ticketId, subject, category, title, description, priority, status, enableChat, createdDate, uploadedPreview } = req.body;
+
+    if (!customerId || !title) {
+      return res.status(400).json({ message: "customerId and title are required" });
+    }
+
+    let storeStatus = status;
+    if (status === "Open") storeStatus = "Pending";
+    if (status === "Closed") storeStatus = "Completed";
+
+    const newRequest = await ServiceRequest.create({
+      customerId,
+      ticketId,
+      subject,
+      category,
+      title,
+      description,
+      priority: priority || "Medium",
+      status: storeStatus || "Pending",
+      enableChat: enableChat === true || enableChat === "true",
+      uploadedImage: uploadedPreview || null,
+      createdDate: createdDate ? new Date(createdDate) : new Date(),
+    });
+
+    const populated = await ServiceRequest.findById(newRequest._id).populate("customerId", "name email phone status");
+    res.status(201).json({ message: "✅ Service request created (simple)", request: populated });
+  } catch (err) {
+    console.error("Create service request (simple) error:", err && err.stack ? err.stack : err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 // ✅ Update status
 router.put("/service-requests/:id/status", async (req, res) => {
@@ -333,8 +388,6 @@ const StockEntry = require("../models/StockEntry");
 const StockUsage = require("../models/StockUsage");
 const Invoice = require("../models/Invoice");
 const Project = require("../models/Project");
-
-//const Advertisement = require("../models/Advertisement");
 const ActivityLog = require("../models/ActivityLog");
 
 
@@ -568,3 +621,4 @@ router.put("/project/:id", async (req, res) => {
 });
 
 module.exports = router;
+console.log('adminRoutes.js loaded and router exported');

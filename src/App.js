@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/layout.css";
 import "./styles/navbar.css";
@@ -9,7 +9,7 @@ import "./styles/dashboard.css";
 import "./styles/responsive.css";
 import "./App.css";
 
-// ✅ LAYOUT
+// LAYOUT
 import MainLayout from "./components/layout/MainLayout";
 
 // ADMIN CRM PAGES
@@ -47,6 +47,7 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 import CustomizeProject from "./pages/customer/CustomizeProject";
+import CustomerProjects from "./pages/customer/Projects";
 
 //home,reg,login,forgotpassword
 import Home from "./pages/Home";
@@ -57,24 +58,23 @@ import ForgotPassword from "./pages/ForgotPassword";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* PUBLIC ROUTES (NO LAYOUT) */}
-        <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Routes>
+      {/* PUBLIC ROUTES (NO LAYOUT) */}
+      <Route path="/" element={<Home />} />
+      <Route path="/home" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* ✅ ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
-        <Route
-          path="/admin/crm/dashboard"
-          element={
-            <MainLayout>
-              <AdminCRMDashboard />
-            </MainLayout>
-          }
-        />
+      {/* ADMIN CRM ROUTES (WITH SIDEBAR + NAVBAR) */}
+      <Route
+        path="/admin/crm/dashboard"
+        element={
+          <MainLayout>
+            <AdminCRMDashboard />
+          </MainLayout>
+        }
+      />
         <Route
           path="/admin/crm/customer-details"
           element={
@@ -100,7 +100,7 @@ function App() {
           }
         />
 
-        {/* ✅ ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
+        {/* ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
           path="/admin/sales/dashboard"
           element={
@@ -109,7 +109,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Leads Routes */}
         <Route
           path="/admin/sales/leads"
@@ -135,7 +135,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Stock Routes */}
         <Route
           path="/admin/sales/stock/entry"
@@ -161,7 +161,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Invoice Routes */}
         <Route
           path="/admin/sales/invoice/new"
@@ -179,7 +179,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Project Route */}
         <Route
           path="/admin/sales/project"
@@ -189,7 +189,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Advertisement Routes */}
         <Route
           path="/admin/sales/advertisement/add"
@@ -207,7 +207,7 @@ function App() {
             </MainLayout>
           }
         />
-        
+
         {/* Activity Report Routes */}
         <Route
           path="/admin/sales/activity-report"
@@ -218,7 +218,7 @@ function App() {
           }
         />
 
-        {/* ✅ CUSTOMER ROUTES (WITH SIDEBAR + NAVBAR) */}
+        {/* CUSTOMER ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
           path="/customer/dashboard"
           element={
@@ -268,17 +268,24 @@ function App() {
           }
         />
         <Route
-        path="/customer/customize-project"
-        element={
-        <MainLayout role="customer">
-        <CustomizeProject />
-        </MainLayout>
-    }
-    />
+          path="/customer/customize-project"
+          element={
+            <MainLayout role="customer">
+              <CustomizeProject />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/projects"
+          element={
+            <MainLayout role="customer">
+              <CustomerProjects />
+            </MainLayout>
+          }
+        />
 
       </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
+    );
+  }
+  
+  export default App;

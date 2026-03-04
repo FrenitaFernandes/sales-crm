@@ -1,60 +1,49 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { MdAdd, MdClose } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 
 export default function Projects() {
-  const [projects, setProjects] = useState([
-    // Sample data for testing
-    {
-      _id: "1",
-      projectName: "IoT Products - Data Logger",
-      customerName: "RDL Tech",
-      customizationDetails: "Custom dashboard with real-time monitoring",
-      assignedDate: "2026-01-15",
-      dueDate: "2026-03-15",
-      progress: 65,
-      status: "Ongoing"
-    },
-    {
-      _id: "2",
-      projectName: "Cloud Storage Solution",
-      customerName: "Shark Tank",
-      customizationDetails: "Enterprise cloud storage with backup",
-      assignedDate: "2026-01-20",
-      dueDate: "2026-02-28",
-      progress: 45,
-      status: "Ongoing"
-    },
-    {
-      _id: "3",
-      projectName: "Energy Management System",
-      customerName: "PHP Tech",
-      customizationDetails: "Smart energy monitoring and control",
-      assignedDate: "2025-12-01",
-      dueDate: "2026-01-15",
-      progress: 100,
-      status: "Completed"
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("userRole");
+    if (!token || role !== "admin") {
+      alert("Please login as admin to view projects");
+      navigate("/login");
     }
-  ]);
+  }, [navigate]);
+
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("ongoing");
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    phone: "",
     customizationDetails: "",
-    assignedDate: "",
-    dueDate: "",
-    progress: 0,
-    status: "Ongoing"
+    dueDate: ""
   });
 
-  // Fetch all projects
+  // Fetch all projects from backend
   const fetchProjects = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/project");
-      if (res.data && res.data.length > 0) {
-        setProjects(res.data);
+      const token = localStorage.getItem("authToken");
+      const res = await axios.get("http://localhost:5000/api/projects", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('[Projects.jsx] fetchProjects response:', res.data);
+      if (res.data && res.data.data) {
+        // API returns { success, count, data }
+        const normalized = res.data.data.map((p) => ({
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          phone: p.phone || p.customerId?.phone || "",
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        }));
+        setProjects(normalized);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -73,11 +62,9 @@ export default function Projects() {
     setFormData({
       projectName: "",
       customerName: "",
+      phone: "",
       customizationDetails: "",
-      assignedDate: "",
-      dueDate: "",
-      progress: 0,
-      status: "Ongoing"
+      dueDate: ""
     });
   };
 
@@ -90,16 +77,33 @@ export default function Projects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newProject = {
-      _id: String(projects.length + 1),
-      ...formData,
-      progress: Number(formData.progress)
+    console.log("Submitting formData:", formData);
+    const payload = {
+      projectName: formData.projectName,
+      customerName: formData.customerName,
+      phone: formData.phone,
+      description: formData.customizationDetails,
+      endDate: formData.dueDate,
+      status: "ongoing"
     };
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const res = await axios.post("http://localhost:5000/api/admin/project", formData);
-      setProjects([...projects, newProject]);
+      const token = localStorage.getItem("authToken");
+      const res = await axios.post("http://localhost:5000/api/projects", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('[Projects.jsx] addProject response:', res.data);
+      if (res.data && res.data.data) {
+        const p = res.data.data;
+        const normalized = {
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          phone: p.phone || p.customerId?.phone || "",
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        };
+        setProjects([...projects, normalized]);
+      }
       handleCloseModal();
       alert("Project added successfully!");
     } catch (error) {
@@ -112,12 +116,26 @@ export default function Projects() {
     fetchProjects();
   }, []);
 
-  const filteredProjects = projects.filter((project) => {
-    if (activeTab === "ongoing") return project.status === "Ongoing";
-    if (activeTab === "completed") return project.status === "Completed";
-    return true;
-  });
+  const handleStatusUpdate = async (projectId, newStatus) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.put(
+        `http://localhost:5000/api/projects/${projectId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Update local state
+      setProjects(projects.map(p => 
+        p._id === projectId ? { ...p, status: newStatus } : p
+      ));
+      alert("Status updated successfully!");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Failed to update status");
+    }
+  };
 
+  const filteredProjects = projects;
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6 flex justify-between items-center">
@@ -131,29 +149,8 @@ export default function Projects() {
         </button>
       </div>
 
-      {/* Button Filters */}
-      <div className="mb-6 flex gap-4">
-        <button
-          onClick={() => setActiveTab("ongoing")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "ongoing"
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Ongoing
-        </button>
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "completed"
-              ? "bg-green-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Completed
-        </button>
-      </div>
+      {/* Info Message */}
+
 
       {loading && (
         <div className="text-center py-5">
@@ -163,7 +160,7 @@ export default function Projects() {
 
       {!loading && filteredProjects.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          <p className="text-lg">No {activeTab} projects found.</p>
+          <p className="text-lg">No projects found. Customer requests will appear here.</p>
         </div>
       )}
 
@@ -182,16 +179,19 @@ export default function Projects() {
                   Customer Name
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Customization Details
+                  Phone
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Assigned Date
+                  Customization Details
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
                   Due Date
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Progress
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
+                  Action
                 </th>
               </tr>
             </thead>
@@ -213,14 +213,10 @@ export default function Projects() {
                     {project.customerName || project.companyName || project.customer || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.customizationDetails || project.description || "-"}
+                    {project.phone || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.assignedDate
-                      ? new Date(project.assignedDate).toLocaleDateString()
-                      : project.startDate
-                      ? new Date(project.startDate).toLocaleDateString()
-                      : "-"}
+                    {project.customizationDetails || project.description || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.dueDate
@@ -230,19 +226,19 @@ export default function Projects() {
                       : "-"}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
-                        <div
-                          className={`h-2 rounded-full ${
-                            activeTab === "completed" ? "bg-green-500" : "bg-blue-500"
-                          }`}
-                          style={{ width: `${project.progress || (activeTab === "completed" ? 100 : 50)}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-600">
-                        {project.progress || (activeTab === "completed" ? 100 : 50)}%
-                      </span>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${project.status === "ongoing" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                      {project.status === "ongoing" ? "Ongoing" : "Completed"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm flex gap-2">
+                    <select
+                      value={project.status}
+                      onChange={(e) => handleStatusUpdate(project._id, e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                    </select>
                   </td>
                 </tr>
               ))}
@@ -298,6 +294,20 @@ export default function Projects() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Customization Details
                   </label>
                   <textarea
@@ -310,68 +320,21 @@ export default function Projects() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Assigned Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="assignedDate"
-                      value={formData.assignedDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Due Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={formData.dueDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Progress (%) <span className="text-red-500">*</span>
+                    Due Date <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="number"
-                    name="progress"
-                    value={formData.progress}
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
                     onChange={handleInputChange}
                     required
-                    min="0"
-                    max="100"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter progress (0-100)"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
+
               </div>
 
               <div className="flex gap-3 mt-6">

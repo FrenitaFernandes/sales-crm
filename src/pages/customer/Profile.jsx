@@ -46,6 +46,7 @@ function Profile() {
       <div className="bg-white shadow rounded-xl p-6 flex items-center gap-6">
         <img
           src={profile.avatar || "https://ui-avatars.com/api/?name=" + profile.name}
+          alt={profile.name}
           className="w-20 h-20 rounded-full shadow"
         />
         <div>
