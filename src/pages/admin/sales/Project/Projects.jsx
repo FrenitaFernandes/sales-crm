@@ -21,11 +21,9 @@ export default function Projects() {
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    phone: "",
     customizationDetails: "",
-    assignedDate: "",
-    dueDate: "",
-    progress: 0,
-    status: "Ongoing"
+    dueDate: ""
   });
 
   // Fetch all projects from backend
@@ -40,6 +38,7 @@ export default function Projects() {
         const normalized = res.data.data.map((p) => ({
           ...p,
           customerName: p.customerId?.name || p.customerName,
+          phone: p.customerId?.phone || p.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
         }));
@@ -62,6 +61,7 @@ export default function Projects() {
     setFormData({
       projectName: "",
       customerName: "",
+      phone: "",
       customizationDetails: "",
       dueDate: ""
     });
@@ -79,6 +79,7 @@ export default function Projects() {
     const payload = {
       projectName: formData.projectName,
       customerName: formData.customerName,
+      phone: formData.phone,
       description: formData.customizationDetails,
       endDate: formData.dueDate,
       status: "ongoing"
@@ -94,7 +95,7 @@ export default function Projects() {
         const normalized = {
           ...p,
           customerName: p.customerId?.name || p.customerName,
-          assignedDate: p.startDate,
+          phone: p.customerId?.phone || p.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
         };
@@ -175,6 +176,9 @@ export default function Projects() {
                   Customer Name
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
+                  Phone
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
                   Customization Details
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
@@ -204,6 +208,9 @@ export default function Projects() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.customerName || project.companyName || project.customer || "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {project.phone || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.customizationDetails || project.description || "-"}
@@ -279,6 +286,20 @@ export default function Projects() {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter customer name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter phone number"
                   />
                 </div>
 

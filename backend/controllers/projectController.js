@@ -22,7 +22,8 @@ exports.createProject = async (req, res) => {
       budget,
       assignedTo,
       progress,
-      dueDate // shipped from frontend
+      dueDate, // shipped from frontend
+      phone // new field from frontend form
     } = req.body;
 
     // map form naming
@@ -39,11 +40,18 @@ exports.createProject = async (req, res) => {
       if (customerName) {
         // try to find existing customer by name
         let customer = await Customer.findOne({ name: customerName });
-        if (!customer) {
+        if (customer) {
+          // update phone if provided in body
+          if (phone) {
+            customer.phone = phone;
+            await customer.save();
+          }
+        } else {
           // create with a placeholder email if not provided
           customer = await Customer.create({
             name: customerName,
             email: `${customerName.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`,
+            phone: phone || undefined,
           });
         }
         customerId = customer._id;
@@ -56,6 +64,9 @@ exports.createProject = async (req, res) => {
             email: req.user.email,
             phone: req.user.phone,
           });
+        } else if (phone) {
+          customer.phone = phone;
+          await customer.save();
         }
         customerId = customer._id;
       }
