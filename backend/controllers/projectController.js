@@ -159,6 +159,19 @@ exports.getProjectById = async (req, res) => {
 // =============================
 exports.updateProject = async (req, res) => {
   try {
+    // if phone is being updated, propagate change to customer record too
+    if (req.body.phone) {
+      // find project and customer
+      const proj = await Project.findById(req.params.id);
+      if (proj && proj.customerId) {
+        const cust = await Customer.findById(proj.customerId);
+        if (cust) {
+          cust.phone = req.body.phone;
+          await cust.save();
+        }
+      }
+    }
+
     const project = await Project.findByIdAndUpdate(
       req.params.id,
       req.body,
