@@ -62,8 +62,9 @@ export default function CustomizeProject() {
       });
 
     } catch (error) {
-      console.error("Error submitting project:", error);
-      alert("Something went wrong!");
+      console.error("Error submitting project:", error.response || error);
+      const errorMsg = error.response?.data?.message || error.message || "Something went wrong!";
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }

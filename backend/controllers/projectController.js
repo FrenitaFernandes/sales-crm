@@ -40,7 +40,11 @@ exports.createProject = async (req, res) => {
         // try to find existing customer by name
         let customer = await Customer.findOne({ name: customerName });
         if (!customer) {
-          customer = await Customer.create({ name: customerName });
+          // create with a placeholder email if not provided
+          customer = await Customer.create({
+            name: customerName,
+            email: `${customerName.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`,
+          });
         }
         customerId = customer._id;
       } else if (req.user && req.user.role === "customer") {
