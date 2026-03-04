@@ -48,6 +48,7 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 import CustomizeProject from "./pages/customer/CustomizeProject";
+import CustomerProjects from "./pages/customer/Projects";
 
 //home,reg,login,forgotpassword
 import Home from "./pages/Home";
@@ -284,6 +285,14 @@ function App() {
         </MainLayout>
     }
     />
+        <Route
+          path="/customer/projects"
+          element={
+            <MainLayout role="customer">
+              <CustomerProjects />
+            </MainLayout>
+          }
+        />
 
       </Routes>
     </BrowserRouter>

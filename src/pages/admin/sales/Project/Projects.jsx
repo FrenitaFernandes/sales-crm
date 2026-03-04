@@ -65,9 +65,7 @@ export default function Projects() {
       customerName: "",
       customizationDetails: "",
       assignedDate: "",
-      dueDate: "",
-      progress: 0,
-      status: "Ongoing"
+      dueDate: ""
     });
   };
 
@@ -86,8 +84,7 @@ export default function Projects() {
       description: formData.customizationDetails,
       startDate: formData.assignedDate,
       endDate: formData.dueDate,
-      status: formData.status,
-      progress: Number(formData.progress),
+      status: "ongoing"
     };
 
     try {
@@ -346,38 +343,7 @@ export default function Projects() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Progress (%) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="progress"
-                    value={formData.progress}
-                    onChange={handleInputChange}
-                    required
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter progress (0-100)"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
               </div>
 
               <div className="flex gap-3 mt-6">

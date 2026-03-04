@@ -150,6 +150,7 @@ const Sidebar = ({ role = "admin" }) => {
     ],
     customer: [
       { name: "Dashboard", path: "/customer/dashboard", icon: "dashboard" },
+      { name: "Projects", path: "/customer/projects", icon: "tasks" },
       { name: "Invoices", path: "/customer/invoices", icon: "reports" },
       { name: "Tickets", path: "/customer/tickets", icon: "tickets" },
       { name: "Profile", path: "/customer/profile", icon: "profile" },
