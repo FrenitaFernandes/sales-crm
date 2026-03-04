@@ -11,25 +11,21 @@ const CustomerDetails = () => {
   }, []);
 
   const fetchCustomers = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/admin/customers");
-      const data = await res.json();
-      // Normalize server response to an array.
-      // Some endpoints may return { customers: [...] } or a single object.
-      if (Array.isArray(data)) {
-        setCustomers(data);
-      } else if (data && Array.isArray(data.customers)) {
-        setCustomers(data.customers);
-      } else if (data && typeof data === "object") {
-        // if it's a single customer object, wrap it
-        setCustomers([data]);
-      } else {
-        setCustomers([]);
-      }
-    } catch (error) {
-      console.log("Customer fetch error:", error);
-    }
-  };
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("http://localhost:5000/api/customers", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setCustomers(data.data || []);
+  } catch (error) {
+    console.log("Customer fetch error:", error);
+  }
+};
 
   // ✅ Filter customers
   const list = Array.isArray(customers) ? customers : [];

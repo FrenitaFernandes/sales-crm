@@ -34,16 +34,26 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const fetchAnalytics = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/dashboard/analytics`);
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.log("Dashboard analytics error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE}/dashboard/analytics`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const json = await res.json();
+    setData(json);
+
+  } catch (err) {
+    console.log("Dashboard analytics error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchAnalytics();

@@ -9,10 +9,18 @@ const LeadSchema = new mongoose.Schema(
     source: { type: String, default: "Unknown" },
 
     status: {
-      type: String,
-      enum: ["New", "Contacted", "In Progress", "Follow-Up", "Converted", "Lost"],
-      default: "New",
-    },
+  type: String,
+  enum: [
+    "New",
+    "Contacted",
+    "Interested",
+    "In Progress",
+    "Follow-Up",
+    "Converted",
+    "Lost",
+  ],
+  default: "New",
+},
 
     followUps: [
       {

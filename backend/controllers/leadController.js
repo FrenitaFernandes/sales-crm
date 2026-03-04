@@ -1,4 +1,5 @@
 const Lead = require("../models/Lead");
+const Customer = require("../models/Customer");
 
 // ============================
 // CREATE LEAD
@@ -119,11 +120,20 @@ exports.updateStatus = async (req, res) => {
     lead.status = status;
     await lead.save();
 
+    // If lead becomes Interested → activate customer
+    if (status === "Interested") {
+      await Customer.findOneAndUpdate(
+        { email: lead.email },
+        { status: "Active" }
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: "Lead status updated",
       data: lead,
     });
+
   } catch (error) {
     console.error("Status Update Error:", error);
     res.status(500).json({ message: "Server error" });
