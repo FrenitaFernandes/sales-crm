@@ -13,40 +13,25 @@ exports.createLead = async (req, res) => {
     }
 
     const lead = await Lead.create({
-  name,
-  email,
-  phone,
-  source,
-  project,
-  company,
-  description
-});
-exports.getCustomerLeads = async (req, res) => {
-  try {
-    const leads = await Lead.find({ email: req.params.email });
-
-    res.json({
-      success: true,
-      data: leads
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching leads" });
-  }
-};
-// create customer if not already exists
-const Customer = require("../models/Customer");
-
-const existingCustomer = await Customer.findOne({ email });
-
-if (!existingCustomer) {
-  await Customer.create({
     name,
     email,
     phone,
-    status: "Inactive",
+    source,
+    project,
+    company,
+    description
   });
-}
+
+  // create customer if not already exists
+  const existingCustomer = await Customer.findOne({ email });
+  if (!existingCustomer) {
+    await Customer.create({
+      name,
+      email,
+      phone,
+      status: "Inactive",
+    });
+  }
 
     res.status(201).json({
       success: true,
@@ -62,6 +47,20 @@ if (!existingCustomer) {
 // ============================
 // GET ALL LEADS
 // ============================
+exports.getCustomerLeads = async (req, res) => {
+  try {
+    const leads = await Lead.find({ email: req.params.email });
+
+    res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    console.error("Get Customer Leads Error:", error);
+    res.status(500).json({ message: "Error fetching leads" });
+  }
+};
+
 exports.getLeads = async (req, res) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
