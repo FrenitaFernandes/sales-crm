@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { addStockEntry } from "../../../../services/stockService";
 
 const StockEntry = () => {
   const [supplierName, setSupplierName] = useState("");
@@ -9,6 +10,9 @@ const StockEntry = () => {
   const [items, setItems] = useState([
     { itemName: "", qty: "", unitPrice: "", total: 0 },
   ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   // Add new row
   const addItem = () => {
@@ -31,23 +35,78 @@ const StockEntry = () => {
   // Calculate grand total
   const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setMessage("");
+    setError("");
+
+    const validItems = items.filter(
+      (item) => item.itemName.trim() && Number(item.qty) > 0 && Number(item.unitPrice) > 0
+    );
+
+    if (validItems.length === 0) {
+      setError("Please add at least one valid item");
+      return;
+    }
+
+    setIsSubmitting(true);
+
     const payload = {
-      supplierName,
+      supplier: supplierName,
       billNumber,
       date,
       category,
-      items,
+      items: validItems,
       grandTotal,
     };
 
-    console.log("Submitting Stock Entry:", payload);
-    alert("Stock entry submitted! (Check console)");
+    try {
+      await addStockEntry(payload);
+      setMessage("Stock entry saved successfully");
+      setSupplierName("");
+      setBillNumber("");
+      setDate("");
+      setCategory("");
+      setItems([{ itemName: "", qty: "", unitPrice: "", total: 0 }]);
+    } catch (submitError) {
+      const backendMessage = submitError.response?.data?.message || "";
+
+      if (backendMessage.includes("Item Name, Quantity, Unit & Price are required")) {
+        try {
+          for (const item of validItems) {
+            await addStockEntry({
+              itemName: item.itemName,
+              quantity: Number(item.qty),
+              unit: "Nos",
+              price: Number(item.unitPrice),
+              supplier: supplierName,
+              billNumber,
+              category,
+              date,
+            });
+          }
+
+          setMessage("Stock entry saved successfully");
+          setSupplierName("");
+          setBillNumber("");
+          setDate("");
+          setCategory("");
+          setItems([{ itemName: "", qty: "", unitPrice: "", total: 0 }]);
+        } catch (fallbackError) {
+          setError(fallbackError.response?.data?.message || "Failed to save stock entry");
+        }
+      } else {
+        setError(backendMessage || "Failed to save stock entry");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="p-6 bg-white rounded shadow-sm">
       <h2 className="text-2xl font-semibold mb-6">Stock Entry</h2>
+      {message && <div className="alert alert-success py-2">{message}</div>}
+      {error && <div className="alert alert-danger py-2">{error}</div>}
 
       {/* Supplier + Bill + Date + Category */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -85,16 +144,13 @@ const StockEntry = () => {
 
         <div>
           <label className="text-sm font-medium">Category</label>
-          <select
+          <input
+            type="text"
             className="form-control mt-1"
+            placeholder="Enter category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="">None</option>
-            <option value="IoT Products">IoT Products</option>
-            <option value="IoT Solutions">IoT Solutions</option>
-            <option value="Services">Services</option>
-          </select>
+          />
         </div>
       </div>
 
@@ -166,7 +222,7 @@ const StockEntry = () => {
       {/* Submit Button + Grand Total */}
       <div className="flex justify-between items-center mt-6">
         <button className="btn btn-success" onClick={handleSubmit}>
-          Submit Stock Entry
+          {isSubmitting ? "Submitting..." : "Submit Stock Entry"}
         </button>
 
         <h3 className="text-xl font-semibold">

@@ -359,6 +359,34 @@ router.get("/stock/entry", async (req, res) => {
   }
 });
 
+router.delete("/stock/entry/:id", async (req, res) => {
+  try {
+    const deleted = await StockEntry.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Stock entry not found" });
+    }
+
+    res.json({ message: "Stock entry deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
+router.delete("/stock/:id", async (req, res) => {
+  try {
+    const deleted = await StockEntry.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Stock entry not found" });
+    }
+
+    res.json({ message: "Stock entry deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed", error: err });
+  }
+});
+
 
 // -----------------------------------------------------
 // STOCK USAGE

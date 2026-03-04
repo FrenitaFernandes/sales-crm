@@ -17,8 +17,11 @@ function Login() {
     try {
       const data = await loginUser({ email, password });
       setMessage("Login successful!");
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("token", data.token);
 
       const role = data.user.role;
+      localStorage.setItem("userRole", role);
 
       setTimeout(() => {
         if (role === "admin") {
