@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { MdAdd, MdClose } from "react-icons/md";
-
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Projects() {
