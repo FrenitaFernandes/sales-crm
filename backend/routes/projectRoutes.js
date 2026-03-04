@@ -12,7 +12,9 @@ const {
 
 const router = express.Router();
 
+// create a new project. frontend may hit '/create' or '/' – both map to the same handler
 router.post("/", protect, createProject);
+router.post("/create", protect, createProject);
 router.get("/", protect, getProjects);
 router.get("/:id", protect, getProjectById);
 router.put("/:id", protect, updateProject);

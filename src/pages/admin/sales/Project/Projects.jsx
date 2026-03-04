@@ -2,7 +2,21 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { MdAdd, MdClose } from "react-icons/md";
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 export default function Projects() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("userRole");
+    if (!token || role !== "admin") {
+      alert("Please login as admin to view projects");
+      navigate("/login");
+    }
+  }, [navigate]);
+
   const [projects, setProjects] = useState([
     // Sample data for testing
     {
@@ -49,12 +63,23 @@ export default function Projects() {
     status: "Ongoing"
   });
 
-  // Fetch all projects
+  // Fetch all projects from backend
   const fetchProjects = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/project");
-      if (res.data && res.data.length > 0) {
-        setProjects(res.data);
+      const token = localStorage.getItem("authToken");
+      const res = await axios.get("http://localhost:5000/api/projects", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data && res.data.data) {
+        // API returns { success, count, data }
+        const normalized = res.data.data.map((p) => ({
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          assignedDate: p.startDate,
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        }));
+        setProjects(normalized);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -90,16 +115,32 @@ export default function Projects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newProject = {
-      _id: String(projects.length + 1),
-      ...formData,
-      progress: Number(formData.progress)
+    const payload = {
+      projectName: formData.projectName,
+      customerName: formData.customerName,
+      description: formData.customizationDetails,
+      startDate: formData.assignedDate,
+      endDate: formData.dueDate,
+      status: formData.status,
+      progress: Number(formData.progress),
     };
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const res = await axios.post("http://localhost:5000/api/admin/project", formData);
-      setProjects([...projects, newProject]);
+      const token = localStorage.getItem("authToken");
+      const res = await axios.post("http://localhost:5000/api/projects", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data && res.data.data) {
+        const p = res.data.data;
+        const normalized = {
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          assignedDate: p.startDate,
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        };
+        setProjects([...projects, normalized]);
+      }
       handleCloseModal();
       alert("Project added successfully!");
     } catch (error) {

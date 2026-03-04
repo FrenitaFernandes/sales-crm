@@ -6,8 +6,13 @@ const Customer = require("../models/Customer");
 // =============================
 exports.createProject = async (req, res) => {
   try {
-    const {
+    // In the front–end we send either a customerId (admin) or customerName (customer/admin)
+    // and other fields. For customers the token gives us a user; we map that to a
+    // Customer document (creating one if necessary). Admins may supply a customer name
+    // so we look it up or create a record.
+    let {
       customerId,
+      customerName,
       projectName,
       clientName,
       description,
@@ -16,17 +21,50 @@ exports.createProject = async (req, res) => {
       endDate,
       budget,
       assignedTo,
-      progress
+      progress,
+      dueDate // shipped from frontend
     } = req.body;
 
-    if (!customerId || !projectName || !clientName) {
-      return res.status(400).json({ message: "Customer, Project Name & Client Name are required" });
+    // map form naming
+    if (dueDate && !endDate) {
+      endDate = dueDate;
     }
 
-    // Check if customer exists
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
+    if (!projectName) {
+      return res.status(400).json({ message: "Project Name is required" });
+    }
+
+    // determine customerId; customers will not send this
+    if (!customerId) {
+      if (customerName) {
+        // try to find existing customer by name
+        let customer = await Customer.findOne({ name: customerName });
+        if (!customer) {
+          customer = await Customer.create({ name: customerName });
+        }
+        customerId = customer._id;
+      } else if (req.user && req.user.role === "customer") {
+        // if the logged in user is a customer we can try to link by email or name
+        let customer = await Customer.findOne({ email: req.user.email });
+        if (!customer) {
+          customer = await Customer.create({
+            name: req.user.name,
+            email: req.user.email,
+            phone: req.user.phone,
+          });
+        }
+        customerId = customer._id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(400).json({ message: "Customer information is required" });
+    }
+
+    // ensure there is a clientName (project owner) as well
+    if (!clientName) {
+      // default to customerName or user's name
+      clientName = customerName || (req.user && req.user.name);
     }
 
     const project = await Project.create({
@@ -34,12 +72,12 @@ exports.createProject = async (req, res) => {
       projectName,
       clientName,
       description,
-      status,
-      startDate,
+      status: status || "ongoing",
+      startDate: startDate || Date.now(),
       endDate,
       budget,
       assignedTo,
-      progress
+      progress: progress || 0,
     });
 
     res.status(201).json({

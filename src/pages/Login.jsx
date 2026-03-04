@@ -18,6 +18,9 @@ function Login() {
       const data = await loginUser({ email, password });
       setMessage("Login successful!");
 
+      // persist token & role for later API calls
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("userRole", data.user.role);
       const role = data.user.role;
 
       setTimeout(() => {

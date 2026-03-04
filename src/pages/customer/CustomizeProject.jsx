@@ -1,7 +1,22 @@
 import React, { useState } from "react";
 import axios from "axios";
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 export default function CustomizeProject() {
+  const navigate = useNavigate();
+
+  // redirect if not logged in or not customer
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("userRole");
+    if (!token || role !== "customer") {
+      alert("Please login as customer to access this page.");
+      navigate("/login");
+    }
+  }, [navigate]);
+
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
@@ -23,7 +38,21 @@ export default function CustomizeProject() {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:5000/api/projects/create", formData);
+      const token = localStorage.getItem("authToken");
+      await axios.post(
+        "http://localhost:5000/api/projects",
+        {
+          projectName: formData.projectName,
+          customerName: formData.customerName,
+          description: formData.customizationDetails,
+          dueDate: formData.dueDate,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       alert("Project Customization Request Submitted Successfully!");
 
