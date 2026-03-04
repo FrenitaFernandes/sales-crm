@@ -40,7 +40,6 @@ export default function Projects() {
         const normalized = res.data.data.map((p) => ({
           ...p,
           customerName: p.customerId?.name || p.customerName,
-          assignedDate: p.startDate,
           dueDate: p.endDate,
           customizationDetails: p.description,
         }));
@@ -64,7 +63,6 @@ export default function Projects() {
       projectName: "",
       customerName: "",
       customizationDetails: "",
-      assignedDate: "",
       dueDate: ""
     });
   };
@@ -82,7 +80,6 @@ export default function Projects() {
       projectName: formData.projectName,
       customerName: formData.customerName,
       description: formData.customizationDetails,
-      startDate: formData.assignedDate,
       endDate: formData.dueDate,
       status: "ongoing"
     };
@@ -185,9 +182,6 @@ export default function Projects() {
                   Customization Details
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Assigned Date
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
                   Due Date
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
@@ -217,13 +211,6 @@ export default function Projects() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.customizationDetails || project.description || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.assignedDate
-                      ? new Date(project.assignedDate).toLocaleDateString()
-                      : project.startDate
-                      ? new Date(project.startDate).toLocaleDateString()
-                      : "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.dueDate
@@ -313,34 +300,18 @@ export default function Projects() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Assigned Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="assignedDate"
-                      value={formData.assignedDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Due Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={formData.dueDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Due Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
 
 

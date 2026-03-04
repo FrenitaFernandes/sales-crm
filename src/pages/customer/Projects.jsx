@@ -32,7 +32,6 @@ export default function Projects() {
         const normalized = res.data.data.map((p) => ({
           ...p,
           customerName: p.customerId?.name || p.customerName,
-          assignedDate: p.startDate,
           dueDate: p.endDate,
           customizationDetails: p.description,
         }));
@@ -84,9 +83,6 @@ export default function Projects() {
                   Details
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Assigned Date
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
                   Due Date
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
@@ -110,11 +106,6 @@ export default function Projects() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">
                     {project.customizationDetails || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.assignedDate
-                      ? new Date(project.assignedDate).toLocaleDateString()
-                      : "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {project.dueDate
