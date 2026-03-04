@@ -241,22 +241,14 @@ export default function Projects() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm flex gap-2">
-                    {project.status !== "ongoing" && (
-                      <button
-                        onClick={() => handleStatusUpdate(project._id, "ongoing")}
-                        className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition"
-                      >
-                        Mark Ongoing
-                      </button>
-                    )}
-                    {project.status !== "completed" && (
-                      <button
-                        onClick={() => handleStatusUpdate(project._id, "completed")}
-                        className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition"
-                      >
-                        Mark Completed
-                      </button>
-                    )}
+                    <select
+                      value={project.status}
+                      onChange={(e) => handleStatusUpdate(project._id, e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                    </select>
                   </td>
                 </tr>
               ))}
