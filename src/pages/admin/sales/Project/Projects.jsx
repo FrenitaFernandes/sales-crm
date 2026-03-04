@@ -146,11 +146,7 @@ export default function Projects() {
       </div>
 
       {/* Info Message */}
-      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-700">
-          <strong>Note:</strong> All customer project requests appear below. You can update the status to mark them as Ongoing or Completed.
-        </p>
-      </div>
+
 
       {loading && (
         <div className="text-center py-5">
