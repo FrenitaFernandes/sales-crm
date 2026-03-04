@@ -105,7 +105,6 @@ const Sidebar = ({ role = "admin" }) => {
         subMenu: [
           { name: "Stock Entry", path: "/admin/sales/stock/entry", icon: "stock" },
           { name: "Stock Summary", path: "/admin/sales/stock/summary", icon: "stock" },
-          { name: "Stock Usage", path: "/admin/sales/stock/usage", icon: "stock" },
         ]
       },
       { 

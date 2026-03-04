@@ -11,11 +11,20 @@ const stockEntrySchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    required: true
+    default: "Nos"
   },
   price: {
     type: Number,
     required: true
+  },
+  billNumber: {
+    type: String,
+    trim: true
+  },
+  category: {
+    type: String,
+    trim: true,
+    default: "None"
   },
   supplier: {
     type: String
