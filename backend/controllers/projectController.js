@@ -99,6 +99,10 @@ exports.createProject = async (req, res) => {
     // Populate customer details before returning
     const populatedProject = await project.populate("customerId", "name email company phone");
 
+    // log minimal debug info so frontend dev can inspect why phone could be empty
+    console.log("[projectController] createProject -> project.phone:", project.phone);
+    console.log("[projectController] createProject -> customer.phone:", populatedProject.customerId?.phone);
+
     res.status(201).json({
       success: true,
       message: "Project created successfully",
@@ -119,6 +123,19 @@ exports.getProjects = async (req, res) => {
     const projects = await Project.find()
       .populate("customerId", "name email company phone")
       .sort({ createdAt: -1 });
+
+    // Log a compact view of phone fields for debugging
+    try {
+      const debugList = projects.map(p => ({
+        _id: p._id,
+        projectPhone: p.phone || null,
+        customerPhone: p.customerId?.phone || null,
+        customerName: p.customerId?.name || null
+      }));
+      console.log('[projectController] getProjects debug:', JSON.stringify(debugList));
+    } catch (e) {
+      console.warn('[projectController] getProjects debug failed', e);
+    }
 
     res.status(200).json({
       success: true,

@@ -53,6 +53,12 @@ export default function CustomizeProject() {
           },
         }
       );
+      console.log('[CustomizeProject] submit -> sent', {
+        projectName: formData.projectName,
+        customerName: formData.customerName,
+        phone: formData.phone,
+      });
+      // Optionally could log response if needed (kept out to avoid leaking user data)
 
       alert("Project Customization Request Submitted Successfully!");
 

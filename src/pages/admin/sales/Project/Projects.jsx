@@ -33,6 +33,7 @@ export default function Projects() {
       const res = await axios.get("http://localhost:5000/api/projects", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('[Projects.jsx] fetchProjects response:', res.data);
       if (res.data && res.data.data) {
         // API returns { success, count, data }
         const normalized = res.data.data.map((p) => ({
@@ -90,6 +91,7 @@ export default function Projects() {
       const res = await axios.post("http://localhost:5000/api/projects", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('[Projects.jsx] addProject response:', res.data);
       if (res.data && res.data.data) {
         const p = res.data.data;
         const normalized = {
