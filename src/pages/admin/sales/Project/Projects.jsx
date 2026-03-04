@@ -39,7 +39,7 @@ export default function Projects() {
         const normalized = res.data.data.map((p) => ({
           ...p,
           customerName: p.customerId?.name || p.customerName,
-          phone: p.customerId?.phone || p.phone || "",
+          phone: p.phone || p.customerId?.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
         }));
@@ -77,6 +77,7 @@ export default function Projects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Submitting formData:", formData);
     const payload = {
       projectName: formData.projectName,
       customerName: formData.customerName,
@@ -97,7 +98,7 @@ export default function Projects() {
         const normalized = {
           ...p,
           customerName: p.customerId?.name || p.customerName,
-          phone: p.customerId?.phone || p.phone || "",
+          phone: p.phone || p.customerId?.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
         };

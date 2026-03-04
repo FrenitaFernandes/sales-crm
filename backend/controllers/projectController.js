@@ -7,10 +7,7 @@ const Customer = require("../models/Customer");
 exports.createProject = async (req, res) => {
   console.log('[projectController] createProject body:', req.body);
   try {
-    // In the front–end we send either a customerId (admin) or customerName (customer/admin)
-    // and other fields. For customers the token gives us a user; we map that to a
-    // Customer document (creating one if necessary). Admins may supply a customer name
-    // so we look it up or create a record.
+  
     let {
       customerId,
       customerName,
@@ -88,7 +85,7 @@ exports.createProject = async (req, res) => {
       projectName,
       clientName,
       description,
-      phone: phone || undefined,
+      phone: req.body.phone,
       status: status || "ongoing",
       startDate: startDate || Date.now(),
       endDate,
