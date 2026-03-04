@@ -103,6 +103,13 @@ exports.createProject = async (req, res) => {
     console.log("[projectController] createProject -> project.phone:", project.phone);
     console.log("[projectController] createProject -> customer.phone:", populatedProject.customerId?.phone);
 
+    // ensure response includes a top-level phone (project.phone or customer.phone)
+    try {
+      populatedProject.phone = populatedProject.phone || populatedProject.customerId?.phone || null;
+    } catch (e) {
+      // ignore if not writable
+    }
+
     res.status(201).json({
       success: true,
       message: "Project created successfully",
@@ -124,9 +131,16 @@ exports.getProjects = async (req, res) => {
       .populate("customerId", "name email company phone")
       .sort({ createdAt: -1 });
 
+    // convert to plain objects and ensure each project has a top-level `phone`
+    const payload = projects.map(p => {
+      const obj = p.toObject ? p.toObject() : p;
+      obj.phone = obj.phone || (obj.customerId && obj.customerId.phone) || null;
+      return obj;
+    });
+
     // Log a compact view of phone fields for debugging
     try {
-      const debugList = projects.map(p => ({
+      const debugList = payload.map(p => ({
         _id: p._id,
         projectPhone: p.phone || null,
         customerPhone: p.customerId?.phone || null,
@@ -139,8 +153,8 @@ exports.getProjects = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      count: projects.length,
-      data: projects,
+      count: payload.length,
+      data: payload,
     });
 
   } catch (error) {
