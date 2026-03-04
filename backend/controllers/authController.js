@@ -108,7 +108,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { sendWelcomeEmail } = require("../services/emailService");
 const transporter = require("../config/mail");
-
+const { sendPasswordChangedEmail } = require("../services/emailService");
 // ===============================
 // Generate JWT Token
 // ===============================
@@ -274,9 +274,45 @@ const verifyOTP = async (req, res) => {
   }
 };
 
+// ===============================
+// RESET PASSWORD
+// ===============================
+const resetPassword = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // update password
+    user.password = hashedPassword;
+
+    // clear OTP fields
+    user.otp = null;
+    user.otpExpiry = null;
+
+    await user.save();
+
+    // send email notification
+    await sendPasswordChangedEmail(email);
+
+    res.json({ message: "Password reset successful" });
+
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    res.status(500).json({ message: "Failed to reset password" });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
   forgotPassword, // ⬅ added export
   verifyOTP,   // ✅ add this
+  resetPassword// ✅ add this
 };

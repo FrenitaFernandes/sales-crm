@@ -16,11 +16,28 @@ function Register() {
 
   const navigate = useNavigate();
 
+  // Phone length rules
+  const phoneLength = {
+    "+91": 10,
+    "+1": 10,
+    "+44": 10,
+    "+971": 9,
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
       setMessage("Passwords do not match!");
+      return;
+    }
+
+    const requiredLength = phoneLength[countryCode];
+
+    if (phone.length !== requiredLength) {
+      setMessage(
+        `Phone number must be exactly ${requiredLength} digits for ${countryCode}`
+      );
       return;
     }
 
@@ -40,6 +57,12 @@ function Register() {
     } catch (error) {
       setMessage(error.response?.data?.message || "Registration failed");
     }
+  };
+
+  // Allow only numbers
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "");
+    setPhone(value);
   };
 
   return (
@@ -98,10 +121,11 @@ function Register() {
 
           <input
             type="tel"
-            placeholder="Contact Number"
+            placeholder={`Enter ${phoneLength[countryCode]} digit number`}
             className="flex-1 p-2 border rounded"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={handlePhoneChange}
+            maxLength={phoneLength[countryCode]}
             required
           />
         </div>

@@ -14,6 +14,26 @@ exports.sendWelcomeEmail = async (email, name) => {
       <p>Regards,<br/>Sales CRM Team</p>
     `,
   };
+  
+  await transporter.sendMail(mailOptions);
+};
+
+// ===============================
+// PASSWORD CHANGED EMAIL
+// ===============================
+exports.sendPasswordChangedEmail = async (email) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Password Changed Successfully",
+    html: `
+      <h2>Password Updated</h2>
+      <p>Your password has been changed successfully.</p>
+      <p>If you did not perform this action, please reset your password immediately.</p>
+      <br/>
+      <p>Regards,<br/>Sales CRM Team</p>
+    `,
+  };
 
   await transporter.sendMail(mailOptions);
 };
