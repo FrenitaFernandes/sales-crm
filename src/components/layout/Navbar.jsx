@@ -1,4 +1,5 @@
 // src/components/layout/Navbar.jsx
+
 import { Navbar as BootstrapNavbar, Container, Dropdown } from "react-bootstrap";
 import {
   MdNotifications,
@@ -8,74 +9,127 @@ import {
   MdMenu,
 } from "react-icons/md";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const Navbar = ({ title, onLogout, onToggleSidebar, sidebarOpen }) => {
+const Navbar = ({ title, onLogout, onToggleSidebar }) => {
+
   const [notificationCount] = useState(3);
+  const navigate = useNavigate();
+
+  const role = localStorage.getItem("userRole"); // admin or customer
 
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
     } else {
-      // Default logout - clear localStorage or redirect
       localStorage.removeItem("authToken");
+      localStorage.removeItem("token");
       localStorage.removeItem("userRole");
-      window.location.href = "/login";
+      localStorage.removeItem("user");
+
+      navigate("/login");
     }
   };
 
   return (
-    <BootstrapNavbar bg="white" expand="lg" className="bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex items-center min-h-60px">
+    <BootstrapNavbar
+      bg="white"
+      expand="lg"
+      className="bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex items-center"
+    >
       <Container fluid>
+
+        {/* LEFT SIDE */}
         <div className="flex items-center gap-3 flex-1">
+
           {onToggleSidebar && (
             <button
-              className="bg-none border-0 cursor-pointer text-gray-500 p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all"
+              className="border-0 cursor-pointer text-gray-500 p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all"
               onClick={onToggleSidebar}
               title="Toggle Sidebar"
             >
               <MdMenu size={24} />
             </button>
           )}
-          <BootstrapNavbar.Brand as="h5" className="mb-0 font-bold text-slate-800 text-lg">
+
+          <BootstrapNavbar.Brand
+            as="h5"
+            className="mb-0 font-bold text-slate-800 text-lg"
+          >
             {title}
           </BootstrapNavbar.Brand>
+
         </div>
 
+        {/* RIGHT SIDE */}
         <div className="flex items-center gap-4 ml-auto">
-          <button className="bg-none border-0 cursor-pointer text-gray-500 flex items-center justify-center p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all relative" title="Notifications">
+
+          {/* NOTIFICATIONS */}
+          <button
+            className="border-0 cursor-pointer text-gray-500 flex items-center justify-center p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all relative"
+            title="Notifications"
+          >
             <MdNotifications size={24} />
+
             {notificationCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-max text-center animate-pulse">{notificationCount}</span>
+              <span className="absolute top-0.5 right-0.5 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                {notificationCount}
+              </span>
             )}
           </button>
 
-          <Dropdown align="end" className="navbar-dropdown">
+          {/* PROFILE DROPDOWN */}
+          <Dropdown align="end">
+
             <Dropdown.Toggle
               as="button"
-              className="bg-none border-0 cursor-pointer text-gray-500 flex items-center justify-center p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all"
+              className="border-0 cursor-pointer text-gray-500 flex items-center justify-center p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all"
               id="profile-dropdown"
-              title="Profile"
+              title="Account"
             >
               <MdAccountCircle size={24} />
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="rounded-lg border border-gray-200 shadow-lg p-2">
-              <Dropdown.Item href="#profile" className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-blue-600 transition-all">
-                <MdAccountCircle size={18} /> My Profile
-              </Dropdown.Item>
-              <Dropdown.Item href="#settings" className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-blue-600 transition-all">
+
+              {/* SHOW ONLY FOR CUSTOMER */}
+              {role === "customer" && (
+                <Dropdown.Item
+                  onClick={() => navigate("/customer/profile")}
+                  className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-blue-600 transition-all"
+                >
+                  <MdAccountCircle size={18} /> My Profile
+                </Dropdown.Item>
+              )}
+
+              {/* SETTINGS */}
+              <Dropdown.Item
+                onClick={() =>
+                  role === "admin"
+                    ? navigate("/admin/settings")
+                    : navigate("/customer/settings")
+                }
+                className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-blue-600 transition-all"
+              >
                 <MdSettings size={18} /> Settings
               </Dropdown.Item>
+
               <Dropdown.Divider className="my-1" />
+
+              {/* LOGOUT */}
               <Dropdown.Item
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-red-100 hover:text-red-600 transition-all"
               >
                 <MdLogout size={18} /> Logout
               </Dropdown.Item>
+
             </Dropdown.Menu>
+
           </Dropdown>
+
         </div>
+
       </Container>
     </BootstrapNavbar>
   );
