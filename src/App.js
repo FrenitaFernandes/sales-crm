@@ -277,25 +277,18 @@ function App() {
           }
         />
         <Route
-<<<<<<< HEAD
-        path="/customer/customize-project"
-        element={
-        <MainLayout role="customer">
-        <CustomizeProject />
-        </MainLayout>
-    }
-    />
+          path="/customer/customize-project"
+          element={
+            <MainLayout role="customer">
+              <CustomizeProject />
+            </MainLayout>
+          }
+        />
         <Route
           path="/customer/projects"
           element={
             <MainLayout role="customer">
               <CustomerProjects />
-=======
-          path="/customer/customize-project"
-          element={
-            <MainLayout role="customer">
-              <CustomizeProject />
->>>>>>> member3-preema
             </MainLayout>
           }
         />
