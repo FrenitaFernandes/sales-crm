@@ -1,35 +1,19 @@
 import { Ticket, Eye, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function Tickets() {
 
-  // Dummy Ticket Data (Frontend Only)
-  const [tickets] = useState([
-    {
-      id: "TCK-2001",
-      subject: "Login issue — cannot access account",
-      category: "Technical",
-      priority: "High",
-      status: "Open",
-      date: "2024-01-14",
-    },
-    {
-      id: "TCK-2002",
-      subject: "Payment not reflecting in dashboard",
-      category: "Billing",
-      priority: "Medium",
-      status: "In Progress",
-      date: "2024-01-10",
-    },
-    {
-      id: "TCK-2003",
-      subject: "Need help updating company details",
-      category: "Account",
-      priority: "Low",
-      status: "Closed",
-      date: "2023-12-25",
-    },
-  ]);
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+
+  const customerId = localStorage.getItem("customerId");
+
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/service-requests/customer/${customerId}`)
+      .then(res => res.json())
+      .then(data => setTickets(data))
+      .catch(err => console.log(err));
+  }, [customerId]);
 
   return (
     <div className="p-6 space-y-6">
@@ -59,11 +43,15 @@ function Tickets() {
             {tickets.map((t, idx) => (
               <tr key={idx} className="border-b hover:bg-gray-50 transition">
 
-                <td className="p-3">{t.id}</td>
-                <td className="p-3 max-w-sm truncate">{t.subject}</td>
+                <td className="p-3">{t.ticketId}</td>
+
+                <td className="p-3 max-w-sm truncate">
+                  {t.title}
+                </td>
+
                 <td className="p-3">{t.category}</td>
 
-                {/* Priority Badge */}
+                {/* Priority */}
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 text-sm rounded-full
@@ -73,14 +61,13 @@ function Tickets() {
                           : t.priority === "Medium"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-blue-100 text-blue-700"
-                      }
-                    `}
+                      }`}
                   >
                     {t.priority}
                   </span>
                 </td>
 
-                {/* Status Badge */}
+                {/* Status */}
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 text-sm rounded-full
@@ -90,24 +77,31 @@ function Tickets() {
                           : t.status === "In Progress"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-gray-300 text-gray-700"
-                      }
-                    `}
+                      }`}
                   >
                     {t.status}
                   </span>
                 </td>
 
-                <td className="p-3">{t.date}</td>
+                {/* Date */}
+                <td className="p-3">
+                  {new Date(t.createdAt).toLocaleDateString()}
+                </td>
 
-                {/* Action Buttons */}
+                {/* Actions */}
                 <td className="p-3 text-right space-x-2">
-                  <button className="px-3 py-1 bg-blue-600 text-white rounded flex items-center gap-1 inline-flex">
+
+                  <button
+                    onClick={() => setSelectedTicket(t)}
+                    className="px-3 py-1 bg-blue-600 text-white rounded flex items-center gap-1 inline-flex"
+                  >
                     <Eye size={16} /> View
                   </button>
 
                   <button className="px-3 py-1 bg-gray-200 rounded flex items-center gap-1 inline-flex">
                     <MessageCircle size={16} /> Chat
                   </button>
+
                 </td>
 
               </tr>
@@ -116,6 +110,45 @@ function Tickets() {
         </table>
 
       </div>
+
+      {/* View Ticket Modal */}
+      {selectedTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+
+          <div className="bg-white p-6 rounded-lg w-[500px]">
+
+            <h2 className="text-lg font-semibold mb-4">Ticket Details</h2>
+
+            <p><b>Ticket ID:</b> {selectedTicket.ticketId}</p>
+            <p><b>Subject:</b> {selectedTicket.title}</p>
+            <p><b>Category:</b> {selectedTicket.category}</p>
+            <p><b>Description:</b> {selectedTicket.description}</p>
+            <p><b>Priority:</b> {selectedTicket.priority}</p>
+            <p><b>Status:</b> {selectedTicket.status}</p>
+
+            {selectedTicket.uploadedImage && (
+              <div className="mt-3">
+                <p className="font-medium">Attachment</p>
+                <img
+                  src={`http://localhost:5000${selectedTicket.uploadedImage}`}
+                  alt="attachment"
+                  className="mt-2 max-h-60 rounded border"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={() => setSelectedTicket(null)}
+              className="mt-4 px-4 py-2 bg-gray-300 rounded"
+            >
+              Close
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 }

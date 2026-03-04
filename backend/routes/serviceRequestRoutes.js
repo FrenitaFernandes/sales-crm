@@ -19,4 +19,19 @@ router.put("/:id", protect, updateServiceRequest);
 router.put("/:id/status", protect, updateServiceRequestStatus);
 router.delete("/:id", protect, deleteServiceRequest);
 
+router.get("/customer/:customerId", protect, async (req, res) => {
+  try {
+    const requests = await ServiceRequest.find({
+      customerId: req.params.customerId
+    })
+    .populate("customerId", "name email phone")
+    .sort({ createdAt: -1 });
+
+    res.json(requests);
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

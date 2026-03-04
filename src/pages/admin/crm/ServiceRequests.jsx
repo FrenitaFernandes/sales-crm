@@ -145,7 +145,7 @@ const ServiceRequests = () => {
     // optimistic UI update: add to local list immediately
     const optimistic = {
       _id: `local-${Date.now()}`,
-      ticketId: ticketId || `TKT-${Date.now()}`,
+      ticketId: "Generating...",
       subject: subject.trim(),
       category,
       title: title.trim(),

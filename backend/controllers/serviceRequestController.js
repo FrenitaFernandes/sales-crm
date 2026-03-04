@@ -6,7 +6,7 @@ const Customer = require("../models/Customer");
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const { customerId, title, description, priority } = req.body;
+    const { customerId, title, description, priority, category } = req.body;
 
     if (!customerId || !title) {
       return res.status(400).json({ message: "Customer ID & Title are required" });
@@ -17,11 +17,26 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    // 🔹 Generate Ticket ID
+    const lastTicket = await ServiceRequest.findOne().sort({ createdAt: -1 });
+
+    let ticketNumber = 2001;
+
+    if (lastTicket && lastTicket.ticketId) {
+      const lastNumber = parseInt(lastTicket.ticketId.split("-")[1]);
+      ticketNumber = lastNumber + 1;
+    }
+
+    const ticketId = `TCK-${ticketNumber}`;
+
     const request = await ServiceRequest.create({
+      ticketId,
       customerId,
       title,
       description,
-      priority
+      priority,
+      category,
+      status: "Open"
     });
 
     res.status(201).json({
