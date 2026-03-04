@@ -15,41 +15,8 @@ export default function Projects() {
     }
   }, [navigate]);
 
-  const [projects, setProjects] = useState([
-    // Sample data for testing
-    {
-      _id: "1",
-      projectName: "IoT Products - Data Logger",
-      customerName: "RDL Tech",
-      customizationDetails: "Custom dashboard with real-time monitoring",
-      assignedDate: "2026-01-15",
-      dueDate: "2026-03-15",
-      progress: 65,
-      status: "Ongoing"
-    },
-    {
-      _id: "2",
-      projectName: "Cloud Storage Solution",
-      customerName: "Shark Tank",
-      customizationDetails: "Enterprise cloud storage with backup",
-      assignedDate: "2026-01-20",
-      dueDate: "2026-02-28",
-      progress: 45,
-      status: "Ongoing"
-    },
-    {
-      _id: "3",
-      projectName: "Energy Management System",
-      customerName: "PHP Tech",
-      customizationDetails: "Smart energy monitoring and control",
-      assignedDate: "2025-12-01",
-      dueDate: "2026-01-15",
-      progress: 100,
-      status: "Completed"
-    }
-  ]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("ongoing");
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     projectName: "",
@@ -151,12 +118,26 @@ export default function Projects() {
     fetchProjects();
   }, []);
 
-  const filteredProjects = projects.filter((project) => {
-    if (activeTab === "ongoing") return project.status === "Ongoing";
-    if (activeTab === "completed") return project.status === "Completed";
-    return true;
-  });
+  const handleStatusUpdate = async (projectId, newStatus) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.put(
+        `http://localhost:5000/api/projects/${projectId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Update local state
+      setProjects(projects.map(p => 
+        p._id === projectId ? { ...p, status: newStatus } : p
+      ));
+      alert("Status updated successfully!");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Failed to update status");
+    }
+  };
 
+  const filteredProjects = projects;
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6 flex justify-between items-center">
@@ -170,28 +151,11 @@ export default function Projects() {
         </button>
       </div>
 
-      {/* Button Filters */}
-      <div className="mb-6 flex gap-4">
-        <button
-          onClick={() => setActiveTab("ongoing")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "ongoing"
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Ongoing
-        </button>
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "completed"
-              ? "bg-green-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Completed
-        </button>
+      {/* Info Message */}
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          <strong>Note:</strong> All customer project requests appear below. You can update the status to mark them as Ongoing or Completed.
+        </p>
       </div>
 
       {loading && (
@@ -202,7 +166,7 @@ export default function Projects() {
 
       {!loading && filteredProjects.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          <p className="text-lg">No {activeTab} projects found.</p>
+          <p className="text-lg">No projects found. Customer requests will appear here.</p>
         </div>
       )}
 
@@ -230,7 +194,10 @@ export default function Projects() {
                   Due Date
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Progress
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
+                  Action
                 </th>
               </tr>
             </thead>
@@ -269,19 +236,27 @@ export default function Projects() {
                       : "-"}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
-                        <div
-                          className={`h-2 rounded-full ${
-                            activeTab === "completed" ? "bg-green-500" : "bg-blue-500"
-                          }`}
-                          style={{ width: `${project.progress || (activeTab === "completed" ? 100 : 50)}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-600">
-                        {project.progress || (activeTab === "completed" ? 100 : 50)}%
-                      </span>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${project.status === "ongoing" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                      {project.status === "ongoing" ? "Ongoing" : "Completed"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm flex gap-2">
+                    {project.status !== "ongoing" && (
+                      <button
+                        onClick={() => handleStatusUpdate(project._id, "ongoing")}
+                        className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition"
+                      >
+                        Mark Ongoing
+                      </button>
+                    )}
+                    {project.status !== "completed" && (
+                      <button
+                        onClick={() => handleStatusUpdate(project._id, "completed")}
+                        className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition"
+                      >
+                        Mark Completed
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
