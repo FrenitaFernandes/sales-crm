@@ -1,5 +1,6 @@
 const express = require("express");
 const { protect } = require("../middleware/authMiddleware");
+const { getCustomerLeads } = require("../controllers/leadController");
 
 const {
   createLead,

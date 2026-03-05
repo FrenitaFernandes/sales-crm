@@ -11,7 +11,7 @@ function Tickets() {
   useEffect(() => {
     fetch(`http://localhost:5000/api/service-requests/customer/${customerId}`)
       .then(res => res.json())
-      .then(data => setTickets(data))
+      .then(data => setTickets(data.data || []))
       .catch(err => console.log(err));
   }, [customerId]);
 
