@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { addStockEntry } from "../../../../services/stockService";
+import stockItemOptions from "./stockItemOptions";
 
 const StockEntry = () => {
   const [supplierName, setSupplierName] = useState("");
@@ -170,15 +171,20 @@ const StockEntry = () => {
             <tr key={index}>
               {/* Item Name */}
               <td>
-                <input
-                  type="text"
+                <select
                   className="form-control"
-                  placeholder="Item name"
                   value={item.itemName}
                   onChange={(e) =>
                     handleItemChange(index, "itemName", e.target.value)
                   }
-                />
+                >
+                  <option value="">Select item name</option>
+                  {stockItemOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </td>
 
               {/* Quantity */}
