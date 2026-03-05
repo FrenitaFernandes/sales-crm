@@ -16,6 +16,11 @@ const invoiceSchema = new mongoose.Schema({
   customerPhone: {
     type: String
   },
+  description: {
+    type: String,
+    trim: true,
+    default: ""
+  },
   items: [{
     itemName: String,
     quantity: Number,
@@ -38,9 +43,13 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  amount: {
+    type: Number,
+    required: true
+  },
   status: {
     type: String,
-    enum: ['pending', 'paid', 'cancelled'],
+    enum: ['pending', 'paid', 'overdue', 'cancelled'],
     default: 'pending'
   },
   invoiceDate: {

@@ -105,7 +105,6 @@ const Sidebar = ({ role = "admin" }) => {
         subMenu: [
           { name: "Stock Entry", path: "/admin/sales/stock/entry", icon: "stock" },
           { name: "Stock Summary", path: "/admin/sales/stock/summary", icon: "stock" },
-          { name: "Stock Usage", path: "/admin/sales/stock/usage", icon: "stock" },
         ]
       },
       { 
@@ -150,6 +149,7 @@ const Sidebar = ({ role = "admin" }) => {
     ],
     customer: [
       { name: "Dashboard", path: "/customer/dashboard", icon: "dashboard" },
+      { name: "Projects", path: "/customer/projects", icon: "tasks" },
       { name: "Invoices", path: "/customer/invoices", icon: "reports" },
       { name: "Tickets", path: "/customer/tickets", icon: "tickets" },
       { name: "Profile", path: "/customer/profile", icon: "profile" },

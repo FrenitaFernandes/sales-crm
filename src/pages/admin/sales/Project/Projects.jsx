@@ -1,398 +1,425 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { MdAdd, MdClose } from "react-icons/md";
+import { MdAdd, MdClose, MdDelete } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 
 export default function Projects() {
-  const [projects, setProjects] = useState([
-    // Sample data for testing
-    {
-      _id: "1",
-      projectName: "IoT Products - Data Logger",
-      customerName: "RDL Tech",
-      customizationDetails: "Custom dashboard with real-time monitoring",
-      assignedDate: "2026-01-15",
-      dueDate: "2026-03-15",
-      progress: 65,
-      status: "Ongoing"
-    },
-    {
-      _id: "2",
-      projectName: "Cloud Storage Solution",
-      customerName: "Shark Tank",
-      customizationDetails: "Enterprise cloud storage with backup",
-      assignedDate: "2026-01-20",
-      dueDate: "2026-02-28",
-      progress: 45,
-      status: "Ongoing"
-    },
-    {
-      _id: "3",
-      projectName: "Energy Management System",
-      customerName: "PHP Tech",
-      customizationDetails: "Smart energy monitoring and control",
-      assignedDate: "2025-12-01",
-      dueDate: "2026-01-15",
-      progress: 100,
-      status: "Completed"
-    }
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("ongoing");
+
+  const navigate = useNavigate();
+
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    phone: "",
     customizationDetails: "",
-    assignedDate: "",
-    dueDate: "",
-    progress: 0,
-    status: "Ongoing"
+    dueDate: ""
   });
 
-  // Fetch all projects
-  const fetchProjects = async () => {
+  // AUTH CHECK + FETCH
+  useEffect(() => {
+
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
+
+    if (!token || role !== "admin") {
+      alert("Please login as admin to view projects");
+      navigate("/login");
+      return;
+    }
+
+    fetchProjects(token);
+
+  }, [navigate]);
+
+
+  // FETCH PROJECTS
+  const fetchProjects = async (token) => {
+
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/project");
-      if (res.data && res.data.length > 0) {
-        setProjects(res.data);
+
+      const res = await axios.get(
+        "http://localhost:5000/api/projects",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.data) {
+
+        const normalized = res.data.data.map((p) => ({
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          phone: p.phone || p.phoneNumber || p.customerId?.phone || "",
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        }));
+
+        setProjects(normalized);
       }
+
     } catch (error) {
       console.error("Error fetching projects:", error);
-      // Keep sample data if API fails
     } finally {
       setLoading(false);
     }
   };
 
+
   const handleAddProject = () => {
     setShowAddModal(true);
   };
 
+
   const handleCloseModal = () => {
+
     setShowAddModal(false);
+
     setFormData({
       projectName: "",
       customerName: "",
+      phone: "",
       customizationDetails: "",
-      assignedDate: "",
-      dueDate: "",
-      progress: 0,
-      status: "Ongoing"
+      dueDate: ""
     });
   };
+
 
   const handleInputChange = (e) => {
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value
     });
   };
 
+
+  // ADD PROJECT
   const handleSubmit = async (e) => {
+
     e.preventDefault();
-    const newProject = {
-      _id: String(projects.length + 1),
-      ...formData,
-      progress: Number(formData.progress)
+
+    const payload = {
+      projectName: formData.projectName,
+      customerName: formData.customerName,
+      phone: formData.phone,
+      description: formData.customizationDetails,
+      endDate: formData.dueDate,
+      status: "ongoing"
     };
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const res = await axios.post("http://localhost:5000/api/admin/project", formData);
-      setProjects([...projects, newProject]);
+
+      const token = localStorage.getItem("token");
+
+      const res = await axios.post(
+        "http://localhost:5000/api/projects",
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.data) {
+
+        const p = res.data.data;
+
+        const normalized = {
+          ...p,
+          customerName: p.customerId?.name || p.customerName,
+          phone: p.phone || p.phoneNumber || p.customerId?.phone || "",
+          dueDate: p.endDate,
+          customizationDetails: p.description,
+        };
+
+        setProjects([...projects, normalized]);
+      }
+
       handleCloseModal();
       alert("Project added successfully!");
+
     } catch (error) {
+
       console.error("Error adding project:", error);
       alert("Failed to add project");
+
     }
   };
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
 
-  const filteredProjects = projects.filter((project) => {
-    if (activeTab === "ongoing") return project.status === "Ongoing";
-    if (activeTab === "completed") return project.status === "Completed";
-    return true;
-  });
+  // UPDATE STATUS
+  const handleStatusUpdate = async (projectId, newStatus) => {
+
+    try {
+
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5000/api/projects/${projectId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setProjects(
+        projects.map((p) =>
+          p._id === projectId ? { ...p, status: newStatus } : p
+        )
+      );
+
+      alert("Status updated successfully!");
+
+    } catch (error) {
+
+      console.error("Error updating status:", error);
+      alert("Failed to update status");
+
+    }
+  };
+const handleDeleteProject = async (projectId) => {
+
+  const confirmDelete = window.confirm("Are you sure you want to delete this project?");
+  if (!confirmDelete) return;
+
+  try {
+
+    const token = localStorage.getItem("token");
+
+    await axios.delete(
+      `http://localhost:5000/api/projects/${projectId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    setProjects(projects.filter((p) => p._id !== projectId));
+
+    alert("Project deleted successfully!");
+
+  } catch (error) {
+
+    console.error("Delete project error:", error);
+    alert("Failed to delete project");
+
+  }
+};
 
   return (
+
     <div className="p-6 bg-gray-50 min-h-screen">
+
+      {/* HEADER */}
+
       <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Projects</h2>
+
+        <h2 className="text-2xl font-bold text-gray-800">
+          Projects
+        </h2>
+
         <button
           onClick={handleAddProject}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold shadow-md"
+          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 font-semibold shadow-md"
         >
           <MdAdd size={20} />
           ADD PROJECT
         </button>
+
       </div>
 
-      {/* Button Filters */}
-      <div className="mb-6 flex gap-4">
-        <button
-          onClick={() => setActiveTab("ongoing")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "ongoing"
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Ongoing
-        </button>
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`px-6 py-2.5 rounded-md font-semibold transition-all shadow-sm ${
-            activeTab === "completed"
-              ? "bg-green-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          Completed
-        </button>
-      </div>
+
+      {/* LOADING */}
 
       {loading && (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary"></div>
+        <div className="text-center py-10 text-gray-500">
+          Loading projects...
         </div>
       )}
 
-      {!loading && filteredProjects.length === 0 && (
+
+      {/* EMPTY */}
+
+      {!loading && projects.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          <p className="text-lg">No {activeTab} projects found.</p>
+          No projects found.
         </div>
       )}
 
-      {!loading && filteredProjects.length > 0 && (
+
+      {/* TABLE */}
+
+      {!loading && projects.length > 0 && (
+
         <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+
           <table className="w-full">
+
             <thead className="bg-blue-100 border-b">
+
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  S.No
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Project Name
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Customer Name
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Customization Details
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Assigned Date
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Due Date
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">
-                  Progress
-                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">S.No</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Project Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Customer Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Phone</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Customization</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Due Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Action</th>
               </tr>
+
             </thead>
+
+
             <tbody>
-              {filteredProjects.map((project, index) => (
-                <tr
-                  key={project._id || index}
-                  className={`border-b hover:bg-blue-50 ${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  }`}
-                >
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {index + 1}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.projectName || project.name || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.customerName || project.companyName || project.customer || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.customizationDetails || project.description || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.assignedDate
-                      ? new Date(project.assignedDate).toLocaleDateString()
-                      : project.startDate
-                      ? new Date(project.startDate).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {project.dueDate
-                      ? new Date(project.dueDate).toLocaleDateString()
-                      : project.endDate
-                      ? new Date(project.endDate).toLocaleDateString()
-                      : "-"}
-                  </td>
+
+              {projects.map((project, index) => (
+
+                <tr key={project._id} className="border-b hover:bg-blue-50">
+
+                  <td className="px-4 py-3 text-sm">{index + 1}</td>
+
+                  <td className="px-4 py-3 text-sm">{project.projectName || "-"}</td>
+
+                  <td className="px-4 py-3 text-sm">{project.customerName || "-"}</td>
+
+                  <td className="px-4 py-3 text-sm">{project.phone || "-"}</td>
+
+                  <td className="px-4 py-3 text-sm">{project.customizationDetails || "-"}</td>
+
                   <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
-                        <div
-                          className={`h-2 rounded-full ${
-                            activeTab === "completed" ? "bg-green-500" : "bg-blue-500"
-                          }`}
-                          style={{ width: `${project.progress || (activeTab === "completed" ? 100 : 50)}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-600">
-                        {project.progress || (activeTab === "completed" ? 100 : 50)}%
-                      </span>
-                    </div>
+                    {project.dueDate ? new Date(project.dueDate).toLocaleDateString() : "-"}
                   </td>
+
+                  <td className="px-4 py-3 text-sm">
+
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        project.status === "ongoing"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {project.status === "ongoing" ? "Ongoing" : "Completed"}
+                    </span>
+
+                  </td>
+
+
+                  <td className="px-4 py-3 text-sm flex items-center gap-2">
+
+  <select
+    value={project.status}
+    onChange={(e) =>
+      handleStatusUpdate(project._id, e.target.value)
+    }
+    className="px-3 py-1 border rounded text-xs"
+  >
+    <option value="ongoing">Ongoing</option>
+    <option value="completed">Completed</option>
+  </select>
+
+  <button
+    onClick={() => handleDeleteProject(project._id)}
+    className="text-red-600 hover:text-red-800"
+    title="Delete Project"
+  >
+    <MdDelete size={18} />
+  </button>
+
+</td>
+
                 </tr>
+
               ))}
+
             </tbody>
+
           </table>
+
         </div>
+
       )}
 
-      {/* Add Project Modal */}
+
+      {/* ADD PROJECT MODAL */}
+
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-bold">Add New Project</h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-white hover:text-gray-200"
-              >
-                <MdClose size={24} />
+
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-xl">
+
+            <div className="flex justify-between items-center bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+
+              <h3 className="text-lg font-bold">Add Project</h3>
+
+              <button onClick={handleCloseModal}>
+                <MdClose size={22} />
               </button>
+
             </div>
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="projectName"
-                    value={formData.projectName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter project name"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Customer Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter customer name"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Customization Details
-                  </label>
-                  <textarea
-                    name="customizationDetails"
-                    value={formData.customizationDetails}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter customization details"
-                  />
-                </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Assigned Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="assignedDate"
-                      value={formData.assignedDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+              <input
+                type="text"
+                name="projectName"
+                placeholder="Project Name"
+                value={formData.projectName}
+                onChange={handleInputChange}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Due Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={formData.dueDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+              <input
+                type="text"
+                name="customerName"
+                placeholder="Customer Name"
+                value={formData.customerName}
+                onChange={handleInputChange}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Progress (%) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="progress"
-                    value={formData.progress}
-                    onChange={handleInputChange}
-                    required
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter progress (0-100)"
-                  />
-                </div>
+              <input
+                type="text"
+                name="phone"
+                placeholder="Phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="w-full border px-3 py-2 rounded"
+              />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-              </div>
+              <textarea
+                name="customizationDetails"
+                placeholder="Customization Details"
+                value={formData.customizationDetails}
+                onChange={handleInputChange}
+                className="w-full border px-3 py-2 rounded"
+              />
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-md hover:bg-blue-700 transition-colors font-semibold"
-                >
-                  Add Project
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 bg-gray-300 text-gray-700 px-6 py-2.5 rounded-md hover:bg-gray-400 transition-colors font-semibold"
-                >
-                  Cancel
-                </button>
-              </div>
+              <input
+                type="date"
+                name="dueDate"
+                value={formData.dueDate}
+                onChange={handleInputChange}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
+
+              <button
+                type="submit"
+                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+              >
+                Add Project
+              </button>
+
             </form>
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/layout.css";
 import "./styles/navbar.css";
@@ -27,7 +27,6 @@ import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
 // Stock
 import StockEntry from "./pages/admin/sales/Stock/StockEntry";
 import StockSummary from "./pages/admin/sales/Stock/StockSummary";
-import StockUsage from "./pages/admin/sales/Stock/StockUsage";
 import StockReport from "./pages/admin/sales/Stock Report/StockReport";
 // Invoice
 import NewInvoice from "./pages/admin/sales/Invoice/NewInvoice";
@@ -48,6 +47,7 @@ import Profile from "./pages/customer/Profile";
 import Support from "./pages/customer/Support";
 import Notifications from "./pages/customer/Notifications";
 import CustomizeProject from "./pages/customer/CustomizeProject";
+import CustomerProjects from "./pages/customer/Projects";
 
 //home,reg,login,forgotpassword
 import Home from "./pages/Home";
@@ -150,14 +150,6 @@ function App() {
           element={
             <MainLayout>
               <StockSummary />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/stock/usage"
-          element={
-            <MainLayout>
-              <StockUsage />
             </MainLayout>
           }
         />
@@ -280,6 +272,14 @@ function App() {
           element={
             <MainLayout role="customer">
               <CustomizeProject />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/customer/projects"
+          element={
+            <MainLayout role="customer">
+              <CustomerProjects />
             </MainLayout>
           }
         />
