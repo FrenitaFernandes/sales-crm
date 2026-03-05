@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, FileText, CreditCard, Package } from "lucide-react";
+import { User, FileText, CreditCard } from "lucide-react";
 
 function Profile() {
 
@@ -11,15 +11,19 @@ function Profile() {
     company: "",
     gst: "",
     pan: "",
+    country: "",
+    industryType: "",
     avatar: "",
     createdAt: ""
   });
 
-  // LOAD LOGGED IN USER DATA
+  // LOAD USER
   useEffect(() => {
+
     const storedUser = JSON.parse(localStorage.getItem("user"));
 
     if (storedUser) {
+
       setProfile({
         name: storedUser.name || "",
         email: storedUser.email || "",
@@ -28,34 +32,56 @@ function Profile() {
         company: storedUser.company || "",
         gst: storedUser.gst || "",
         pan: storedUser.pan || "",
+        country: storedUser.country || "",
+        industryType: storedUser.industryType || "",
         avatar: storedUser.avatar || "",
-        createdAt: storedUser.createdAt || new Date().toISOString().split("T")[0]
+        createdAt: storedUser.createdAt || ""
       });
+
     }
+
   }, []);
 
-  const orders = [
-    { orderId: "ORD12345", amount: 4999, date: "2024-01-10" },
-    { orderId: "ORD12346", amount: 2599, date: "2023-12-05" },
-  ];
 
-  const payments = [
-    { method: "UPI", amount: 4999, date: "2024-01-10" },
-    { method: "Card", amount: 2599, date: "2023-12-05" },
-  ];
+  // UPDATE PROFILE
+  const updateProfile = async () => {
 
-  const services = [
-    { serviceName: "Web Hosting", description: "Business Hosting Plan", isActive: true },
-    { serviceName: "CRM Subscription", description: "Pro Plan", isActive: true },
-  ];
+    try {
 
-  const updateProfile = () => {
+      const token = localStorage.getItem("token");
 
-    // SAVE UPDATED PROFILE TO LOCAL STORAGE
-    localStorage.setItem("user", JSON.stringify(profile));
+      const res = await fetch("http://localhost:5000/api/customer/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(profile)
+      });
 
-    alert("Profile updated successfully!");
+      const data = await res.json();
+
+      if (data.success) {
+
+        localStorage.setItem("user", JSON.stringify(data.customer));
+
+        alert("Profile updated successfully!");
+
+      } else {
+
+        alert(data.message);
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
+      alert("Error updating profile");
+
+    }
+
   };
+
 
   return (
     <div className="p-6 space-y-10">
@@ -65,120 +91,114 @@ function Profile() {
       </h1>
 
       {/* PROFILE CARD */}
+
       <div className="bg-white shadow rounded-xl p-6 flex items-center gap-6">
+
         <img
-          src={profile.avatar || "https://ui-avatars.com/api/?name=" + profile.name}
+          src={
+            profile.avatar ||
+            "https://ui-avatars.com/api/?name=" + profile.name
+          }
           alt={profile.name}
           className="w-20 h-20 rounded-full shadow"
         />
+
         <div>
+
           <h2 className="text-xl font-bold">{profile.name}</h2>
+
           <p className="text-gray-600">{profile.email}</p>
+
           <p className="text-gray-500 text-sm mt-1">
             Member since: {profile.createdAt}
           </p>
+
         </div>
+
       </div>
 
+
       {/* EDIT PROFILE */}
+
       <div className="bg-white shadow rounded-xl p-6 space-y-4">
+
         <h2 className="text-lg font-semibold mb-2">Edit Profile</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           <input
-            className="p-3 border rounded w-full"
+            className="p-3 border rounded"
             value={profile.name}
-            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+            onChange={(e)=>setProfile({...profile,name:e.target.value})}
             placeholder="Full Name"
           />
 
           <input
-            className="p-3 border rounded w-full"
-            value={profile.email}
-            onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-            placeholder="Email"
-          />
-
-          <input
-            className="p-3 border rounded w-full"
+            className="p-3 border rounded"
             value={profile.phone}
-            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-            placeholder="Phone Number"
+            onChange={(e)=>setProfile({...profile,phone:e.target.value})}
+            placeholder="Phone"
           />
 
           <input
-            className="p-3 border rounded w-full"
+            className="p-3 border rounded"
             value={profile.company}
-            onChange={(e) => setProfile({ ...profile, company: e.target.value })}
-            placeholder="Company Name"
+            onChange={(e)=>setProfile({...profile,company:e.target.value})}
+            placeholder="Company"
           />
 
-          <input
-            className="p-3 border rounded w-full"
-            value={profile.gst}
-            onChange={(e) => setProfile({ ...profile, gst: e.target.value })}
-            placeholder="GST Number"
-          />
+          {/* COUNTRY */}
 
-          <input
-            className="p-3 border rounded w-full"
-            value={profile.pan}
-            onChange={(e) => setProfile({ ...profile, pan: e.target.value })}
-            placeholder="PAN Number"
-          />
+          <select
+            className="p-3 border rounded"
+            value={profile.country}
+            onChange={(e)=>setProfile({...profile,country:e.target.value})}
+          >
+            <option value="">Select Country</option>
+            <option>India</option>
+            <option>USA</option>
+            <option>UK</option>
+          </select>
+
+
+          {/* INDUSTRY TYPE */}
+
+          <select
+            className="p-3 border rounded"
+            value={profile.industryType}
+            onChange={(e)=>setProfile({...profile,industryType:e.target.value})}
+          >
+            <option value="">Select Industry</option>
+            <option>Manufacturing Companies</option>
+            <option>Industrial Businesses</option>
+            <option>Smart Buildings</option>
+            <option>Educational Institutions</option>
+            <option>Technology Startups</option>
+            <option>Automotive Companies</option>
+            <option>Energy & Utility Companies</option>
+            <option>Agriculture Technology Companies</option>
+            <option>Logistics & Supply Chain Companies</option>
+            <option>Retail Businesses</option>
+            <option>Healthcare Organizations</option>
+            <option>Government Organizations</option>
+          </select>
 
         </div>
 
         <textarea
           className="p-3 border rounded w-full"
           value={profile.address}
-          onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+          onChange={(e)=>setProfile({...profile,address:e.target.value})}
           placeholder="Address"
         />
 
         <button
           onClick={updateProfile}
-          className="bg-blue-600 text-white px-5 py-2 rounded">
+          className="bg-blue-600 text-white px-5 py-2 rounded"
+        >
           Save Changes
         </button>
-      </div>
-      {/* ORDERS */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <FileText /> Order History
-        </h2>
 
-        <div className="mt-4 space-y-3">
-          {orders.map((o, idx) => (
-            <div key={idx} className="border p-4 rounded-xl flex justify-between">
-              <div>
-                <p className="font-semibold">Order #{o.orderId}</p>
-                <p className="text-gray-500 text-sm">{o.date}</p>
-              </div>
-              <p className="text-blue-600 font-bold">₹{o.amount}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* PAYMENTS */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <CreditCard /> Recent Payments
-        </h2>
-
-        <div className="mt-4 space-y-3">
-          {payments.map((p, idx) => (
-            <div key={idx} className="border p-4 rounded-xl flex justify-between">
-              <div>
-                <p className="font-semibold">{p.method}</p>
-                <p className="text-gray-500 text-sm">{p.date}</p>
-              </div>
-              <p className="text-green-600 font-bold">₹{p.amount}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
     </div>

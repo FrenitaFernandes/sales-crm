@@ -8,7 +8,7 @@ const connectDB = require("./utils/db");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const testRoutes = require("./routes/testRoutes");
-
+const notificationRoutes = require("./routes/notificationRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
@@ -42,6 +42,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/ads", advertisementRoutes);
 app.use("/api/activity", activityLogRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/customer", notificationRoutes);
 
 // Health Check Route
 app.get("/", (req, res) => {
