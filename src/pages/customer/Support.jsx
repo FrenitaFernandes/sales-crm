@@ -1,5 +1,6 @@
 import { MessageCircle, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 function Support() {
   const [form, setForm] = useState({
@@ -7,40 +8,131 @@ function Support() {
     category: "",
     message: "",
   });
+  const [previousRequests, setPreviousRequests] = useState([]);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
-  // Dummy previous support messages (no backend)
-  const previousRequests = [
-    {
-      id: "REQ-101",
-      subject: "Need help changing email",
-      category: "Account",
-      date: "2024-01-14",
-      status: "Resolved",
-    },
-    {
-      id: "REQ-102",
-      subject: "Billing amount mismatch",
-      category: "Billing",
-      date: "2024-01-10",
-      status: "Pending",
-    },
-    {
-      id: "REQ-103",
-      subject: "Issue with login sessions",
-      category: "Technical",
-      date: "2023-12-20",
-      status: "Closed",
-    },
-  ];
+  const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
-  const submitForm = () => {
+  const fetchMyRequests = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const myEmail = String(user?.email || "").toLowerCase();
+
+      const res = await axios.get("http://localhost:5000/api/services", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const rows = (res.data?.data || [])
+        .filter((item) => {
+          const email = String(item?.customerId?.email || "").toLowerCase();
+          return myEmail ? email === myEmail : true;
+        })
+        .map((item) => ({
+          id: item._id,
+          subject: item.subject || item.title || "Support Request",
+          category: item.category || "General",
+          date: item.createdAt ? new Date(item.createdAt).toISOString().slice(0, 10) : "-",
+          status: item.status || "Pending",
+        }));
+
+      setPreviousRequests(rows);
+    } catch (error) {
+      console.error("Fetch support requests error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyRequests();
+  }, []);
+
+  const resolveCustomerId = async (token) => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const userEmail = String(user?.email || "").trim().toLowerCase();
+    const userName = String(user?.name || "").trim();
+
+    if (!userEmail && !userName) return "";
+
+    const customersRes = await axios.get("http://localhost:5000/api/customers", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const customers = customersRes?.data?.data || [];
+
+    let customer = null;
+
+    if (userEmail) {
+      customer = customers.find((item) => String(item?.email || "").trim().toLowerCase() === userEmail);
+    }
+
+    if (!customer && userName) {
+      customer = customers.find((item) => String(item?.name || "").trim().toLowerCase() === userName.toLowerCase());
+    }
+
+    if (customer?._id) {
+      return customer._id;
+    }
+
+    const createPayload = {
+      name: userName || "Customer",
+      email: userEmail || undefined,
+      status: "Active",
+    };
+
+    const createdRes = await axios.post("http://localhost:5000/api/customers", createPayload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return createdRes?.data?.data?._id || "";
+  };
+
+  const submitForm = async () => {
+    setSubmitMessage("");
+    setSubmitError("");
+
     if (!form.subject || !form.category || !form.message) {
-      alert("Please fill all fields");
+      setSubmitError("Please fill all fields");
       return;
     }
 
-    alert("Support request submitted! (Frontend only)");
-    setForm({ subject: "", category: "", message: "" });
+    try {
+      const token = getToken();
+      if (!token) {
+        setSubmitError("Please login again");
+        return;
+      }
+
+      const customerId = await resolveCustomerId(token);
+      if (!customerId) {
+        setSubmitError("Customer profile not found");
+        return;
+      }
+
+      await axios.post(
+        "http://localhost:5000/api/services",
+        {
+          customerId,
+          subject: form.subject,
+          title: form.subject,
+          category: form.category,
+          description: form.message,
+          priority: "Medium",
+          status: "Pending",
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setSubmitMessage("Support request submitted successfully!");
+      setForm({ subject: "", category: "", message: "" });
+      fetchMyRequests();
+    } catch (error) {
+      setSubmitError(error?.response?.data?.message || "Failed to submit support request");
+    }
   };
 
   return (
@@ -55,6 +147,14 @@ function Support() {
       <div className="bg-white shadow rounded-xl p-6 space-y-5">
 
         <h2 className="text-lg font-semibold">Submit a Support Request</h2>
+
+        {submitMessage && (
+          <div className="alert alert-success py-2 mb-0">{submitMessage}</div>
+        )}
+
+        {submitError && (
+          <div className="alert alert-danger py-2 mb-0">{submitError}</div>
+        )}
 
         {/* Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -99,6 +199,10 @@ function Support() {
 
         <div className="space-y-3">
 
+          {previousRequests.length === 0 && (
+            <div className="text-gray-500 text-sm">No previous requests found.</div>
+          )}
+
           {previousRequests.map((req, idx) => (
             <div
               key={idx}
@@ -114,9 +218,9 @@ function Support() {
               <span
                 className={`px-3 py-1 h-fit text-sm rounded-full
                   ${
-                    req.status === "Resolved"
+                    req.status === "Resolved" || req.status === "Completed"
                       ? "bg-green-100 text-green-700"
-                      : req.status === "Pending"
+                      : req.status === "Pending" || req.status === "In Progress" || req.status === "Open"
                       ? "bg-yellow-100 text-yellow-700"
                       : "bg-gray-300 text-gray-700"
                   }
