@@ -1,25 +1,88 @@
 const ServiceRequest = require("../models/ServiceRequest");
 const Customer = require("../models/Customer");
+const ChatMessage = require("../models/ChatMessage");
+
+const getUserRole = (user) => String(user?.role || "").trim().toLowerCase();
+
+const resolveCustomerByUser = async (user) => {
+  if (!user) return null;
+
+  const email = String(user.email || "").trim().toLowerCase();
+  const name = String(user.name || "").trim();
+
+  if (email) {
+    const byEmail = await Customer.findOne({ email });
+    if (byEmail) return byEmail;
+  }
+
+  if (name) {
+    const byName = await Customer.findOne({ name });
+    if (byName) return byName;
+  }
+
+  return null;
+};
+
+const hasRequestAccess = async (request, user) => {
+  if (!request || !user) return false;
+  if (getUserRole(user) === "admin") return true;
+
+  const customer = await resolveCustomerByUser(user);
+  if (!customer?._id) return false;
+
+  return String(request.customerId) === String(customer._id);
+};
 
 // =============================
 // CREATE SERVICE REQUEST
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const { customerId, title, description, priority } = req.body;
+    const { customerId, title, description, priority, subject, category } = req.body;
 
-    if (!customerId || !title) {
+    let resolvedCustomerId = customerId;
+    if (!resolvedCustomerId && req.user) {
+      const userEmail = String(req.user.email || "").trim().toLowerCase();
+      const userName = String(req.user.name || "").trim();
+
+      let customerByIdentity = null;
+      if (userEmail) {
+        customerByIdentity = await Customer.findOne({ email: userEmail });
+      }
+
+      if (!customerByIdentity && userName) {
+        customerByIdentity = await Customer.findOne({ name: userName });
+      }
+
+      if (!customerByIdentity && (userEmail || userName)) {
+        customerByIdentity = await Customer.create({
+          name: userName || "Customer",
+          email: userEmail || undefined,
+          status: "Active",
+        });
+      }
+
+      if (customerByIdentity?._id) {
+        resolvedCustomerId = customerByIdentity._id;
+      }
+    }
+
+    const resolvedTitle = String(title || subject || "").trim();
+
+    if (!resolvedCustomerId || !resolvedTitle) {
       return res.status(400).json({ message: "Customer ID & Title are required" });
     }
 
-    const customerExists = await Customer.findById(customerId);
+    const customerExists = await Customer.findById(resolvedCustomerId);
     if (!customerExists) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
     const request = await ServiceRequest.create({
-      customerId,
-      title,
+      customerId: resolvedCustomerId,
+      title: resolvedTitle,
+      subject: String(subject || "").trim() || resolvedTitle,
+      category: String(category || "").trim(),
       description,
       priority
     });
@@ -150,5 +213,103 @@ exports.deleteServiceRequest = async (req, res) => {
   } catch (error) {
     console.error("Delete Request Error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================
+// ENABLE CHAT FOR REQUEST (ADMIN)
+// =============================
+exports.allowServiceRequestChat = async (req, res) => {
+  try {
+    if (getUserRole(req.user) !== "admin") {
+      return res.status(403).json({ message: "Only admin can allow chat" });
+    }
+
+    const request = await ServiceRequest.findByIdAndUpdate(
+      req.params.id,
+      { enableChat: true },
+      { new: true }
+    );
+    if (!request) {
+      return res.status(404).json({ message: "Service request not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Chat enabled",
+      data: request,
+    });
+  } catch (error) {
+    console.error("Allow Chat Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================
+// GET CHAT MESSAGES FOR REQUEST
+// =============================
+exports.getServiceRequestChat = async (req, res) => {
+  try {
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Service request not found" });
+    }
+
+    const allowed = await hasRequestAccess(request, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: "Not allowed to access this chat" });
+    }
+
+    const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({ createdAt: 1 });
+
+    return res.status(200).json({
+      success: true,
+      chatEnabled: !!request.enableChat,
+      data: messages,
+    });
+  } catch (error) {
+    console.error("Get Chat Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================
+// SEND CHAT MESSAGE FOR REQUEST
+// =============================
+exports.sendServiceRequestChatMessage = async (req, res) => {
+  try {
+    const messageText = String(req.body?.message || "").trim();
+    if (!messageText) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Service request not found" });
+    }
+
+    const allowed = await hasRequestAccess(request, req.user);
+    if (!allowed) {
+      return res.status(403).json({ message: "Not allowed to access this chat" });
+    }
+
+    if (!request.enableChat) {
+      return res.status(403).json({ message: "Chat is not enabled yet" });
+    }
+
+    const message = await ChatMessage.create({
+      serviceRequestId: request._id,
+      senderRole: getUserRole(req.user) === "admin" ? "admin" : "customer",
+      senderName: req.user.name || (getUserRole(req.user) === "admin" ? "Admin" : "Customer"),
+      message: messageText,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error("Send Chat Error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

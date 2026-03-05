@@ -25,6 +25,11 @@ const serviceRequestSchema = new mongoose.Schema(
       enum: ["Pending", "In Progress", "Completed", "Open", "Closed"],
       default: "Pending",
     },
+
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

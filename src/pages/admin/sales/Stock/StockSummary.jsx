@@ -7,6 +7,9 @@ const StockSummary = () => {
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [editForm, setEditForm] = useState({ itemName: "", category: "", quantity: "", unitPrice: "" });
 
@@ -126,6 +129,7 @@ const StockSummary = () => {
       }
 
       setError("");
+      setSuccessMessage("");
       await updateStockEntry(rowId, {
         itemName: editForm.itemName.trim(),
         category: editForm.category || "None",
@@ -153,18 +157,29 @@ const StockSummary = () => {
     }
   };
 
-  const handleDelete = async (row) => {
-    try {
-      const rowId = row?._id || row?.id || "";
+  const confirmDelete = (row) => {
+    setDeleteTarget(row || null);
+    setError("");
+    setSuccessMessage("");
+  };
 
-      const isConfirmed = window.confirm(`Delete stock entry for "${row.itemName}"?`);
-      if (!isConfirmed) return;
+  const cancelDelete = () => {
+    setDeleteTarget(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      setIsDeleting(true);
+      const rowId = deleteTarget?._id || deleteTarget?.id || "";
 
       setError("");
+      setSuccessMessage("");
       await deleteStockEntry(rowId, {
-        itemName: row.itemName,
-        category: row.category,
-        unitPrice: Number(row.unitPrice || 0),
+        itemName: deleteTarget.itemName,
+        category: deleteTarget.category,
+        unitPrice: Number(deleteTarget.unitPrice || 0),
       });
 
       setStockData((prev) =>
@@ -175,9 +190,9 @@ const StockSummary = () => {
             return itemId !== rowId;
           }
 
-          const sameName = String(item?.itemName || "").trim().toLowerCase() === String(row?.itemName || "").trim().toLowerCase();
-          const sameCategory = String(item?.category || "").trim().toLowerCase() === String(row?.category || "").trim().toLowerCase();
-          const samePrice = Number(item?.unitPrice || 0) === Number(row?.unitPrice || 0);
+          const sameName = String(item?.itemName || "").trim().toLowerCase() === String(deleteTarget?.itemName || "").trim().toLowerCase();
+          const sameCategory = String(item?.category || "").trim().toLowerCase() === String(deleteTarget?.category || "").trim().toLowerCase();
+          const samePrice = Number(item?.unitPrice || 0) === Number(deleteTarget?.unitPrice || 0);
 
           return !(sameName && sameCategory && samePrice);
         })
@@ -186,12 +201,18 @@ const StockSummary = () => {
       if (editingId === rowId) {
         cancelEdit();
       }
+
+      setSuccessMessage("Deleted successfully");
+      setDeleteTarget(null);
     } catch (deleteError) {
+      setSuccessMessage("");
       setError(
         deleteError.response?.data?.message ||
           deleteError.message ||
           "Failed to delete stock entry"
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -243,6 +264,7 @@ const StockSummary = () => {
   return (
     <div className="p-6 bg-white rounded shadow-sm">
       <h2 className="text-2xl font-semibold mb-6">Stock Summary</h2>
+      {successMessage && <div className="alert alert-success py-2">{successMessage}</div>}
       {error && <div className="alert alert-danger py-2">{error}</div>}
 
       {/* SEARCH + REPORT BUTTON */}
@@ -363,7 +385,7 @@ const StockSummary = () => {
                       <button className="btn btn-sm btn-primary" onClick={() => startEdit(item)}>
                         Edit
                       </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(item)}>
+                      <button className="btn btn-sm btn-danger" onClick={() => confirmDelete(item)}>
                         Delete
                       </button>
                     </div>
@@ -380,6 +402,36 @@ const StockSummary = () => {
           )}
         </tbody>
       </table>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-4">
+            <h5 className="text-lg font-semibold mb-2">Confirm Delete</h5>
+            <p className="text-sm text-gray-700 mb-4">
+              Delete stock entry for "{deleteTarget.itemName}"?
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={cancelDelete}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
