@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { deleteStockEntry, getStockEntries, getStockSummary, updateStockEntry } from "../../../../services/stockService";
+import stockItemOptions from "./stockItemOptions";
 
 const StockSummary = () => {
   const [search, setSearch] = useState("");
@@ -292,27 +293,30 @@ const StockSummary = () => {
               <tr key={index}>
                 <td>
                   {editingId === (item._id || item.itemName) ? (
-                    <input
+                    <select
                       className="form-control"
                       value={editForm.itemName}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, itemName: e.target.value }))}
-                    />
+                    >
+                      <option value="">Select item name</option>
+                      {stockItemOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     item.itemName
                   )}
                 </td>
                 <td>
                   {editingId === (item._id || item.itemName) ? (
-                    <select
+                    <input
+                      type="text"
                       className="form-control"
                       value={editForm.category}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
-                    >
-                      <option value="None">None</option>
-                      <option value="IoT Products">IoT Products</option>
-                      <option value="IoT Solutions">IoT Solutions</option>
-                      <option value="Services">Services</option>
-                    </select>
+                    />
                   ) : (
                     item.category
                   )}
