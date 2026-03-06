@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import axios from "axios";
 import {
   getCustomerNotifications,
   markAllCustomerNotificationsRead,
@@ -9,19 +10,82 @@ import {
 function Notifications() {
   const [notifs, setNotifs] = useState([]);
 
-  useEffect(() => {
-    const all = getCustomerNotifications();
-    setNotifs(all);
+  const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
-    // Clear unread badge as soon as customer opens notifications page.
-    const updated = markAllCustomerNotificationsRead();
-    setNotifs(updated);
-    window.dispatchEvent(new Event("notifications-updated"));
+  const loadNotifications = async () => {
+    const localItems = getCustomerNotifications().map((item) => ({
+      ...item,
+      _id: String(item?._id || item?.eventId || Date.now()),
+      source: "local",
+    }));
+
+    let backendItems = [];
+
+    try {
+      const token = getToken();
+      if (token) {
+        const res = await axios.get("http://localhost:5000/api/customer/notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        backendItems = (res.data?.data || []).map((item) => ({
+          ...item,
+          _id: String(item?._id || ""),
+          source: "backend",
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading backend notifications:", error);
+    }
+
+    const merged = [...backendItems, ...localItems].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    );
+
+    setNotifs(merged);
+  };
+
+  useEffect(() => {
+    const syncRead = async () => {
+      // Clear unread local badge.
+      markAllCustomerNotificationsRead();
+
+      // Mark backend unread notifications as read when page is opened.
+      try {
+        const token = getToken();
+        if (token) {
+          const res = await axios.get("http://localhost:5000/api/customer/notifications", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const unreadBackend = (res.data?.data || []).filter((item) => item?.read !== true);
+          await Promise.all(
+            unreadBackend.map((item) =>
+              axios.put(
+                `http://localhost:5000/api/customer/notifications/${item._id}/read`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+              )
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error marking backend notifications read:", error);
+      }
+
+      await loadNotifications();
+      window.dispatchEvent(new Event("notifications-updated"));
+    };
+
+    syncRead();
   }, []);
 
   const handleRemove = (id) => {
     const updated = removeCustomerNotification(id);
-    setNotifs(updated);
+    // Refresh merged list after local deletion.
+    const backendItems = notifs.filter((item) => item?.source === "backend");
+    const localItems = updated.map((item) => ({ ...item, source: "local" }));
+    setNotifs([...backendItems, ...localItems]);
     window.dispatchEvent(new Event("notifications-updated"));
   };
 
@@ -51,13 +115,15 @@ function Notifications() {
               </div>
 
               <div>
-                <button
-                  type="button"
-                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded"
-                  onClick={() => handleRemove(n._id)}
-                >
-                  Remove
-                </button>
+                {n.source === "local" && (
+                  <button
+                    type="button"
+                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded"
+                    onClick={() => handleRemove(n._id)}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
           ))

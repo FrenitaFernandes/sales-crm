@@ -23,7 +23,22 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
   const loadNotificationCount = async () => {
     try {
       if (role === "customer") {
-        setNotificationCount(getCustomerUnreadCount());
+        const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+
+        if (!token) {
+          setNotificationCount(getCustomerUnreadCount());
+          return;
+        }
+
+        const [localUnread, backendRes] = await Promise.all([
+          Promise.resolve(getCustomerUnreadCount()),
+          axios.get("http://localhost:5000/api/customer/notifications", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        const backendUnread = (backendRes.data?.data || []).filter((item) => item?.read !== true).length;
+        setNotificationCount(localUnread + backendUnread);
         return;
       }
 

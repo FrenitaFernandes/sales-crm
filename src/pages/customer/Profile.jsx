@@ -48,9 +48,14 @@ function Profile() {
 
     try {
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
-      const res = await fetch("http://localhost:5000/api/customer/profile", {
+      if (!token) {
+        alert("Please login again.");
+        return;
+      }
+
+      const res = await fetch("http://localhost:5000/api/customers/profile/update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -61,15 +66,27 @@ function Profile() {
 
       const data = await res.json();
 
-      if (data.success) {
+      if (res.ok && data.success) {
 
-        localStorage.setItem("user", JSON.stringify(data.customer));
+        const updatedProfile = data.data || {};
+        const existingUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+        // Preserve auth fields from user object while merging profile fields.
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...existingUser,
+            ...updatedProfile,
+            name: updatedProfile.name || existingUser.name,
+            email: updatedProfile.email || existingUser.email
+          })
+        );
 
         alert("Profile updated successfully!");
 
       } else {
 
-        alert(data.message);
+        alert(data.message || "Failed to update profile");
 
       }
 

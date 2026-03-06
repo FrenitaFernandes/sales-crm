@@ -16,12 +16,6 @@ const advertisementSchema = new mongoose.Schema(
     description: {
       type: String
     },
-    keywords: {
-      type: String
-    },
-    productLink: {
-      type: String
-    },
     type: {
       type: String
     },

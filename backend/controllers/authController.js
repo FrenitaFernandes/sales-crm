@@ -38,13 +38,14 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       role: "customer",
     });
-    // Create Customer entry
-await Customer.create({
-  name,
-  email,
-  phone,
-  status: "Inactive",
-});
+    // Create linked Customer entry so profile updates can resolve by userId.
+    await Customer.create({
+      userId: user._id,
+      name,
+      email,
+      phone,
+      status: "Inactive",
+    });
 
     // send welcome email
     await sendWelcomeEmail(email, name);

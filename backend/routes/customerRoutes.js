@@ -19,6 +19,7 @@ const {
 
 // Update own profile (country, industryType, etc.)
 router.put("/profile/update", protect, updateCustomerProfile);
+router.put("/profile", protect, updateCustomerProfile);
 
 
 // ===========================

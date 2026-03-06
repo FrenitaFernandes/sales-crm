@@ -1,14 +1,35 @@
 import { useState } from "react";
 import axios from "axios";
 
+const PRODUCT_IMAGE_OPTIONS = [
+  {
+    label: "Industrial Sensor",
+    value:
+      "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='420'%3E%3Crect width='100%25' height='100%25' fill='%231F4E79'/%3E%3Ctext x='50%25' y='46%25' fill='white' font-size='46' font-family='Arial' text-anchor='middle'%3EIndustrial Sensor%3C/text%3E%3Ctext x='50%25' y='58%25' fill='white' font-size='24' font-family='Arial' text-anchor='middle'%3EProduct Visual%3C/text%3E%3C/svg%3E"
+  },
+  {
+    label: "Smart Building Controller",
+    value:
+      "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='420'%3E%3Crect width='100%25' height='100%25' fill='%232E7D32'/%3E%3Ctext x='50%25' y='46%25' fill='white' font-size='42' font-family='Arial' text-anchor='middle'%3ESmart Building Controller%3C/text%3E%3Ctext x='50%25' y='58%25' fill='white' font-size='24' font-family='Arial' text-anchor='middle'%3EProduct Visual%3C/text%3E%3C/svg%3E"
+  },
+  {
+    label: "Factory Automation Suite",
+    value:
+      "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='420'%3E%3Crect width='100%25' height='100%25' fill='%236D4C41'/%3E%3Ctext x='50%25' y='46%25' fill='white' font-size='42' font-family='Arial' text-anchor='middle'%3EFactory Automation Suite%3C/text%3E%3Ctext x='50%25' y='58%25' fill='white' font-size='24' font-family='Arial' text-anchor='middle'%3EProduct Visual%3C/text%3E%3C/svg%3E"
+  },
+  {
+    label: "Energy Monitoring Device",
+    value:
+      "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='420'%3E%3Crect width='100%25' height='100%25' fill='%235E35B1'/%3E%3Ctext x='50%25' y='46%25' fill='white' font-size='42' font-family='Arial' text-anchor='middle'%3EEnergy Monitoring Device%3C/text%3E%3Ctext x='50%25' y='58%25' fill='white' font-size='24' font-family='Arial' text-anchor='middle'%3EProduct Visual%3C/text%3E%3C/svg%3E"
+  }
+];
+
 export default function AddAdvertisement() {
 
   const [form, setForm] = useState({
     productName: "",
     tagline: "",
     description: "",
-    keywords: "",
-    productLink: "",
     type: "",
     targetArea: "",
     targetAudience: "",
@@ -38,8 +59,6 @@ export default function AddAdvertisement() {
         productName: "",
         tagline: "",
         description: "",
-        keywords: "",
-        productLink: "",
         type: "",
         targetArea: "",
         targetAudience: "",
@@ -142,45 +161,9 @@ export default function AddAdvertisement() {
         </div>
 
 
-        {/* KEYWORDS / LINK / TYPE */}
+        {/* TYPE */}
 
         <div className="row">
-
-          <div className="col-md-4 mb-3">
-
-            <label className="form-label">
-              Keywords
-            </label>
-
-            <input
-              type="text"
-              name="keywords"
-              className="form-control"
-              value={form.keywords}
-              onChange={handleChange}
-              placeholder="software, tech, industrial"
-            />
-
-          </div>
-
-
-          <div className="col-md-4 mb-3">
-
-            <label className="form-label">
-              Product Link
-            </label>
-
-            <input
-              type="url"
-              name="productLink"
-              className="form-control"
-              value={form.productLink}
-              onChange={handleChange}
-              placeholder="https://example.com"
-            />
-
-          </div>
-
 
           <div className="col-md-4 mb-3">
 
@@ -208,7 +191,7 @@ export default function AddAdvertisement() {
         </div>
 
 
-        {/* TARGET AREA / TARGET AUDIENCE / IMAGE */}
+        {/* TARGET AREA / TARGET AUDIENCE / PRODUCT IMAGE */}
 
         <div className="row">
 
@@ -280,17 +263,34 @@ export default function AddAdvertisement() {
           <div className="col-md-4 mb-3">
 
             <label className="form-label">
-              Advertisement Image URL
+              Product Image
             </label>
 
-            <input
-              type="text"
+            <select
               name="thumbnail"
               className="form-control"
               value={form.thumbnail}
               onChange={handleChange}
-              placeholder="Image URL"
-            />
+              required
+            >
+              <option value="">Select Product Image</option>
+
+              {PRODUCT_IMAGE_OPTIONS.map((option) => (
+                <option key={option.label} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+
+            </select>
+
+            {form.thumbnail && (
+              <img
+                src={form.thumbnail}
+                alt="Selected product"
+                className="mt-2"
+                style={{ width: "100%", maxHeight: "130px", objectFit: "cover", borderRadius: "6px" }}
+              />
+            )}
 
           </div>
 

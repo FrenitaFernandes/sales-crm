@@ -14,8 +14,6 @@ exports.createAdvertisement = async (req, res) => {
       productName,
       tagline,
       description,
-      keywords,
-      productLink,
       type,
       targetArea,
       targetAudience,
@@ -36,8 +34,6 @@ exports.createAdvertisement = async (req, res) => {
       productName,
       tagline,
       description,
-      keywords,
-      productLink,
       type,
       targetArea,
       targetAudience,
@@ -75,7 +71,6 @@ exports.createAdvertisement = async (req, res) => {
         title: `New Product: ${productName}`,
         message: tagline || description,
         type: "advertisement",
-        productLink: productLink,
         read: false
       }));
 

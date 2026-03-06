@@ -7,6 +7,10 @@ const Customer = require("../models/Customer.js");
 const ServiceRequest = require("../models/ServiceRequest.js");
 const User = require("../models/user.js");
 const Advertisement = require("../models/Advertisement.js");
+const {
+  createAdvertisement,
+  getAdvertisements,
+} = require("../controllers/advertisementController");
 
 // GET: Dashboard stats
 router.get("/dashboard", async (req, res) => {
@@ -603,21 +607,11 @@ router.get("/project/completed", async (req, res) => {
 // ADVERTISEMENT
 // -----------------------------------------------------
 router.post("/advertisement", async (req, res) => {
-  try {
-    const adv = await Advertisement.create(req.body);
-    res.json({ message: "Ad created", adv });
-  } catch (err) {
-    res.status(500).json({ message: "Failed", error: err });
-  }
+  return createAdvertisement(req, res);
 });
 
 router.get("/advertisement", async (req, res) => {
-  try {
-    const ads = await Advertisement.find().sort({ createdAt: -1 });
-    res.json(ads);
-  } catch (err) {
-    res.status(500).json({ message: "Failed", error: err });
-  }
+  return getAdvertisements(req, res);
 });
 
 

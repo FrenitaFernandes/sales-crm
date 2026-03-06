@@ -10,9 +10,15 @@ exports.getCustomerNotifications = async (req, res) => {
 
     // Logged-in user id
     const userId = req.user.id;
+    const userEmail = req.user.email;
 
-    // Find customer profile linked with this user
-    const customer = await Customer.findOne({ userId });
+    // Find customer profile linked with this user (supports older records without userId).
+    const customer = await Customer.findOne({
+      $or: [
+        { userId },
+        { email: userEmail }
+      ]
+    });
 
     if (!customer) {
       return res.status(404).json({
@@ -50,8 +56,25 @@ exports.markNotificationRead = async (req, res) => {
 
   try {
 
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+
+    const customer = await Customer.findOne({
+      $or: [
+        { userId },
+        { email: userEmail }
+      ]
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer profile not found"
+      });
+    }
+
     const notif = await Notification.findByIdAndUpdate(
-      req.params.id,
+      { _id: req.params.id, customerId: customer._id },
       { read: true },
       { new: true }
     );

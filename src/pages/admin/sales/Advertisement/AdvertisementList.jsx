@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+function resolveAdImageSrc(rawValue) {
+  const raw = String(rawValue || "").trim();
+
+  if (!raw) return "";
+  if (raw.startsWith("data:image/")) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/uploads/")) return `http://localhost:5000${raw}`;
+  if (raw.startsWith("uploads/")) return `http://localhost:5000/${raw}`;
+
+  return `http://localhost:5000/${raw}`;
+}
+
 export default function AdvertisementList() {
   const [ads, setAds] = useState([]);
 
@@ -11,7 +23,7 @@ export default function AdvertisementList() {
   const fetchAds = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/admin/advertisement");
-      setAds(res.data);
+      setAds(res.data?.data || []);
     } catch (err) {
       console.error("Error fetching advertisements:", err);
     }
@@ -30,19 +42,17 @@ export default function AdvertisementList() {
               <th>Product Name</th>
               <th>Tagline</th>
               <th>Description</th>
-              <th>Keywords</th>
-              <th>Product Link</th>
               <th>Type</th>
               <th>Target Area</th>
               <th>Target Audience</th>
-              <th>Thumbnail</th>
+              <th>Product Image</th>
             </tr>
           </thead>
 
           <tbody>
             {ads.length === 0 ? (
               <tr>
-                <td colSpan="11" className="text-center py-3">
+                <td colSpan="9" className="text-center py-3">
                   No advertisements found
                 </td>
               </tr>
@@ -58,23 +68,13 @@ export default function AdvertisementList() {
                   <td>{ad.productName}</td>
                   <td>{ad.tagline}</td>
                   <td>{ad.description}</td>
-                  <td>{ad.keywords}</td>
-                  <td>
-                    {ad.productLink ? (
-                      <a href={ad.productLink} target="_blank" rel="noreferrer">
-                        {ad.productLink}
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
                   <td>{ad.type}</td>
                   <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>
                   <td className="text-center">
-                    {ad.thumbnail ? (
+                    {resolveAdImageSrc(ad.thumbnail) ? (
                       <img
-                        src={`http://localhost:5000/${ad.thumbnail}`}
+                        src={resolveAdImageSrc(ad.thumbnail)}
                         alt="thumb"
                         width={50}
                         height={50}
