@@ -107,6 +107,7 @@ export default function Projects() {
     const payload = {
       projectName: formData.projectName,
       customerName: formData.customerName,
+      email: formData.email,  
       phone: formData.phone,
       description: formData.customizationDetails,
       endDate: formData.dueDate,
@@ -130,6 +131,7 @@ export default function Projects() {
         const normalized = {
           ...p,
           customerName: p.customerId?.name || p.customerName,
+          email: p.customerId?.email || p.email || "", 
           phone: p.phone || p.phoneNumber || p.customerId?.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
@@ -281,6 +283,7 @@ const handleDeleteProject = async () => {
                 <th className="px-4 py-3 text-left text-sm font-semibold">S.No</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Project Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Customer Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Phone</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Customization</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Due Date</th>
@@ -302,6 +305,7 @@ const handleDeleteProject = async () => {
                   <td className="px-4 py-3 text-sm">{project.projectName || "-"}</td>
 
                   <td className="px-4 py-3 text-sm">{project.customerName || "-"}</td>
+                  <td className="px-4 py-3 text-sm">{project.email || "-"}</td> 
 
                   <td className="px-4 py-3 text-sm">{project.phone || "-"}</td>
 
@@ -402,6 +406,14 @@ const handleDeleteProject = async () => {
                 required
                 className="w-full border px-3 py-2 rounded"
               />
+              <input
+          type="email"
+          name="email"
+          placeholder="Customer Email"
+          value={formData.email}
+          onChange={handleInputChange}
+          className="w-full border px-3 py-2 rounded"
+/>
 
               <input
                 type="text"
