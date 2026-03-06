@@ -1,49 +1,108 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function CustomizeProject() {
+
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    phone: "",
     customizationDetails: "",
     dueDate: "",
   });
 
   const [loading, setLoading] = useState(false);
 
+  // AUTH CHECK
+  useEffect(() => {
+
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
+
+    if (!token || role !== "customer") {
+      alert("Please login as customer to access this page.");
+      navigate("/login");
+      return;
+    }
+
+  }, [navigate]);
+
+
+
   const handleChange = (e) => {
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+
   };
 
+
+
   const handleSubmit = async (e) => {
+
     e.preventDefault();
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:5000/api/projects/create", formData);
+
+      const token = localStorage.getItem("token");
+
+      await axios.post(
+        "http://localhost:5000/api/projects",
+        {
+          projectName: formData.projectName,
+          customerName: formData.customerName,
+          phone: formData.phone,
+          description: formData.customizationDetails,
+          endDate: formData.dueDate,
+          status: "ongoing"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       alert("Project Customization Request Submitted Successfully!");
 
       setFormData({
         projectName: "",
         customerName: "",
+        phone: "",
         customizationDetails: "",
         dueDate: "",
       });
 
     } catch (error) {
+
       console.error("Error submitting project:", error);
-      alert("Something went wrong!");
+
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Something went wrong!";
+
+      alert(errorMsg);
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
+
+
   return (
+
     <div className="p-6 bg-gray-50 min-h-screen flex justify-center items-start">
+
       <div className="bg-white shadow-lg rounded-lg w-full max-w-2xl p-6">
 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
@@ -53,10 +112,13 @@ export default function CustomizeProject() {
         <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Project Name */}
+
           <div>
+
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Project Name <span className="text-red-500">*</span>
             </label>
+
             <input
               type="text"
               name="projectName"
@@ -66,13 +128,19 @@ export default function CustomizeProject() {
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter project name"
             />
+
           </div>
 
+
+
           {/* Customer Name */}
+
           <div>
+
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Customer Name <span className="text-red-500">*</span>
             </label>
+
             <input
               type="text"
               name="customerName"
@@ -82,13 +150,40 @@ export default function CustomizeProject() {
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter your name"
             />
+
           </div>
 
-          {/* Customization Details */}
+
+
+          {/* Phone */}
+
           <div>
+
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Phone Number
+            </label>
+
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Enter contact number"
+            />
+
+          </div>
+
+
+
+          {/* Customization Details */}
+
+          <div>
+
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Customization Details
             </label>
+
             <textarea
               name="customizationDetails"
               value={formData.customizationDetails}
@@ -97,13 +192,19 @@ export default function CustomizeProject() {
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Describe your customization requirements"
             />
+
           </div>
 
+
+
           {/* Due Date */}
+
           <div>
+
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Expected Due Date <span className="text-red-500">*</span>
             </label>
+
             <input
               type="date"
               name="dueDate"
@@ -112,19 +213,28 @@ export default function CustomizeProject() {
               required
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
+
           </div>
 
+
+
           {/* Submit Button */}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition"
           >
+
             {loading ? "Submitting..." : "Submit Customization"}
+
           </button>
 
         </form>
+
       </div>
+
     </div>
+
   );
 }

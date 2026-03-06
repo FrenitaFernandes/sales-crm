@@ -1,6 +1,7 @@
 /*
 
 const User = require("../models/user");
+const Customer = require("../models/Customer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { sendWelcomeEmail } = require("../services/emailService");
@@ -17,7 +18,7 @@ const generateToken = (id) => {
 // ===============================
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Please fill all required fields" });
@@ -39,6 +40,13 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       role: "customer",
     });
+    // Create Customer entry
+await Customer.create({
+  name,
+  email,
+  phone,
+  status: "Inactive",
+});
 
     // send welcome email
     await sendWelcomeEmail(email, name);

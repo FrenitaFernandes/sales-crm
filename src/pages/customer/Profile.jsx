@@ -1,20 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, FileText, CreditCard, Package } from "lucide-react";
 
 function Profile() {
 
-  // STATIC DUMMY DATA (NO BACKEND NEEDED)
   const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+91 9876543210",
-    address: "MG Road, Bengaluru",
-    company: "Tech Solutions Pvt Ltd",
-    gst: "29ABCDE1234F2Z5",
-    pan: "ABCDE1234F",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    company: "",
+    gst: "",
+    pan: "",
     avatar: "",
-    createdAt: "2023-02-15"
+    createdAt: ""
   });
+
+  // LOAD LOGGED IN USER DATA
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+
+    if (storedUser) {
+      setProfile({
+        name: storedUser.name || "",
+        email: storedUser.email || "",
+        phone: storedUser.phone || "",
+        address: storedUser.address || "",
+        company: storedUser.company || "",
+        gst: storedUser.gst || "",
+        pan: storedUser.pan || "",
+        avatar: storedUser.avatar || "",
+        createdAt: storedUser.createdAt || new Date().toISOString().split("T")[0]
+      });
+    }
+  }, []);
 
   const orders = [
     { orderId: "ORD12345", amount: 4999, date: "2024-01-10" },
@@ -32,7 +50,11 @@ function Profile() {
   ];
 
   const updateProfile = () => {
-    alert("Frontend only — profile updated locally!");
+
+    // SAVE UPDATED PROFILE TO LOCAL STORAGE
+    localStorage.setItem("user", JSON.stringify(profile));
+
+    alert("Profile updated successfully!");
   };
 
   return (
@@ -46,6 +68,7 @@ function Profile() {
       <div className="bg-white shadow rounded-xl p-6 flex items-center gap-6">
         <img
           src={profile.avatar || "https://ui-avatars.com/api/?name=" + profile.name}
+          alt={profile.name}
           className="w-20 h-20 rounded-full shadow"
         />
         <div>
@@ -63,37 +86,43 @@ function Profile() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.name}
             onChange={(e) => setProfile({ ...profile, name: e.target.value })}
             placeholder="Full Name"
           />
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.email}
             onChange={(e) => setProfile({ ...profile, email: e.target.value })}
             placeholder="Email"
           />
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.phone}
             onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
             placeholder="Phone Number"
           />
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.company}
             onChange={(e) => setProfile({ ...profile, company: e.target.value })}
             placeholder="Company Name"
           />
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.gst}
             onChange={(e) => setProfile({ ...profile, gst: e.target.value })}
             placeholder="GST Number"
           />
 
-          <input className="p-3 border rounded w-full"
+          <input
+            className="p-3 border rounded w-full"
             value={profile.pan}
             onChange={(e) => setProfile({ ...profile, pan: e.target.value })}
             placeholder="PAN Number"
@@ -114,29 +143,6 @@ function Profile() {
           Save Changes
         </button>
       </div>
-
-      {/* ACTIVE SERVICES */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-          <Package /> Active Services
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {services.map((s, idx) => (
-            <div key={idx} className="border p-4 rounded-xl shadow-sm">
-              <h3 className="font-semibold">{s.serviceName}</h3>
-              <p className="text-gray-600 text-sm">{s.description}</p>
-              <p className="mt-2 text-sm">
-                Status:
-                <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                  Active
-                </span>
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ORDERS */}
       <div className="bg-white shadow rounded-xl p-6">
         <h2 className="text-lg font-semibold flex items-center gap-2">

@@ -1,5 +1,19 @@
 const Invoice = require("../models/Invoice");
 
+const normalizeStatus = (status) => {
+  if (!status) return "pending";
+  const normalized = String(status).trim().toLowerCase();
+  const allowed = ["pending", "paid", "overdue", "cancelled"];
+  return allowed.includes(normalized) ? normalized : "pending";
+};
+
+const parseNumber = (value) => {
+  if (value === null || value === undefined || value === "") return NaN;
+  const cleaned = String(value).replace(/,/g, "").trim();
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
 // =============================
 // CREATE INVOICE
 // =============================
@@ -15,30 +29,59 @@ exports.createInvoice = async (req, res) => {
       tax,
       discount,
       total,
+      amount,
+      description,
+      date,
+      status,
       invoiceDate,
       dueDate
     } = req.body;
 
-    if (!invoiceNumber || !customerName || !subtotal || !total) {
-      return res.status(400).json({ message: "Required fields missing" });
+    const trimmedInvoiceNumber = String(invoiceNumber || "").trim();
+    const trimmedCustomerName = String(customerName || "").trim();
+
+    const numericAmount = parseNumber(amount ?? total ?? subtotal);
+    const taxValue = Number.isNaN(parseNumber(tax)) ? 0 : parseNumber(tax);
+    const discountValue = Number.isNaN(parseNumber(discount)) ? 0 : parseNumber(discount);
+    const subtotalValue = Number.isNaN(parseNumber(subtotal)) ? numericAmount : parseNumber(subtotal);
+    const totalValue = Number.isNaN(parseNumber(total))
+      ? numericAmount + taxValue - discountValue
+      : parseNumber(total);
+
+    const missingFields = [];
+    if (!trimmedInvoiceNumber) missingFields.push("invoiceNumber");
+    if (!trimmedCustomerName) missingFields.push("customerName");
+    if (Number.isNaN(numericAmount)) missingFields.push("amount");
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Required fields missing: ${missingFields.join(", ")}`,
+      });
     }
 
-    const exists = await Invoice.findOne({ invoiceNumber });
+    if (numericAmount < 0 || subtotalValue < 0 || totalValue < 0) {
+      return res.status(400).json({ message: "Amount values cannot be negative" });
+    }
+
+    const exists = await Invoice.findOne({ invoiceNumber: trimmedInvoiceNumber });
     if (exists) {
       return res.status(400).json({ message: "Invoice number already exists" });
     }
 
     const invoice = await Invoice.create({
-      invoiceNumber,
-      customerName,
+      invoiceNumber: trimmedInvoiceNumber,
+      customerName: trimmedCustomerName,
       customerEmail,
       customerPhone,
+      description: description || "",
       items,
-      subtotal,
-      tax,
-      discount,
-      total,
-      invoiceDate,
+      amount: numericAmount,
+      subtotal: subtotalValue,
+      tax: taxValue,
+      discount: discountValue,
+      total: totalValue,
+      status: normalizeStatus(status),
+      invoiceDate: invoiceDate || date,
       dueDate
     });
 
@@ -134,7 +177,7 @@ exports.updateInvoiceStatus = async (req, res) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    invoice.status = status;
+    invoice.status = normalizeStatus(status);
     await invoice.save();
 
     res.status(200).json({
@@ -145,7 +188,8 @@ exports.updateInvoiceStatus = async (req, res) => {
 
   } catch (error) {
     console.error("Status Update Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    const message = error?.message || "Failed to update invoice status";
+    res.status(400).json({ message });
   }
 };
 

@@ -16,9 +16,18 @@ function Login() {
 
     try {
       const data = await loginUser({ email, password });
+
       setMessage("Login successful!");
 
+      // SAVE TOKEN
+      localStorage.setItem("token", data.token);
+
+      // SAVE USER ROLE
       const role = data.user.role;
+      localStorage.setItem("userRole", role);
+
+      // SAVE USER DATA (IMPORTANT FOR PROFILE PAGE)
+      localStorage.setItem("user", JSON.stringify(data.user));
 
       setTimeout(() => {
         if (role === "admin") {
@@ -27,6 +36,7 @@ function Login() {
           navigate("/customer/dashboard");
         }
       }, 800);
+
     } catch (error) {
       setMessage(error.response?.data?.message || "Login failed");
     }
@@ -34,10 +44,13 @@ function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+      
       <form
         onSubmit={handleLogin}
         className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
       >
+
+        {/* BACK BUTTON */}
         <Link
           to="/"
           className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center gap-2"
@@ -45,18 +58,24 @@ function Login() {
           <FaArrowLeft size={12} /> Home
         </Link>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Login
+        </h2>
 
+        {/* MESSAGE */}
         {message && (
           <p
             className={`text-center text-sm mb-3 ${
-              message.includes("failed") ? "text-red-600" : "text-green-600"
+              message.includes("failed")
+                ? "text-red-600"
+                : "text-green-600"
             }`}
           >
             {message}
           </p>
         )}
 
+        {/* EMAIL */}
         <input
           type="email"
           placeholder="Email"
@@ -66,8 +85,9 @@ function Login() {
           required
         />
 
-        {/* Password */}
+        {/* PASSWORD */}
         <div className="relative mb-4">
+
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
@@ -82,10 +102,16 @@ function Login() {
             className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}
+            {showPassword ? (
+              <FaEye size={18} />
+            ) : (
+              <FaEyeSlash size={18} />
+            )}
           </button>
+
         </div>
 
+        {/* LOGIN BUTTON */}
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
@@ -93,19 +119,29 @@ function Login() {
           Login
         </button>
 
+        {/* FORGOT PASSWORD */}
         <div className="text-center mt-3">
-          <Link to="/forgot-password" className="text-blue-600 hover:underline">
+          <Link
+            to="/forgot-password"
+            className="text-blue-600 hover:underline"
+          >
             Forgot Password?
           </Link>
         </div>
 
+        {/* REGISTER */}
         <p className="text-center text-sm text-gray-600 mt-4">
           Don’t have an account?{" "}
-          <Link to="/register" className="text-green-600 hover:underline">
+          <Link
+            to="/register"
+            className="text-green-600 hover:underline"
+          >
             Register
           </Link>
         </p>
+
       </form>
+
     </div>
   );
 }

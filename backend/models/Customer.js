@@ -8,7 +8,6 @@ const CustomerSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
       lowercase: true,
     },
     phone: String,
@@ -19,7 +18,7 @@ const CustomerSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["Active", "Inactive", "Suspended"],
-      default: "Active",
+      default: "Inactive",
     },
     company: String,
     industry: String,

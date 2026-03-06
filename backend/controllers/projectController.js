@@ -5,9 +5,12 @@ const Customer = require("../models/Customer");
 // CREATE PROJECT
 // =============================
 exports.createProject = async (req, res) => {
+  console.log('[projectController] createProject body:', req.body);
   try {
-    const {
+  
+    let {
       customerId,
+      customerName,
       projectName,
       clientName,
       description,
@@ -16,17 +19,65 @@ exports.createProject = async (req, res) => {
       endDate,
       budget,
       assignedTo,
-      progress
+      progress,
+      dueDate, // shipped from frontend
+      phone // new field from frontend form
     } = req.body;
 
-    if (!customerId || !projectName || !clientName) {
-      return res.status(400).json({ message: "Customer, Project Name & Client Name are required" });
+    // map form naming
+    if (dueDate && !endDate) {
+      endDate = dueDate;
     }
 
-    // Check if customer exists
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
+    if (!projectName) {
+      return res.status(400).json({ message: "Project Name is required" });
+    }
+
+    // determine customerId; customers will not send this
+    if (!customerId) {
+      if (customerName) {
+        // try to find existing customer by name
+        let customer = await Customer.findOne({ name: customerName });
+        if (customer) {
+          // update phone if provided in body
+          if (phone) {
+            customer.phone = phone;
+            await customer.save();
+          }
+        } else {
+          // create with a placeholder email if not provided
+          customer = await Customer.create({
+            name: customerName,
+            email: `${customerName.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`,
+            phone: phone || undefined,
+          });
+        }
+        customerId = customer._id;
+      } else if (req.user && req.user.role === "customer") {
+        // if the logged in user is a customer we can try to link by email or name
+        let customer = await Customer.findOne({ email: req.user.email });
+        if (!customer) {
+          customer = await Customer.create({
+            name: req.user.name,
+            email: req.user.email,
+            phone: req.user.phone,
+          });
+        } else if (phone) {
+          customer.phone = phone;
+          await customer.save();
+        }
+        customerId = customer._id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(400).json({ message: "Customer information is required" });
+    }
+
+    // ensure there is a clientName (project owner) as well
+    if (!clientName) {
+      // default to customerName or user's name
+      clientName = customerName || (req.user && req.user.name);
     }
 
     const project = await Project.create({
@@ -34,18 +85,35 @@ exports.createProject = async (req, res) => {
       projectName,
       clientName,
       description,
-      status,
-      startDate,
+      phone: req.body.phone,
+      status: status || "ongoing",
+      startDate: startDate || Date.now(),
       endDate,
       budget,
       assignedTo,
-      progress
+      progress: progress || 0,
     });
+
+    // Populate customer details before returning
+    const populatedProject = await project.populate("customerId", "name email company phone");
+
+    // log minimal debug info so frontend dev can inspect why phone could be empty
+    console.log("[projectController] createProject -> project.phone:", project.phone);
+    console.log("[projectController] createProject -> customer.phone:", populatedProject.customerId?.phone);
+
+    // convert to plain object and ensure response includes a top-level phone
+    let resp;
+    try {
+      resp = populatedProject.toObject ? populatedProject.toObject() : JSON.parse(JSON.stringify(populatedProject));
+    } catch (e) {
+      resp = populatedProject;
+    }
+    resp.phone = resp.phone || (resp.customerId && resp.customerId.phone) || null;
 
     res.status(201).json({
       success: true,
       message: "Project created successfully",
-      data: project,
+      data: resp,
     });
 
   } catch (error) {
@@ -63,10 +131,30 @@ exports.getProjects = async (req, res) => {
       .populate("customerId", "name email company phone")
       .sort({ createdAt: -1 });
 
+    // convert to plain objects and ensure each project has a top-level `phone`
+    const payload = projects.map(p => {
+      const obj = p.toObject ? p.toObject() : p;
+      obj.phone = obj.phone || (obj.customerId && obj.customerId.phone) || null;
+      return obj;
+    });
+
+    // Log a compact view of phone fields for debugging
+    try {
+      const debugList = payload.map(p => ({
+        _id: p._id,
+        projectPhone: p.phone || null,
+        customerPhone: p.customerId?.phone || null,
+        customerName: p.customerId?.name || null
+      }));
+      console.log('[projectController] getProjects debug:', JSON.stringify(debugList));
+    } catch (e) {
+      console.warn('[projectController] getProjects debug failed', e);
+    }
+
     res.status(200).json({
       success: true,
-      count: projects.length,
-      data: projects,
+      count: payload.length,
+      data: payload,
     });
 
   } catch (error) {
@@ -103,6 +191,19 @@ exports.getProjectById = async (req, res) => {
 // =============================
 exports.updateProject = async (req, res) => {
   try {
+    // if phone is being updated, propagate change to customer record too
+    if (req.body.phone) {
+      // find project and customer
+      const proj = await Project.findById(req.params.id);
+      if (proj && proj.customerId) {
+        const cust = await Customer.findById(proj.customerId);
+        if (cust) {
+          cust.phone = req.body.phone;
+          await cust.save();
+        }
+      }
+    }
+
     const project = await Project.findByIdAndUpdate(
       req.params.id,
       req.body,
