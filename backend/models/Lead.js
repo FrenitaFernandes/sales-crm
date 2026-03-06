@@ -2,14 +2,20 @@ const mongoose = require("mongoose");
 
 const LeadSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String },
-    phone: { type: String },
+    leadName: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    projectName: { type: String, required: true },
+    industryType: { type: String, required: true },
+    
+    // Legacy fields (keeping for backward compatibility)
+    name: { type: String },
     project: { type: String },
-company: { type: String },
-description: { type: String },
+    company: { type: String },
+    description: { type: String },
 
     source: { type: String, default: "Unknown" },
+    date: { type: Date, default: Date.now },
 
     status: {
   type: String,
@@ -21,6 +27,8 @@ description: { type: String },
     "Follow-Up",
     "Converted",
     "Lost",
+    "Not Interested",
+    "Dropout",
   ],
   default: "New",
 },
@@ -33,8 +41,7 @@ description: { type: String },
     ],
 
     assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       default: null,
     },
   },

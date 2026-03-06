@@ -1,5 +1,55 @@
 const Lead = require("../models/Lead");
 const Customer = require("../models/Customer");
+const Project = require("../models/Project");
+
+// ============================
+// CHECK IF EMAIL EXISTS IN CUSTOMERS
+// ============================
+exports.checkCustomerByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
+      });
+    }
+
+    // First, check in Customer collection
+    const customer = await Customer.findOne({ email: email.toLowerCase() });
+
+    if (customer) {
+      // If customer exists, try to get project details
+      const project = await Project.findOne({ customerId: customer._id }).sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        data: {
+          leadName: customer.name,
+          projectName: project ? project.projectName : "",
+          industryType: customer.industryType || "",
+          phone: customer.phone || ""
+        }
+      });
+    }
+
+    // If not found in customers, return not exists
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      data: null
+    });
+
+  } catch (error) {
+    console.error("Check Customer Error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error" 
+    });
+  }
+};
 
 // ============================
 // GET CUSTOMER LEADS
@@ -24,32 +74,47 @@ exports.getCustomerLeads = async (req, res) => {
 // ============================
 exports.createLead = async (req, res) => {
   try {
-    const { name, email, phone, source, project, company, description } = req.body;
+    const { 
+      leadName, 
+      email, 
+      phone, 
+      projectName, 
+      industryType, 
+      date,
+      source, 
+      status,
+      assignedTo,
+      // Legacy fields
+      name, 
+      project, 
+      company, 
+      description 
+    } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ message: "Lead name is required" });
+    // Validate required fields
+    if (!leadName || !email || !phone || !projectName || !industryType) {
+      return res.status(400).json({ 
+        success: false,
+        message: "All fields are required: leadName, email, phone, projectName, industryType" 
+      });
     }
 
     const lead = await Lead.create({
-      name,
-      email,
+      leadName,
+      email: email.toLowerCase(),
       phone,
-      source,
-      project,
+      projectName,
+      industryType,
+      date: date ? new Date(date) : new Date(),
+      source: source || "Unknown",
+      status: status || "New",
+      assignedTo: assignedTo || null,
+      // Also save to legacy fields for backward compatibility
+      name: leadName,
+      project: projectName,
       company,
       description,
     });
-
-    const existingCustomer = await Customer.findOne({ email });
-
-    if (!existingCustomer) {
-      await Customer.create({
-        name,
-        email,
-        phone,
-        status: "Inactive",
-      });
-    }
 
     res.status(201).json({
       success: true,
@@ -59,7 +124,11 @@ exports.createLead = async (req, res) => {
 
   } catch (error) {
     console.error("Create Lead Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: error.message 
+    });
   }
 };
 

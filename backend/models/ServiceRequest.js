@@ -5,56 +5,65 @@ const serviceRequestSchema = new mongoose.Schema(
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true
+      required: true,
     },
 
     ticketId: {
       type: String,
       trim: true,
-      unique: true
+      default: () => `TKT-${Date.now()}`,
     },
 
     subject: {
       type: String,
+      trim: true,
+    },
+
+    title: {
+      type: String,
       required: true,
-      trim: true
+      trim: true,
     },
 
     category: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     description: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     enableChat: {
       type: Boolean,
-      default: false
+      default: false,
     },
 
     uploadedImage: {
-      type: String
+      type: String,
+    },
+
+    createdDate: {
+      type: Date,
     },
 
     priority: {
       type: String,
       enum: ["Low", "Medium", "High"],
-      default: "Medium"
+      default: "Medium",
     },
 
     status: {
       type: String,
-      enum: ["Open", "In Progress", "Closed"],
-      default: "Open"
+      enum: ["Pending", "Open", "In Progress", "Completed", "Closed"],
+      default: "Pending",
     },
 
     isRead: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   { timestamps: true }
 );
