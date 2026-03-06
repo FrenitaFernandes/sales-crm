@@ -10,10 +10,13 @@ const {
   addFollowUp,
   updateStatus,
   deleteLead,
+  checkCustomerByEmail,
 } = require("../controllers/leadController");
 
 const router = express.Router();
 
+// Check if customer exists by email (must come before other routes)
+router.get("/check-customer", protect, checkCustomerByEmail);
 router.post("/", protect, createLead);
 router.get("/", protect, getLeads);
 

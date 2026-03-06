@@ -23,7 +23,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Connect MongoDB
 connectDB();
@@ -47,6 +48,19 @@ app.use("/api/customer", notificationRoutes);
 // Health Check Route
 app.get("/", (req, res) => {
   res.status(200).send("CRM Backend is running 🚀");
+});
+
+// Return JSON for oversized payloads and other body parse errors.
+app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({ message: "Attachment is too large. Please upload a smaller file." });
+  }
+
+  if (err) {
+    return res.status(400).json({ message: "Invalid request payload" });
+  }
+
+  return next();
 });
 
 // Server Start

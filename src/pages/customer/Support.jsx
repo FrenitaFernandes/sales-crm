@@ -11,6 +11,8 @@ function Support() {
   const [previousRequests, setPreviousRequests] = useState([]);
   const [submitMessage, setSubmitMessage] = useState("");
   const [submitError, setSubmitError] = useState("");
+  const [attachmentName, setAttachmentName] = useState("");
+  const [attachmentPreview, setAttachmentPreview] = useState("");
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
@@ -121,6 +123,9 @@ function Support() {
           description: form.message,
           priority: "Medium",
           status: "Pending",
+          uploadedPreview: attachmentPreview || null,
+          uploadedImage: attachmentPreview || null,
+          attachment: attachmentPreview || null,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -129,10 +134,29 @@ function Support() {
 
       setSubmitMessage("Support request submitted successfully!");
       setForm({ subject: "", category: "", message: "" });
+      setAttachmentName("");
+      setAttachmentPreview("");
       fetchMyRequests();
     } catch (error) {
       setSubmitError(error?.response?.data?.message || "Failed to submit support request");
     }
+  };
+
+  const handleAttachmentChange = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    setAttachmentName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      setAttachmentPreview(result);
+    };
+    reader.readAsDataURL(file);
+
+    // Allow selecting the same file again later if needed.
+    event.target.value = "";
   };
 
   return (
@@ -183,6 +207,44 @@ function Support() {
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
         />
+
+        <div className="space-y-2">
+          <label className="text-sm text-gray-600">Attachment (optional)</label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded cursor-pointer text-sm border">
+              {attachmentPreview ? "Change Image" : "Add Attachment"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAttachmentChange}
+              />
+            </label>
+
+            {attachmentPreview && (
+              <button
+                type="button"
+                className="text-sm px-3 py-2 rounded border hover:bg-gray-50"
+                onClick={() => {
+                  setAttachmentName("");
+                  setAttachmentPreview("");
+                }}
+              >
+                Remove
+              </button>
+            )}
+
+            {attachmentName && <span className="text-xs text-gray-500">{attachmentName}</span>}
+          </div>
+
+          {attachmentPreview && (
+            <img
+              src={attachmentPreview}
+              alt="attachment preview"
+              className="h-24 w-24 object-cover rounded border"
+            />
+          )}
+        </div>
 
         <button
           onClick={submitForm}

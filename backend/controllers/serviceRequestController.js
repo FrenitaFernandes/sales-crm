@@ -38,101 +38,90 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const { customerId, title, description, priority, subject, category } = req.body;
-
-    let resolvedCustomerId = customerId;
-    if (!resolvedCustomerId && req.user) {
-      const userEmail = String(req.user.email || "").trim().toLowerCase();
-      const userName = String(req.user.name || "").trim();
-
-      let customerByIdentity = null;
-      if (userEmail) {
-        customerByIdentity = await Customer.findOne({ email: userEmail });
-      }
-
-      if (!customerByIdentity && userName) {
-        customerByIdentity = await Customer.findOne({ name: userName });
-      }
-
-      if (!customerByIdentity && (userEmail || userName)) {
-        customerByIdentity = await Customer.create({
-          name: userName || "Customer",
-          email: userEmail || undefined,
-          status: "Active",
-        });
-      }
-
-      if (customerByIdentity?._id) {
-        resolvedCustomerId = customerByIdentity._id;
-      }
-    }
-
-    const resolvedTitle = String(title || subject || "").trim();
-
-    if (!resolvedCustomerId || !resolvedTitle) {
-      return res.status(400).json({ message: "Customer ID & Title are required" });
-    // Data comes from req.body (text) and req.file (image)
-    const { customerId, subject, description, priority, category, enableChat } = req.body;
-
-    if (!customerId || !subject) {
-      return res.status(400).json({ message: "Customer ID & Subject are required" });
-    }
-
-    const customerExists = await Customer.findById(resolvedCustomerId);
-    if (!customerExists) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    // 🔹 Generate Ticket ID
-    const lastTicket = await ServiceRequest.findOne().sort({ createdAt: -1 });
-    let ticketNumber = 2001;
-    if (lastTicket && lastTicket.ticketId) {
-      const parts = lastTicket.ticketId.split("-");
-      const lastNumber = parseInt(parts[1]);
-      if (!isNaN(lastNumber)) {
-        ticketNumber = lastNumber + 1;
-      }
-    }
-    const ticketId = `TCK-${ticketNumber}`;
-
-    // 🔹 Handle File Path
-    // req.file is created by Multer in the routes file
-    let imagePath = "";
-    if (req.file) {
-      imagePath = `/uploads/${req.file.filename}`;
-    }
-
-    const request = await ServiceRequest.create({
-<<<<<<< HEAD
-      customerId: resolvedCustomerId,
-      title: resolvedTitle,
-      subject: String(subject || "").trim() || resolvedTitle,
-      category: String(category || "").trim(),
-=======
-      ticketId,
+    const {
       customerId,
-      subject, // Uses 'subject' from your Model
->>>>>>> member3-preema
+      title,
       description,
-      priority: priority || "Medium",
+      priority,
+      subject,
       category,
-      enableChat: enableChat === "true" || enableChat === true, // handle string from FormData
-      uploadedImage: imagePath,
-      status: "Open",
-    });
+      uploadedPreview,
+      uploadedImage,
+      attachment,
+      file,
+    } = req.body;
+    let resolvedCustomerId = customerId;
 
-    // Requirement #1: Success response
-    res.status(201).json({
-      success: true,
-      message: "Service request created successfully",
-      data: request,
-    });
-  } catch (error) {
-    console.error("Create Service Request Error:", error);
-    res.status(500).json({ message: "Server error" });
+  // If customerId not provided, find/create using logged-in user
+  if (!resolvedCustomerId && req.user) {
+
+    const userEmail = String(req.user.email || "").trim().toLowerCase();
+    const userName = String(req.user.name || "").trim();
+
+    let customerByIdentity = null;
+
+    if (userEmail) {
+      customerByIdentity = await Customer.findOne({ email: userEmail });
+    }
+
+    if (!customerByIdentity && userName) {
+      customerByIdentity = await Customer.findOne({ name: userName });
+    }
+
+    if (!customerByIdentity && (userEmail || userName)) {
+      customerByIdentity = await Customer.create({
+        name: userName || "Customer",
+        email: userEmail || undefined,
+        status: "Active",
+      });
+    }
+
+    if (customerByIdentity?._id) {
+      resolvedCustomerId = customerByIdentity._id;
+    }
   }
-};
 
+  const resolvedTitle = String(title || subject || "").trim();
+
+  if (!resolvedCustomerId || !resolvedTitle) {
+    return res.status(400).json({
+      message: "Customer ID & Title are required"
+    });
+  }
+
+  const customerExists = await Customer.findById(resolvedCustomerId);
+
+  if (!customerExists) {
+    return res.status(404).json({
+      message: "Customer not found"
+    });
+  }
+
+  const resolvedAttachment = String(
+    uploadedPreview || uploadedImage || attachment || file || ""
+  ).trim();
+
+  const request = await ServiceRequest.create({
+    customerId: resolvedCustomerId,
+    title: resolvedTitle,
+    subject: String(subject || "").trim() || resolvedTitle,
+    category: String(category || "").trim(),
+    description: String(description || "").trim(),
+    priority: String(priority || "").trim() || "Medium",
+    uploadedImage: resolvedAttachment || undefined,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Service request created successfully",
+    data: request,
+  });
+
+} catch (error) {
+  console.error("Create Service Request Error:", error);
+  res.status(500).json({ message: "Server error" });
+}
+};
 // =============================
 // GET ALL SERVICE REQUESTS
 // =============================
