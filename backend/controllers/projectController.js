@@ -7,6 +7,7 @@ const Customer = require("../models/Customer");
 // =============================
 exports.createProject = async (req, res) => {
   console.log("[projectController] createProject body:", req.body);
+  console.log("[projectController] req.user:", req.user);
 
   try {
 
@@ -46,47 +47,49 @@ exports.createProject = async (req, res) => {
     // FIND OR CREATE CUSTOMER
     // =============================
     if (!customerId) {
+      const role = String(req.user?.role || "").toLowerCase();
+      const userEmail = String(req.user?.email || "").trim().toLowerCase();
 
-      if (customerName) {
+      // For customer login, always resolve by authenticated identity first.
+      if (role === "customer" && userEmail) {
+        let customer = await Customer.findOne({ email: userEmail });
 
-        let customer = await Customer.findOne({ name: customerName });
-
-        if (customer) {
-
-          if (phone) {
-            customer.phone = phone;
-            await customer.save();
-          }
-
-        } else {
-
+        if (!customer) {
           customer = await Customer.create({
-          userId: req.user?._id || new mongoose.Types.ObjectId(), // fix
-          name: customerName,
-          email: email || `${customerName.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`,
-          phone: phone || undefined,
-});
+            userId: req.user?._id || new mongoose.Types.ObjectId(),
+            name: req.user?.name || customerName || "Customer",
+            email: userEmail,
+            phone: phone || req.user?.phone || undefined,
+            status: "Active",
+          });
+        } else if (phone && customer.phone !== phone) {
+          customer.phone = phone;
+          await customer.save();
         }
 
         customerId = customer._id;
+        customerName = customerName || customer.name;
+        email = email || customer.email;
+      } else if (customerName) {
+        let customer = await Customer.findOne({ name: customerName });
 
-      } else if (req.user && req.user.role === "customer") {
+        if (!customer && email) {
+          customer = await Customer.findOne({ email: String(email).trim().toLowerCase() });
+        }
 
-        let customer = await Customer.findOne({ email: req.user.email });
-
-        if (!customer) {
-
+        if (customer) {
+          if (phone && customer.phone !== phone) {
+            customer.phone = phone;
+            await customer.save();
+          }
+        } else {
+          const userId = req.user?._id || new mongoose.Types.ObjectId();
           customer = await Customer.create({
-            name: req.user.name,
-            email: req.user.email,
-            phone: req.user.phone
+            userId,
+            name: customerName,
+            email: email || `${customerName.toLowerCase().replace(/\s+/g, ".")}@placeholder.com`,
+            phone: phone || undefined,
           });
-
-        } else if (phone) {
-
-          customer.phone = phone;
-          await customer.save();
-
         }
 
         customerId = customer._id;
@@ -102,6 +105,22 @@ exports.createProject = async (req, res) => {
       clientName = customerName || (req.user && req.user.name);
     }
 
+    // Validate email
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    console.log("[projectController] About to create project with:", {
+      customerId,
+      projectName,
+      clientName,
+      email,
+      description,
+      phone,
+      status,
+      endDate
+    });
+
     // =============================
     // CREATE PROJECT
     // =============================
@@ -109,7 +128,7 @@ exports.createProject = async (req, res) => {
       customerId,
       projectName,
       clientName,
-      email,
+      email: email.toLowerCase(),
       description,
       phone,
       status: status || "ongoing",
@@ -151,9 +170,27 @@ exports.createProject = async (req, res) => {
       data: resp
     });
 
+    console.log("[projectController] Project created successfully:", project._id);
+
   } catch (error) {
-    console.error("Create Project Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("[projectController] Create Project Error:", error.message);
+    console.error("[projectController] Full Error:", error);
+    
+    // Check if it's a validation error
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        success: false,
+        message: "Validation Error",
+        error: messages.join(', ') 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: "Server Error",
+      error: error.message 
+    });
   }
 };
 

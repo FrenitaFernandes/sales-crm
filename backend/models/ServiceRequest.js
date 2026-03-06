@@ -47,21 +47,14 @@ const serviceRequestSchema = new mongoose.Schema(
 
     status: {
       type: String,
-<<<<<<< HEAD
       enum: ["Pending", "In Progress", "Completed", "Open", "Closed"],
-      default: "Pending",
+      default: "Pending"
     },
 
     isRead: {
       type: Boolean,
-      default: false,
-    },
-=======
-      enum: ["Open", "In Progress", "Closed"],
-      default: "Open"
+      default: false
     }
-
->>>>>>> member3-preema
   },
   { timestamps: true }
 );

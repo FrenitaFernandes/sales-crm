@@ -38,8 +38,8 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-<<<<<<< HEAD
-    const { customerId, title, description, priority, subject, category } = req.body;
+    // Data comes from req.body (text) and req.file (image)
+    const { customerId, title, subject, description, priority, category, enableChat } = req.body;
 
     let resolvedCustomerId = customerId;
     if (!resolvedCustomerId && req.user) {
@@ -72,13 +72,6 @@ exports.createServiceRequest = async (req, res) => {
 
     if (!resolvedCustomerId || !resolvedTitle) {
       return res.status(400).json({ message: "Customer ID & Title are required" });
-=======
-    // Data comes from req.body (text) and req.file (image)
-    const { customerId, subject, description, priority, category, enableChat } = req.body;
-
-    if (!customerId || !subject) {
-      return res.status(400).json({ message: "Customer ID & Subject are required" });
->>>>>>> member3-preema
     }
 
     const customerExists = await Customer.findById(resolvedCustomerId);
@@ -106,20 +99,14 @@ exports.createServiceRequest = async (req, res) => {
     }
 
     const request = await ServiceRequest.create({
-<<<<<<< HEAD
+      ticketId,
       customerId: resolvedCustomerId,
       title: resolvedTitle,
       subject: String(subject || "").trim() || resolvedTitle,
       category: String(category || "").trim(),
-=======
-      ticketId,
-      customerId,
-      subject, // Uses 'subject' from your Model
->>>>>>> member3-preema
       description,
       priority: priority || "Medium",
-      category,
-      enableChat: enableChat === "true" || enableChat === true, // handle string from FormData
+      enableChat: enableChat === "true" || enableChat === true,
       uploadedImage: imagePath,
       status: "Open",
     });

@@ -164,6 +164,46 @@ export default function Leads() {
     reminder: "1 day before",
   });
 
+  // Fetch leads from MongoDB on component mount
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const response = await getAllLeads();
+        if (response.success && response.data) {
+          // Transform MongoDB data to match frontend format
+          const transformedLeads = response.data.map((lead) => ({
+            id: lead._id,
+            leadName: lead.leadName,
+            projectName: lead.projectName,
+            industryType: lead.industryType,
+            phone: lead.phone,
+            email: lead.email,
+            source: lead.source,
+            status: lead.status,
+            assignedTo: lead.assignedTo,
+            date: new Date(lead.date).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }),
+            lastFollowUp: "Follow Up",
+            category: "today",
+            followUpHistory: [],
+          }));
+          setLeads(transformedLeads);
+        }
+      } catch (error) {
+        console.error("Failed to load leads:", error);
+        // Keep the default leads if API fails
+      }
+    };
+
+    fetchLeads();
+  }, []);
+
   const productCategories = {
     "": [],
     "IoT Products": ["Data Logger IIoT 4.0", "Cloud PLC", "Biometric Authentication", "HMI & Display Board", "RFID Reader", "IoT CoE", "R-Lifi"],

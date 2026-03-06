@@ -39,12 +39,13 @@ const registerUser = async (req, res) => {
       role: "customer",
     });
     // Create Customer entry
-await Customer.create({
-  name,
-  email,
-  phone,
-  status: "Inactive",
-});
+    await Customer.create({
+      userId: user._id,
+      name,
+      email,
+      phone,
+      status: "Inactive",
+    });
 
     // send welcome email
     await sendWelcomeEmail(email, name);

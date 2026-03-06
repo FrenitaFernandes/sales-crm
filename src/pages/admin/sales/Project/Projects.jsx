@@ -18,6 +18,7 @@ export default function Projects() {
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    email: "",
     phone: "",
     customizationDetails: "",
     dueDate: ""
@@ -83,6 +84,7 @@ export default function Projects() {
     setFormData({
       projectName: "",
       customerName: "",
+      email: "",
       phone: "",
       customizationDetails: "",
       dueDate: ""
@@ -146,7 +148,9 @@ export default function Projects() {
     } catch (error) {
 
       console.error("Error adding project:", error);
-      alert("Failed to add project");
+      console.error("Error response:", error.response?.data);
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || "Failed to add project";
+      alert(errorMsg);
 
     }
   };
