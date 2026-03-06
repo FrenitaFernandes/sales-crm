@@ -4,7 +4,11 @@ const serviceRequestSchema = new mongoose.Schema(
   {
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
 
-    ticketId: { type: String, trim: true },
+    ticketId: {
+      type: String,
+      trim: true,
+      default: () => `TKT-${Date.now()}`,
+    },
     subject: { type: String, trim: true },
     category: { type: String, trim: true },
     title: { type: String, required: true, trim: true },

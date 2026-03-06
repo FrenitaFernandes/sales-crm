@@ -38,7 +38,18 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const { customerId, title, description, priority, subject, category } = req.body;
+    const {
+      customerId,
+      title,
+      description,
+      priority,
+      subject,
+      category,
+      uploadedPreview,
+      uploadedImage,
+      attachment,
+      file,
+    } = req.body;
 
     let resolvedCustomerId = customerId;
     if (!resolvedCustomerId && req.user) {
@@ -78,13 +89,18 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    const resolvedAttachment = String(
+      uploadedPreview || uploadedImage || attachment || file || ""
+    ).trim();
+
     const request = await ServiceRequest.create({
       customerId: resolvedCustomerId,
       title: resolvedTitle,
       subject: String(subject || "").trim() || resolvedTitle,
       category: String(category || "").trim(),
       description,
-      priority
+      priority,
+      uploadedImage: resolvedAttachment || undefined,
     });
 
     res.status(201).json({

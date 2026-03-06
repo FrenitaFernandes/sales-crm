@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { getCustomerUnreadCount } from "../../utils/customerNotifications";
 
 const Navbar = ({ title, onLogout, onToggleSidebar }) => {
 
@@ -21,6 +22,11 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
 
   const loadNotificationCount = async () => {
     try {
+      if (role === "customer") {
+        setNotificationCount(getCustomerUnreadCount());
+        return;
+      }
+
       if (role !== "admin") {
         setNotificationCount(0);
         return;
