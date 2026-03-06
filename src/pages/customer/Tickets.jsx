@@ -1,10 +1,25 @@
-import { Ticket, Eye, MessageCircle } from "lucide-react";
+import { MessageCircle, Ticket } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { syncCustomerTicketNotifications } from "../../utils/customerNotifications";
+
+const BACKEND_BASE = "http://localhost:5000";
+
+function resolveAttachmentSrc(uploadedImage) {
+  const raw = String(uploadedImage || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("data:image/")) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/uploads/")) return `${BACKEND_BASE}${raw}`;
+
+  return "";
+}
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState(null);
   const [activeChat, setActiveChat] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -39,11 +54,23 @@ function Tickets() {
           id: item.ticketId || `TCK-${String(item._id).slice(-4).toUpperCase()}`,
           subject: item.subject || item.title || "Support Request",
           category: item.category || "General",
+          description: item.description || "-",
           priority: item.priority || "Medium",
           status: item.status || "Pending",
-          date: item.createdAt ? new Date(item.createdAt).toISOString().slice(0, 10) : "-",
+          uploadedImage: item.uploadedImage || "",
+          created: item.createdAt ? new Date(item.createdAt).toLocaleString() : "-",
           enableChat: !!item.enableChat,
         }));
+
+      const syncResult = syncCustomerTicketNotifications(
+        (res.data?.data || []).filter((item) => {
+          const email = String(item?.customerId?.email || "").toLowerCase();
+          return myEmail ? email === myEmail : true;
+        })
+      );
+      if (syncResult.added > 0) {
+        window.dispatchEvent(new Event("notifications-updated"));
+      }
 
       setTickets(rows);
     } catch (error) {
@@ -56,18 +83,6 @@ function Tickets() {
 
   useEffect(() => {
     fetchTickets();
-  }, []);
-
-  useEffect(() => {
-    const intervalId = setInterval(fetchTickets, 10000);
-    const onFocus = () => fetchTickets();
-
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener("focus", onFocus);
-    };
   }, []);
 
   const openChat = async (ticket) => {
@@ -117,47 +132,56 @@ function Tickets() {
     }
   };
 
+  useEffect(() => {
+    const intervalId = setInterval(fetchTickets, 10000);
+    const onFocus = () => fetchTickets();
+
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
   return (
     <div className="p-6 space-y-6">
-
-      {/* Page Title */}
       <h1 className="text-2xl font-semibold flex items-center gap-2">
         <Ticket /> Tickets
       </h1>
 
-      {/* Tickets Table */}
       <div className="bg-white p-6 shadow rounded-xl">
-
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b text-gray-600">
               <th className="p-3 text-left">Ticket ID</th>
               <th className="p-3 text-left">Subject</th>
               <th className="p-3 text-left">Category</th>
+              <th className="p-3 text-left">Description</th>
               <th className="p-3 text-left">Priority</th>
+              <th className="p-3 text-left">Attachment</th>
+              <th className="p-3 text-left">Created</th>
               <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-right">Actions</th>
+              <th className="p-3 text-left">Chat</th>
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-3 text-center text-gray-500">Loading tickets...</td>
+                <td colSpan={9} className="p-3 text-center text-gray-500">Loading tickets...</td>
               </tr>
             ) : tickets.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-3 text-center text-gray-500">No tickets found.</td>
+                <td colSpan={9} className="p-3 text-center text-gray-500">No tickets found.</td>
               </tr>
             ) : tickets.map((t, idx) => (
               <tr key={idx} className="border-b hover:bg-gray-50 transition">
-
                 <td className="p-3">{t.id}</td>
                 <td className="p-3 max-w-sm truncate">{t.subject}</td>
                 <td className="p-3">{t.category}</td>
+                <td className="p-3 max-w-md truncate">{t.description}</td>
 
-                {/* Priority Badge */}
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 text-sm rounded-full
@@ -174,7 +198,28 @@ function Tickets() {
                   </span>
                 </td>
 
-                {/* Status Badge */}
+                <td className="p-3">
+                  {resolveAttachmentSrc(t.uploadedImage) ? (
+                    <button
+                      type="button"
+                      className="h-12 w-12 rounded border overflow-hidden bg-gray-50"
+                      onClick={() => setPreviewImage(resolveAttachmentSrc(t.uploadedImage))}
+                      title="Click to view image"
+                    >
+                      <img
+                        src={resolveAttachmentSrc(t.uploadedImage)}
+                        alt="attachment thumbnail"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
+                </td>
+
+                <td className="p-3">{t.created}</td>
+
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 text-sm rounded-full
@@ -191,38 +236,61 @@ function Tickets() {
                   </span>
                 </td>
 
-                <td className="p-3">{t.date}</td>
-
-                {/* Action Buttons */}
-                <td className="p-3 text-right space-x-2">
-                  <button className="px-3 py-1 bg-blue-600 text-white rounded flex items-center gap-1 inline-flex">
-                    <Eye size={16} /> View
-                  </button>
-
-                  {t.enableChat && (
+                <td className="p-3">
+                  {t.enableChat ? (
                     <button
-                      className="px-3 py-1 bg-gray-200 rounded flex items-center gap-1 inline-flex"
-                      onClick={() => openChat(t)}
+                      type="button"
+                      className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 inline-flex items-center justify-center"
                       title="Open chat"
+                      onClick={() => openChat(t)}
                     >
-                      <MessageCircle size={16} /> Chat
+                      <MessageCircle size={16} />
                     </button>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
                   )}
                 </td>
-
               </tr>
             ))}
           </tbody>
         </table>
-
       </div>
 
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10000] p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative bg-white rounded-lg shadow-xl p-3 max-w-4xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute top-2 right-2 bg-white border rounded px-2 py-1 text-sm"
+              onClick={() => setPreviewImage(null)}
+            >
+              Close
+            </button>
+            <img
+              src={previewImage}
+              alt="attachment preview"
+              className="max-w-[80vw] max-h-[80vh] object-contain rounded"
+            />
+          </div>
+        </div>
+      )}
+
       {activeChat && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-3">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[10001] p-3">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
             <div className="p-3 border-b flex justify-between items-center">
               <h3 className="font-semibold text-sm">Chat - {activeChat.subject}</h3>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => setActiveChat(null)}>
+              <button
+                type="button"
+                className="border px-3 py-1 rounded"
+                onClick={() => setActiveChat(null)}
+              >
                 Close
               </button>
             </div>
@@ -246,13 +314,13 @@ function Tickets() {
                 </div>
               )}
 
-              {chatError && <p className="text-danger text-sm mt-2">{chatError}</p>}
+              {chatError && <p className="text-red-600 text-sm mt-2">{chatError}</p>}
             </div>
 
             <div className="p-3 border-t flex gap-2">
               <input
                 type="text"
-                className="form-control"
+                className="border rounded px-3 py-2 w-full"
                 placeholder="Type message"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -263,7 +331,11 @@ function Tickets() {
                   }
                 }}
               />
-              <button className="btn btn-primary" onClick={sendChatMessage}>
+              <button
+                type="button"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                onClick={sendChatMessage}
+              >
                 Send
               </button>
             </div>

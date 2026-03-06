@@ -1,9 +1,52 @@
 import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { MessageCircle, Trash2 } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api/admin";
 
 const statuses = ["All", "Pending", "In Progress", "Completed"];
 const priorities = ["Low", "Medium", "High"];
+
+function buildTicketId() {
+  return `TKT-${Date.now()}`;
+}
+
+function resolveTicketId(request) {
+  const existing = String(request?.ticketId || "").trim();
+  if (existing) return existing;
+
+  const id = String(request?._id || "").trim();
+  if (!id || id.startsWith("local-")) return "-";
+
+  // Fallback for older records that were created without ticketId.
+  return `TKT-${id.slice(-6).toUpperCase()}`;
+}
+
+function resolveAttachmentSrc(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return "";
+
+  // Accept base64 data URIs saved by customer support form.
+  if (/^data:/i.test(raw)) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/uploads/")) {
+    return `${API_BASE.replace("/api/admin", "")}${raw}`;
+  }
+
+  return "";
+}
+
+function resolveRequestAttachment(request) {
+  if (!request || typeof request !== "object") return "";
+
+  return (
+    request.uploadedImage ||
+    request.uploadedPreview ||
+    request.attachment ||
+    request.file ||
+    ""
+  );
+}
 
 function formatDate(iso) {
   if (!iso) return "-";
@@ -26,17 +69,23 @@ const ServiceRequests = () => {
 
   // modals
   const [showCreate, setShowCreate] = useState(false);
-  const [viewRequest, setViewRequest] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [activeChat, setActiveChat] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatError, setChatError] = useState("");
+  const [allowingChatId, setAllowingChatId] = useState("");
 
   // toast
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
   // create form
   const [customerId, setCustomerId] = useState("");
-  const [ticketId, setTicketId] = useState("");
+  const [ticketId, setTicketId] = useState(() => buildTicketId());
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("");
-  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
   const [status, setStatus] = useState("Open");
@@ -50,13 +99,15 @@ const ServiceRequests = () => {
 
   const showToast = (msg, type = "success") => {
     setToast({ show: true, msg, type });
-    setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 2500);
+    setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 3500);
   };
+
+  const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
   // ✅ fetch customers
   const fetchCustomers = async () => {
     try {
-      const res = await fetch(`${API_BASE}/customers`);
+      const res = await fetch(`${API_BASE}/customers?registeredOnly=true`);
       const data = await res.json();
       setCustomers(data);
     } catch (err) {
@@ -73,7 +124,7 @@ const ServiceRequests = () => {
 
       const res = await fetch(`${API_BASE}/service-requests?${q.toString()}`);
       const data = await res.json();
-      setRequests(Array.isArray(data) ? data : []);
+      setRequests(Array.isArray(data) ? data : data?.data || []);
     } catch (err) {
       console.log("Fetch requests error:", err);
     }
@@ -119,10 +170,9 @@ const ServiceRequests = () => {
 
   const resetForm = () => {
     setCustomerId("");
-    setTicketId("");
+    setTicketId(buildTicketId());
     setSubject("");
     setCategory("");
-    setTitle("");
     setDescription("");
     setPriority("Medium");
     setStatus("Open");
@@ -137,18 +187,23 @@ const ServiceRequests = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    if (!customerId || !subject.trim()) {
+    const resolvedSubject = subject.trim();
+    const resolvedTitle = resolvedSubject;
+    const resolvedTicketId = String(ticketId || "").trim() || buildTicketId();
+
+    if (!customerId || !resolvedSubject) {
       showToast("Please select customer and enter subject.", "error");
       return;
     }
 
     // optimistic UI update: add to local list immediately
+    const optimisticId = `local-${Date.now()}`;
     const optimistic = {
-      _id: `local-${Date.now()}`,
-      ticketId: ticketId || `TKT-${Date.now()}`,
-      subject: subject.trim(),
+      _id: optimisticId,
+      ticketId: resolvedTicketId,
+      subject: resolvedSubject,
       category,
-      title: title.trim(),
+      title: resolvedTitle,
       description: description.trim(),
       priority,
       status,
@@ -163,10 +218,10 @@ const ServiceRequests = () => {
       // Send JSON to simple backend endpoint (includes base64 preview if available)
       const payload = {
         customerId,
-        ticketId,
-        subject: subject.trim(),
+        ticketId: resolvedTicketId,
+        subject: resolvedSubject,
         category,
-        title: title.trim(),
+        title: resolvedTitle,
         description: description.trim(),
         priority,
         status,
@@ -181,18 +236,41 @@ const ServiceRequests = () => {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
 
       if (!res.ok) {
+        setRequests((prev) => prev.filter((r) => r._id !== optimisticId));
         showToast(data.message || "Failed to create request", "error");
         return;
       }
 
-      showToast("✅ Service request created");
+      const created = data?.request || data?.data || null;
+      setRequests((prev) =>
+        prev.map((row) => {
+          if (row._id !== optimisticId) return row;
+
+          if (!created || typeof created !== "object") {
+            return { ...row, ticketId: resolvedTicketId };
+          }
+
+          return {
+            ...created,
+            ticketId: String(created.ticketId || "").trim() || resolvedTicketId,
+          };
+        })
+      );
+
+      showToast("Request sent successfully.");
       setShowCreate(false);
       resetForm();
-      fetchRequests();
     } catch (err) {
+      setRequests((prev) => prev.filter((r) => r._id !== optimisticId));
       showToast("Server error while creating request", "error");
     }
   };
@@ -222,15 +300,25 @@ const ServiceRequests = () => {
 
   // ✅ delete request
   const handleDelete = async (id) => {
-    const ok = window.confirm("Are you sure you want to delete this request?");
-    if (!ok) return;
+    if (!id) return;
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
-      const res = await fetch(`${API_BASE}/service-requests/${id}`, {
+      const res = await fetch(`${API_BASE}/service-requests/${deleteTarget}`, {
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { message: raw || "Failed to delete request" };
+      }
 
       if (!res.ok) {
         showToast(data.message || "Failed to delete request", "error");
@@ -238,9 +326,89 @@ const ServiceRequests = () => {
       }
 
       showToast("✅ Service request deleted");
+      setDeleteTarget(null);
       fetchRequests();
     } catch (err) {
       showToast("Server error while deleting request", "error");
+    }
+  };
+
+  const allowChat = async (id) => {
+    if (!id) return;
+
+    try {
+      setAllowingChatId(id);
+      const token = getToken();
+
+      try {
+        await axios.put(
+          `http://localhost:5000/api/services/${id}/allow-chat`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch {
+        await axios.put(
+          `http://localhost:5000/api/services/${id}`,
+          { enableChat: true },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      setRequests((prev) =>
+        prev.map((item) => (item._id === id ? { ...item, enableChat: true } : item))
+      );
+      showToast("Chat allowed for this request.");
+    } catch (err) {
+      showToast(err?.response?.data?.message || "Unable to allow chat", "error");
+    } finally {
+      setAllowingChatId("");
+    }
+  };
+
+  const openChat = async (item) => {
+    if (!item?._id || !item?.enableChat) return;
+
+    try {
+      setActiveChat(item);
+      setChatError("");
+      setChatLoading(true);
+      const token = getToken();
+
+      const res = await axios.get(`http://localhost:5000/api/services/${item._id}/chat`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setChatMessages(res.data?.data || []);
+    } catch (err) {
+      setChatMessages([]);
+      setChatError(err?.response?.data?.message || "Failed to load chat");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!activeChat?._id) return;
+
+    const message = chatInput.trim();
+    if (!message) return;
+
+    try {
+      setChatError("");
+      const token = getToken();
+
+      const res = await axios.post(
+        `http://localhost:5000/api/services/${activeChat._id}/chat`,
+        { message },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.data) {
+        setChatMessages((prev) => [...prev, res.data.data]);
+      }
+      setChatInput("");
+    } catch (err) {
+      setChatError(err?.response?.data?.message || "Failed to send message");
     }
   };
 
@@ -258,7 +426,7 @@ const ServiceRequests = () => {
       {/* Toast */}
       {toast.show && (
         <div
-          className={`fixed top-5 right-5 px-4 py-3 rounded shadow text-white z-[9999] ${
+          className={`fixed top-5 right-5 px-4 py-3 rounded shadow-lg text-white z-[10050] transition-opacity ${
             toast.type === "error" ? "bg-red-600" : "bg-green-600"
           }`}
         >
@@ -307,7 +475,7 @@ const ServiceRequests = () => {
       <div className="bg-white rounded-lg shadow p-4 mb-5 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
         <input
           className="border p-2 rounded w-full lg:w-[40%]"
-          placeholder="Search customer / email / title..."
+          placeholder="Search customer / email / subject..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -342,7 +510,10 @@ const ServiceRequests = () => {
           <thead>
             <tr className="bg-gray-100 text-left">
               <th className="p-3 border">Customer</th>
-              <th className="p-3 border">Title</th>
+              <th className="p-3 border">Ticket ID</th>
+              <th className="p-3 border">Subject</th>
+              <th className="p-3 border">Category</th>
+              <th className="p-3 border">Description</th>
               <th className="p-3 border">Priority</th>
               <th className="p-3 border">Attachment</th>
               <th className="p-3 border">Created</th>
@@ -361,9 +532,20 @@ const ServiceRequests = () => {
                   </td>
 
                   <td className="p-3 border">
-                    <div className="font-medium">{r.title}</div>
-                    <div className="text-xs text-gray-500 line-clamp-1">
-                      {r.description || "—"}
+                    <div className="font-medium">{resolveTicketId(r)}</div>
+                  </td>
+
+                  <td className="p-3 border">
+                    <div className="font-medium">{r.subject || r.title || "-"}</div>
+                  </td>
+
+                  <td className="p-3 border">
+                    <div className="text-sm">{r.category || "-"}</div>
+                  </td>
+
+                  <td className="p-3 border">
+                    <div className="text-xs text-gray-500 line-clamp-2">
+                      {r.description || "-"}
                     </div>
                   </td>
 
@@ -382,16 +564,22 @@ const ServiceRequests = () => {
                   </td>
 
                   <td className="p-3 border">
-                    {r.uploadedImage ? (
-                      <img
-                        src={
-                          r.uploadedImage.startsWith("http")
-                            ? r.uploadedImage
-                            : `${API_BASE.replace("/api/admin", "")}${r.uploadedImage}`
+                    {resolveAttachmentSrc(resolveRequestAttachment(r)) ? (
+                      <button
+                        type="button"
+                        className="h-14 w-14 rounded border overflow-hidden bg-gray-50"
+                        onClick={() =>
+                          setPreviewImage(resolveAttachmentSrc(resolveRequestAttachment(r)))
                         }
-                        alt="thumb"
-                        className="h-12 w-12 object-cover rounded"
-                      />
+                        title="Click to view image"
+                      >
+                        <img
+                          src={resolveAttachmentSrc(resolveRequestAttachment(r))}
+                          alt="attachment thumbnail"
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </button>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
                     )}
@@ -413,17 +601,32 @@ const ServiceRequests = () => {
 
                   <td className="p-3 border">
                     <div className="flex gap-2">
+                      {!r.enableChat ? (
+                        <button
+                          type="button"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                          onClick={() => allowChat(r._id)}
+                          disabled={allowingChatId === r._id}
+                        >
+                          {allowingChatId === r._id ? "Allowing..." : "Allow Chat"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="h-8 w-8 rounded-full bg-slate-600 hover:bg-slate-700 text-white inline-flex items-center justify-center"
+                          onClick={() => openChat(r)}
+                          title="Open chat"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                      )}
                       <button
-                        className="bg-gray-800 text-white px-3 py-1 rounded text-sm"
-                        onClick={() => setViewRequest(r)}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+                        type="button"
+                        className="h-8 w-8 rounded-full bg-red-600 hover:bg-red-700 text-white inline-flex items-center justify-center"
                         onClick={() => handleDelete(r._id)}
+                        title="Delete request"
                       >
-                        Delete
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
@@ -431,7 +634,7 @@ const ServiceRequests = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="p-6 text-center text-gray-500">
+                <td colSpan="10" className="p-6 text-center text-gray-500">
                   No service requests found.
                 </td>
               </tr>
@@ -519,7 +722,7 @@ const ServiceRequests = () => {
                   <input
                     className="border p-2 rounded w-full bg-gray-50"
                     placeholder="Auto-generated"
-                    value={ticketId || `TKT-${Date.now()}`}
+                    value={ticketId}
                     onChange={(e) => setTicketId(e.target.value)}
                   />
                 </div>
@@ -665,58 +868,120 @@ const ServiceRequests = () => {
         </div>
       )}
 
-      {/* View Modal */}
-      {viewRequest && (
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold">Request Details</h3>
+          <div className="bg-white rounded-lg shadow-lg w-[95%] max-w-md p-5">
+            <h3 className="text-lg font-bold mb-2">Delete Service Request</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete this request?
+            </p>
+
+            <div className="flex justify-end gap-2">
               <button
-                className="text-gray-600 hover:text-black"
-                onClick={() => setViewRequest(null)}
+                type="button"
+                className="border px-4 py-2 rounded hover:bg-gray-100"
+                onClick={() => setDeleteTarget(null)}
               >
-                ✕
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+                onClick={confirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10000] p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative bg-white rounded-lg shadow-xl p-3 max-w-4xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute top-2 right-2 bg-white border rounded px-2 py-1 text-sm"
+              onClick={() => setPreviewImage(null)}
+            >
+              Close
+            </button>
+            <img
+              src={previewImage}
+              alt="attachment preview"
+              className="max-w-[80vw] max-h-[80vh] object-contain rounded"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {activeChat && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[10001] p-3">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
+            <div className="p-3 border-b flex justify-between items-center">
+              <h3 className="font-semibold text-sm">
+                Chat - {activeChat.subject || activeChat.title || "Support Request"}
+              </h3>
+              <button
+                type="button"
+                className="border px-3 py-1 rounded"
+                onClick={() => setActiveChat(null)}
+              >
+                Close
               </button>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <h4 className="font-semibold">{viewRequest.ticketId || "-"}</h4>
-                {viewRequest.enableChat && (
-                  <span title="Chat enabled" className="text-blue-600 text-lg">💬</span>
-                )}
-              </div>
-
-              <p><b>Subject:</b> {viewRequest.subject || viewRequest.title || "-"}</p>
-              <p><b>Category:</b> {viewRequest.category || "-"}</p>
-              <p><b>Customer:</b> {viewRequest.customerId?.name}</p>
-              <p><b>Customer ID:</b> {viewRequest.customerId?._id || "-"}</p>
-              <p><b>Email:</b> {viewRequest.customerId?.email}</p>
-              <p><b>Phone:</b> {viewRequest.customerId?.phone}</p>
-              <p><b>Description:</b> {viewRequest.description || "—"}</p>
-              <p><b>Priority:</b> {viewRequest.priority || "Medium"}</p>
-              <p><b>Status:</b> {viewRequest.status}</p>
-              <p><b>Created:</b> {formatDate(viewRequest.createdDate || viewRequest.createdAt)}</p>
-
-              {viewRequest.uploadedImage && (
-                <div>
-                  <p className="font-medium">Attachment</p>
-                  <img
-                    src={
-                      viewRequest.uploadedImage.startsWith("http")
-                        ? viewRequest.uploadedImage
-                        : `${API_BASE.replace("/api/admin", "")}${viewRequest.uploadedImage}`
-                    }
-                    alt="attachment"
-                    className="max-h-64 rounded border mt-2"
-                  />
+            <div className="p-3" style={{ maxHeight: "340px", overflowY: "auto" }}>
+              {chatLoading ? (
+                <p className="text-sm text-gray-500">Loading chat...</p>
+              ) : chatMessages.length === 0 ? (
+                <p className="text-sm text-gray-500">No messages yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {chatMessages.map((msg) => (
+                    <div
+                      key={msg._id}
+                      className={`p-2 rounded text-sm ${msg.senderRole === "admin" ? "bg-blue-100 ml-8" : "bg-gray-100 mr-8"}`}
+                    >
+                      <div className="font-semibold">{msg.senderName}</div>
+                      <div>{msg.message}</div>
+                    </div>
+                  ))}
                 </div>
               )}
+
+              {chatError && <p className="text-red-600 text-sm mt-2">{chatError}</p>}
             </div>
 
-            <div className="flex justify-end mt-4">
-              <button className="border px-4 py-2 rounded" onClick={() => setViewRequest(null)}>
-                Close
+            <div className="p-3 border-t flex gap-2">
+              <input
+                type="text"
+                className="border rounded px-3 py-2 w-full"
+                placeholder="Type message"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    sendChatMessage();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                onClick={sendChatMessage}
+              >
+                Send
               </button>
             </div>
           </div>

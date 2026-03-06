@@ -38,8 +38,18 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const { customerId, title, description, priority, subject, category } = req.body;
-
+    const {
+      customerId,
+      title,
+      description,
+      priority,
+      subject,
+      category,
+      uploadedPreview,
+      uploadedImage,
+      attachment,
+      file,
+    } = req.body;
     let resolvedCustomerId = customerId;
     if (!resolvedCustomerId && req.user) {
       const userEmail = String(req.user.email || "").trim().toLowerCase();
@@ -78,13 +88,18 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    const resolvedAttachment = String(
+      uploadedPreview || uploadedImage || attachment || file || ""
+    ).trim();
+
     const request = await ServiceRequest.create({
       customerId: resolvedCustomerId,
       title: resolvedTitle,
       subject: String(subject || "").trim() || resolvedTitle,
       category: String(category || "").trim(),
-      description,
-      priority
+      description: String(description || "").trim(),
+      priority: String(priority || "").trim() || "Medium",
+      uploadedImage: resolvedAttachment || undefined,
     });
 
     res.status(201).json({
@@ -92,7 +107,6 @@ exports.createServiceRequest = async (req, res) => {
       message: "Service request created successfully",
       data: request,
     });
-
   } catch (error) {
     console.error("Create Service Request Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -113,7 +127,6 @@ exports.getServiceRequests = async (req, res) => {
       count: requests.length,
       data: requests,
     });
-
   } catch (error) {
     console.error("Get Requests Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -125,15 +138,16 @@ exports.getServiceRequests = async (req, res) => {
 // =============================
 exports.getServiceRequestById = async (req, res) => {
   try {
-    const request = await ServiceRequest.findById(req.params.id)
-      .populate("customerId", "name email phone");
+    const request = await ServiceRequest.findById(req.params.id).populate(
+      "customerId",
+      "name email phone"
+    );
 
     if (!request) {
       return res.status(404).json({ message: "Service request not found" });
     }
 
     res.status(200).json({ success: true, data: request });
-
   } catch (error) {
     console.error("Get Request Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -160,7 +174,6 @@ exports.updateServiceRequest = async (req, res) => {
       message: "Service request updated successfully",
       data: request,
     });
-
   } catch (error) {
     console.error("Update Request Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -187,7 +200,6 @@ exports.updateServiceRequestStatus = async (req, res) => {
       message: "Status updated",
       data: request,
     });
-
   } catch (error) {
     console.error("Status Update Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -209,7 +221,6 @@ exports.deleteServiceRequest = async (req, res) => {
       success: true,
       message: "Service request deleted successfully",
     });
-
   } catch (error) {
     console.error("Delete Request Error:", error);
     res.status(500).json({ message: "Server error" });

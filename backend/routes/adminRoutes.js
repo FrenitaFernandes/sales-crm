@@ -96,7 +96,20 @@ router.get("/seed", async (req, res) => {
 // ✅ Get all customers
 router.get("/customers", async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const { registeredOnly } = req.query;
+
+    let customers;
+    if (String(registeredOnly).toLowerCase() === "true") {
+      const registeredUsers = await User.find({ role: "customer" }).select("email");
+      const registeredEmails = registeredUsers
+        .map((u) => String(u.email || "").trim().toLowerCase())
+        .filter(Boolean);
+
+      customers = await Customer.find({ email: { $in: registeredEmails } }).sort({ createdAt: -1 });
+    } else {
+      customers = await Customer.find().sort({ createdAt: -1 });
+    }
+
     res.json(customers);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -142,7 +155,18 @@ router.get("/service-requests", async (req, res) => {
       });
     }
 
-    res.json(requests);
+    const normalized = requests.map((item) => {
+      const doc = item?.toObject ? item.toObject() : item;
+      const attachment =
+        doc?.uploadedImage || doc?.uploadedPreview || doc?.attachment || doc?.file || null;
+
+      return {
+        ...doc,
+        uploadedImage: attachment,
+      };
+    });
+
+    res.json(normalized);
   } catch (err) {
     console.error("Fetch service requests error:", err);
     res.status(500).json({ message: "Server error" });
@@ -200,6 +224,8 @@ router.post("/service-requests", upload.single("attachment"), async (req, res) =
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
+    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+
     let uploadedImageUrl = null;
     if (req.file) {
       uploadedImageUrl = `/uploads/${req.file.filename}`;
@@ -207,7 +233,7 @@ router.post("/service-requests", upload.single("attachment"), async (req, res) =
 
     const newRequest = await ServiceRequest.create({
       customerId,
-      ticketId,
+      ticketId: resolvedTicketId,
       subject,
       category,
       title,
@@ -242,9 +268,11 @@ router.post("/service-requests-json", async (req, res) => {
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
+    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+
     const newRequest = await ServiceRequest.create({
       customerId,
-      ticketId,
+      ticketId: resolvedTicketId,
       subject,
       category,
       title,
@@ -278,9 +306,11 @@ router.post("/service-requests-simple", async (req, res) => {
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
+    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+
     const newRequest = await ServiceRequest.create({
       customerId,
-      ticketId,
+      ticketId: resolvedTicketId,
       subject,
       category,
       title,
@@ -322,6 +352,23 @@ router.put("/service-requests/:id/status", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// ✅ Delete service request
+router.delete("/service-requests/:id", async (req, res) => {
+  try {
+    const deleted = await ServiceRequest.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Service request not found" });
+    }
+
+    return res.json({ message: "✅ Service request deleted" });
+  } catch (err) {
+    console.error("Delete service request error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ✅ Latest 5 service requests (for dashboard table)
 router.get("/recent-service-requests", async (req, res) => {
   try {

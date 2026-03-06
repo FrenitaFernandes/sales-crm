@@ -1,49 +1,59 @@
 const Lead = require("../models/Lead");
 const Customer = require("../models/Customer");
+const Project = require("../models/Project");
 
 // ============================
-// CREATE LEAD
+// CHECK IF EMAIL EXISTS IN CUSTOMERS
 // ============================
-exports.createLead = async (req, res) => {
+exports.checkCustomerByEmail = async (req, res) => {
   try {
-    const { name, email, phone, source, project, company, description } = req.body;
+    const { email } = req.query;
 
-    if (!name) {
-      return res.status(400).json({ message: "Lead name is required" });
-    }
-
-    const lead = await Lead.create({
-      name,
-      email,
-      phone,
-      source,
-      project,
-      company,
-      description,
-    });
-
-    const existingCustomer = await Customer.findOne({ email });
-
-    if (!existingCustomer) {
-      await Customer.create({
-        name,
-        email,
-        phone,
-        status: "Inactive",
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
       });
     }
 
-    res.status(201).json({
+    // First, check in Customer collection
+    const customer = await Customer.findOne({ email: email.toLowerCase() });
+
+    if (customer) {
+      // If customer exists, try to get project details
+      const project = await Project.findOne({ customerId: customer._id }).sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        data: {
+          leadName: customer.name,
+          projectName: project ? project.projectName : "",
+          industryType: customer.industryType || "",
+          phone: customer.phone || ""
+        }
+      });
+    }
+
+    // If not found in customers, return not exists
+    return res.status(200).json({
       success: true,
-      message: "Lead created successfully",
-      data: lead,
+      exists: false,
+      data: null
     });
+
   } catch (error) {
-    console.error("Create Lead Error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Check Customer Error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error" 
+    });
   }
 };
 
+// ============================
+// GET CUSTOMER LEADS
+// ============================
 exports.getCustomerLeads = async (req, res) => {
   try {
     const leads = await Lead.find({ email: req.params.email }).sort({ createdAt: -1 });
@@ -60,6 +70,69 @@ exports.getCustomerLeads = async (req, res) => {
 };
 
 // ============================
+// CREATE LEAD
+// ============================
+exports.createLead = async (req, res) => {
+  try {
+    const { 
+      leadName, 
+      email, 
+      phone, 
+      projectName, 
+      industryType, 
+      date,
+      source, 
+      status,
+      assignedTo,
+      // Legacy fields
+      name, 
+      project, 
+      company, 
+      description 
+    } = req.body;
+
+    // Validate required fields
+    if (!leadName || !email || !phone || !projectName || !industryType) {
+      return res.status(400).json({ 
+        success: false,
+        message: "All fields are required: leadName, email, phone, projectName, industryType" 
+      });
+    }
+
+    const lead = await Lead.create({
+      leadName,
+      email: email.toLowerCase(),
+      phone,
+      projectName,
+      industryType,
+      date: date ? new Date(date) : new Date(),
+      source: source || "Unknown",
+      status: status || "New",
+      assignedTo: assignedTo || null,
+      // Also save to legacy fields for backward compatibility
+      name: leadName,
+      project: projectName,
+      company,
+      description,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Lead created successfully",
+      data: lead,
+    });
+
+  } catch (error) {
+    console.error("Create Lead Error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: error.message 
+    });
+  }
+};
+
+// ============================
 // GET ALL LEADS
 // ============================
 exports.getLeads = async (req, res) => {
@@ -71,6 +144,7 @@ exports.getLeads = async (req, res) => {
       count: leads.length,
       data: leads,
     });
+
   } catch (error) {
     console.error("Get Leads Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -84,9 +158,15 @@ exports.getLeadById = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
-    res.status(200).json({ success: true, data: lead });
+    res.status(200).json({
+      success: true,
+      data: lead
+    });
+
   } catch (error) {
     console.error("Get Lead Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -104,13 +184,16 @@ exports.updateLead = async (req, res) => {
       { new: true }
     );
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     res.status(200).json({
       success: true,
       message: "Lead updated successfully",
       data: lead,
     });
+
   } catch (error) {
     console.error("Update Lead Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -125,7 +208,10 @@ exports.addFollowUp = async (req, res) => {
     const { date, note } = req.body;
 
     const lead = await Lead.findById(req.params.id);
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     lead.followUps.push({ date, note });
     await lead.save();
@@ -135,6 +221,7 @@ exports.addFollowUp = async (req, res) => {
       message: "Follow-up added",
       data: lead,
     });
+
   } catch (error) {
     console.error("Follow-up Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -149,7 +236,10 @@ exports.updateStatus = async (req, res) => {
     const { status } = req.body;
 
     const lead = await Lead.findById(req.params.id);
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     lead.status = status;
     await lead.save();
@@ -181,12 +271,15 @@ exports.deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findByIdAndDelete(req.params.id);
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     res.status(200).json({
       success: true,
       message: "Lead deleted successfully",
     });
+
   } catch (error) {
     console.error("Delete Lead Error:", error);
     res.status(500).json({ message: "Server error" });
