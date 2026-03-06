@@ -38,7 +38,6 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-<<<<<<< HEAD
     const { customerId, title, description, priority, subject, category } = req.body;
 
     let resolvedCustomerId = customerId;
@@ -72,13 +71,11 @@ exports.createServiceRequest = async (req, res) => {
 
     if (!resolvedCustomerId || !resolvedTitle) {
       return res.status(400).json({ message: "Customer ID & Title are required" });
-=======
     // Data comes from req.body (text) and req.file (image)
     const { customerId, subject, description, priority, category, enableChat } = req.body;
 
     if (!customerId || !subject) {
       return res.status(400).json({ message: "Customer ID & Subject are required" });
->>>>>>> member3-preema
     }
 
     const customerExists = await Customer.findById(resolvedCustomerId);
