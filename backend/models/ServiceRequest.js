@@ -5,49 +5,57 @@ const serviceRequestSchema = new mongoose.Schema(
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true
+      required: true,
     },
 
     ticketId: {
       type: String,
       trim: true,
-      unique: true
+      default: () => `TKT-${Date.now()}`,
     },
 
     subject: {
       type: String,
+      trim: true,
+    },
+
+    title: {
+      type: String,
       required: true,
-      trim: true
+      trim: true,
     },
 
     category: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     description: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     enableChat: {
       type: Boolean,
-      default: false
+      default: false,
     },
 
     uploadedImage: {
-      type: String
+      type: String,
+    },
+
+    createdDate: {
+      type: Date,
     },
 
     priority: {
       type: String,
       enum: ["Low", "Medium", "High"],
-      default: "Medium"
+      default: "Medium",
     },
 
     status: {
       type: String,
-<<<<<<< HEAD
       enum: ["Pending", "In Progress", "Completed", "Open", "Closed"],
       default: "Pending",
     },
@@ -56,12 +64,6 @@ const serviceRequestSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-=======
-      enum: ["Open", "In Progress", "Closed"],
-      default: "Open"
-    }
-
->>>>>>> member3-preema
   },
   { timestamps: true }
 );
