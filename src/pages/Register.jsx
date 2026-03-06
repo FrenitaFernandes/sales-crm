@@ -38,7 +38,9 @@ function Register() {
         navigate("/login");
       }, 1000);
     } catch (error) {
-      setMessage(error.response?.data?.message || "Registration failed");
+      console.error("Registration Error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Registration failed";
+      setMessage(errorMessage);
     }
   };
 

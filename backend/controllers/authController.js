@@ -38,17 +38,34 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       role: "customer",
     });
+
     // Create Customer entry
-    await Customer.create({
-      userId: user._id,
-      name,
-      email,
-      phone,
-      status: "Inactive",
-    });
+    try {
+      const customerData = {
+        userId: user._id,
+        name,
+        email: email.toLowerCase(),
+        phone,
+        status: "Inactive",
+      };
+      console.log("Creating customer with data:", customerData);
+      await Customer.create(customerData);
+    } catch (customerError) {
+      // If Customer creation fails, delete the created User (rollback)
+      console.error("Customer Creation Error Details:", customerError.message, customerError.errors);
+      await User.deleteOne({ _id: user._id });
+      return res.status(400).json({ 
+        message: customerError.message || "Failed to create customer profile" 
+      });
+    }
 
     // send welcome email
-    await sendWelcomeEmail(email, name);
+    try {
+      await sendWelcomeEmail(email, name);
+    } catch (emailError) {
+      console.error("Email sending error:", emailError);
+      // Don't fail registration if email fails to send
+    }
 
     res.status(201).json({
       message: "Registration successful! Welcome email sent.",
@@ -63,7 +80,7 @@ const registerUser = async (req, res) => {
 
   } catch (error) {
     console.error("Registration Error:", error);
-    res.status(500).json({ message: "Registration failed" });
+    res.status(500).json({ message: error.message || "Registration failed" });
   }
 };
 
