@@ -1,6 +1,5 @@
 const express = require("express");
 const { protect } = require("../middleware/authMiddleware");
-const { getCustomerLeads } = require("../controllers/leadController");
 
 const {
   createLead,
@@ -17,8 +16,10 @@ const router = express.Router();
 
 router.post("/", protect, createLead);
 router.get("/", protect, getLeads);
+
 // customer-specific lookup must come before parameterized :id route
 router.get("/customer/:email", protect, getCustomerLeads);
+
 router.get("/:id", protect, getLeadById);
 router.put("/:id", protect, updateLead);
 router.post("/:id/followup", protect, addFollowUp);
