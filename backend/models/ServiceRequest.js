@@ -1,24 +1,5 @@
 const mongoose = require("mongoose");
 
-const PRIORITY_VALUES = ["Low", "Medium", "High"];
-const STATUS_VALUES = ["Pending", "In Progress", "Completed", "Open", "Closed"];
-
-const normalizePriority = (value) => {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "low") return "Low";
-  if (normalized === "high") return "High";
-  return "Medium";
-};
-
-const normalizeStatus = (value) => {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "in progress") return "In Progress";
-  if (normalized === "completed") return "Completed";
-  if (normalized === "open") return "Open";
-  if (normalized === "closed") return "Closed";
-  return "Pending";
-};
-
 const serviceRequestSchema = new mongoose.Schema(
   {
     customerId: {
@@ -30,8 +11,7 @@ const serviceRequestSchema = new mongoose.Schema(
     ticketId: {
       type: String,
       trim: true,
-      unique: true,
-      default: () => `TKT-${Date.now()}-${Math.floor(Math.random()*1000)}`
+      default: () => `TKT-${Date.now()}`,
     },
 
     subject: {
@@ -64,17 +44,19 @@ const serviceRequestSchema = new mongoose.Schema(
       type: String,
     },
 
+    createdDate: {
+      type: Date,
+    },
+
     priority: {
       type: String,
-      enum: PRIORITY_VALUES,
-      set: normalizePriority,
+      enum: ["Low", "Medium", "High"],
       default: "Medium",
     },
 
     status: {
       type: String,
-      enum: STATUS_VALUES,
-      set: normalizeStatus,
+      enum: ["Pending", "In Progress", "Completed", "Open", "Closed"],
       default: "Pending",
     },
 
