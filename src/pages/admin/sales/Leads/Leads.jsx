@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MdAdd, MdEdit, MdDelete, MdPhone, MdEmail, MdClose, MdFileDownload, MdEdit as MdEditIcon, MdPerson, MdBusiness, MdLanguage, MdArrowBack } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
+import { checkCustomerByEmail, createLead, getAllLeads } from "../../../../services/leadService";
 
 export default function Leads() {
   const navigate = useNavigate();
@@ -8,6 +9,8 @@ export default function Leads() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [selectedLeadForFollowUp, setSelectedLeadForFollowUp] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isCheckingCustomer, setIsCheckingCustomer] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLeadForDetail, setSelectedLeadForDetail] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,6 +146,10 @@ export default function Leads() {
 
   const [formData, setFormData] = useState({
     email: "",
+    leadName: "",
+    projectName: "",
+    industryType: "",
+    phone: "",
     date: "",
     source: "",
     status: "",
@@ -185,11 +192,17 @@ export default function Leads() {
     setShowAddModal(false);
     setFormData({
       email: "",
+      leadName: "",
+      projectName: "",
+      industryType: "",
+      phone: "",
       date: "",
       source: "",
       status: "",
       assignedTo: "",
     });
+    setIsCheckingCustomer(false);
+    setIsSubmitting(false);
   };
 
   const handleOpenFollowUpModal = (lead) => {
@@ -259,31 +272,96 @@ export default function Leads() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  // Check if email exists in customers and auto-fill
+  const handleEmailBlur = async () => {
+    const email = formData.email.trim();
+    
+    if (!email) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return;
+
+    setIsCheckingCustomer(true);
+    try {
+      const response = await checkCustomerByEmail(email);
+      
+      if (response.success && response.exists) {
+        // Auto-fill the form with customer data
+        setFormData(prev => ({
+          ...prev,
+          leadName: response.data.leadName || "",
+          projectName: response.data.projectName || "",
+          industryType: response.data.industryType || "",
+          phone: response.data.phone || "",
+        }));
+        
+        // Show success message
+        alert("Customer found! Details auto-filled.");
+      }
+    } catch (error) {
+      console.error("Error checking customer:", error);
+      // Silently fail - user can manually enter data
+    } finally {
+      setIsCheckingCustomer(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newLead = {
-      id: leads.length + 1,
-      leadName: "TBD", // Will come from different page
-      projectName: "TBD", // Will come from different page
-      industryType: "TBD", // Will come from different page
-      phone: "TBD", // Will come from different page
-      email: formData.email,
-      source: formData.source,
-      status: formData.status,
-      assignedTo: formData.assignedTo,
-      date: new Date(formData.date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }).replace(/\//g, "/"),
-      lastFollowUp: "Follow Up",
-      category: "today",
-    };
-    setLeads([...leads, newLead]);
-    handleCloseModal();
+    setIsSubmitting(true);
+
+    try {
+      const leadData = {
+        leadName: formData.leadName,
+        email: formData.email,
+        phone: formData.phone,
+        projectName: formData.projectName,
+        industryType: formData.industryType,
+        date: formData.date,
+        source: formData.source,
+        status: formData.status,
+        assignedTo: formData.assignedTo,
+      };
+
+      const response = await createLead(leadData);
+
+      if (response.success) {
+        alert("Lead created successfully!");
+        
+        // Add the new lead to the local state
+        const newLead = {
+          id: response.data._id,
+          leadName: response.data.leadName,
+          projectName: response.data.projectName,
+          industryType: response.data.industryType,
+          phone: response.data.phone,
+          email: response.data.email,
+          source: response.data.source,
+          status: response.data.status,
+          assignedTo: response.data.assignedTo,
+          date: new Date(response.data.date).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          lastFollowUp: "Follow Up",
+          category: "today",
+          followUpHistory: [],
+        };
+        
+        setLeads([newLead, ...leads]);
+        handleCloseModal();
+      }
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      alert(error.response?.data?.message || "Failed to create lead. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -729,15 +807,81 @@ export default function Leads() {
               <div className="space-y-4">
                 {/* Email */}
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Email</label>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Email
+                    {isCheckingCustomer && (
+                      <span className="ml-2 text-xs text-blue-600">Checking customer...</span>
+                    )}
+                  </label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    onBlur={handleEmailBlur}
+                    required
+                    disabled={isCheckingCustomer}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    placeholder="Enter email address"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    If this email is a customer, details will be auto-filled
+                  </p>
+                </div>
+
+                {/* Lead Name */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Lead Name</label>
+                  <input
+                    type="text"
+                    name="leadName"
+                    value={formData.leadName}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter email address"
+                    placeholder="Enter lead name"
+                  />
+                </div>
+
+                {/* Project Name */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Project Name</label>
+                  <input
+                    type="text"
+                    name="projectName"
+                    value={formData.projectName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter project name"
+                  />
+                </div>
+
+                {/* Industry Type */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Industry Type</label>
+                  <input
+                    type="text"
+                    name="industryType"
+                    value={formData.industryType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter industry type"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter phone number"
                   />
                 </div>
 
@@ -811,15 +955,17 @@ export default function Leads() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  disabled={isSubmitting || isCheckingCustomer}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add Lead
+                  {isSubmitting ? "Creating..." : "Add Lead"}
                 </button>
               </div>
             </form>
