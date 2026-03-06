@@ -66,17 +66,17 @@ const ServiceRequests = () => {
 
   // ✅ fetch requests
   const fetchRequests = async () => {
-    try {
-      const q = new URLSearchParams();
-      if (statusFilter && statusFilter !== "All") q.append("status", statusFilter);
-      if (search.trim()) q.append("search", search.trim());
+   const fetchRequests = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/service-requests`);
+    const data = await res.json();
 
-      const res = await fetch(`${API_BASE}/service-requests?${q.toString()}`);
-      const data = await res.json();
-      setRequests(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.log("Fetch requests error:", err);
-    }
+    setRequests(data.data || []);
+
+  } catch (err) {
+    console.log("Fetch requests error:", err);
+  }
+};
   };
 
   useEffect(() => {
@@ -145,7 +145,7 @@ const ServiceRequests = () => {
     // optimistic UI update: add to local list immediately
     const optimistic = {
       _id: `local-${Date.now()}`,
-      ticketId: ticketId || `TKT-${Date.now()}`,
+      ticketId: "Generating...",
       subject: subject.trim(),
       category,
       title: title.trim(),
@@ -162,20 +162,17 @@ const ServiceRequests = () => {
     try {
       // Send JSON to simple backend endpoint (includes base64 preview if available)
       const payload = {
-        customerId,
-        ticketId,
-        subject: subject.trim(),
-        category,
-        title: title.trim(),
-        description: description.trim(),
-        priority,
-        status,
-        enableChat,
-        createdDate: createdDate || new Date().toISOString(),
-        uploadedPreview: uploadedPreview || null,
-      };
+  customerId,
+  subject: subject.trim(),
+  category,
+  title: title.trim(),
+  description: description.trim(),
+  priority,
+  status,
+  enableChat
+};
 
-      const res = await fetch(`${API_BASE}/service-requests-simple`, {
+      const res = await fetch(`${API_BASE}/service-requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

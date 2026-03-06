@@ -8,15 +8,54 @@ import {
   MdSettings,
   MdMenu,
 } from "react-icons/md";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Navbar = ({ title, onLogout, onToggleSidebar }) => {
 
-  const [notificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
   const navigate = useNavigate();
 
   const role = localStorage.getItem("userRole"); // admin or customer
+
+  const loadNotificationCount = async () => {
+    try {
+      if (role !== "admin") {
+        setNotificationCount(0);
+        return;
+      }
+
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+      if (!token) {
+        setNotificationCount(0);
+        return;
+      }
+
+      const res = await axios.get("http://localhost:5000/api/services", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const unread = (res.data?.data || []).filter((item) => item?.isRead !== true);
+      setNotificationCount(unread.length);
+    } catch (error) {
+      setNotificationCount(0);
+    }
+  };
+
+  useEffect(() => {
+    loadNotificationCount();
+
+    const handleNotificationsUpdated = () => {
+      loadNotificationCount();
+    };
+
+    window.addEventListener("notifications-updated", handleNotificationsUpdated);
+
+    return () => {
+      window.removeEventListener("notifications-updated", handleNotificationsUpdated);
+    };
+  }, [role]);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -68,6 +107,11 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
           <button
             className="border-0 cursor-pointer text-gray-500 flex items-center justify-center p-2 rounded-md hover:bg-slate-100 hover:text-blue-600 transition-all relative"
             title="Notifications"
+            onClick={() =>
+              role === "admin"
+                ? navigate("/admin/crm/notifications")
+                : navigate("/customer/notifications")
+            }
           >
             <MdNotifications size={24} />
 

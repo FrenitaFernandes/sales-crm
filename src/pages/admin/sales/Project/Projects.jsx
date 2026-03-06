@@ -10,6 +10,10 @@ export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const [formData, setFormData] = useState({
     projectName: "",
@@ -103,6 +107,7 @@ export default function Projects() {
     const payload = {
       projectName: formData.projectName,
       customerName: formData.customerName,
+      email: formData.email,  
       phone: formData.phone,
       description: formData.customizationDetails,
       endDate: formData.dueDate,
@@ -126,6 +131,7 @@ export default function Projects() {
         const normalized = {
           ...p,
           customerName: p.customerId?.name || p.customerName,
+          email: p.customerId?.email || p.email || "", 
           phone: p.phone || p.phoneNumber || p.customerId?.phone || "",
           dueDate: p.endDate,
           customizationDetails: p.description,
@@ -174,31 +180,43 @@ export default function Projects() {
 
     }
   };
-const handleDeleteProject = async (projectId) => {
+const openDeleteModal = (project) => {
+  setDeleteTarget(project || null);
+  setDeleteMessage("");
+  setDeleteError("");
+};
 
-  const confirmDelete = window.confirm("Are you sure you want to delete this project?");
-  if (!confirmDelete) return;
+const closeDeleteModal = () => {
+  setDeleteTarget(null);
+};
+
+const handleDeleteProject = async () => {
+  if (!deleteTarget?._id) return;
 
   try {
+    setIsDeleting(true);
+    setDeleteError("");
 
     const token = localStorage.getItem("token");
 
     await axios.delete(
-      `http://localhost:5000/api/projects/${projectId}`,
+      `http://localhost:5000/api/projects/${deleteTarget._id}`,
       {
         headers: { Authorization: `Bearer ${token}` }
       }
     );
 
-    setProjects(projects.filter((p) => p._id !== projectId));
-
-    alert("Project deleted successfully!");
+    setProjects((prev) => prev.filter((p) => p._id !== deleteTarget._id));
+    setDeleteMessage("Project deleted successfully!");
+    setDeleteTarget(null);
 
   } catch (error) {
 
     console.error("Delete project error:", error);
-    alert("Failed to delete project");
+    setDeleteError("Failed to delete project");
 
+  } finally {
+    setIsDeleting(false);
   }
 };
 
@@ -223,6 +241,14 @@ const handleDeleteProject = async (projectId) => {
         </button>
 
       </div>
+
+      {deleteMessage && (
+        <div className="alert alert-success py-2 mb-3">{deleteMessage}</div>
+      )}
+
+      {deleteError && (
+        <div className="alert alert-danger py-2 mb-3">{deleteError}</div>
+      )}
 
 
       {/* LOADING */}
@@ -257,6 +283,7 @@ const handleDeleteProject = async (projectId) => {
                 <th className="px-4 py-3 text-left text-sm font-semibold">S.No</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Project Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Customer Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Phone</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Customization</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Due Date</th>
@@ -278,6 +305,7 @@ const handleDeleteProject = async (projectId) => {
                   <td className="px-4 py-3 text-sm">{project.projectName || "-"}</td>
 
                   <td className="px-4 py-3 text-sm">{project.customerName || "-"}</td>
+                  <td className="px-4 py-3 text-sm">{project.email || "-"}</td> 
 
                   <td className="px-4 py-3 text-sm">{project.phone || "-"}</td>
 
@@ -316,7 +344,7 @@ const handleDeleteProject = async (projectId) => {
   </select>
 
   <button
-    onClick={() => handleDeleteProject(project._id)}
+    onClick={() => openDeleteModal(project)}
     className="text-red-600 hover:text-red-800"
     title="Delete Project"
   >
@@ -378,6 +406,14 @@ const handleDeleteProject = async (projectId) => {
                 required
                 className="w-full border px-3 py-2 rounded"
               />
+              <input
+          type="email"
+          name="email"
+          placeholder="Customer Email"
+          value={formData.email}
+          onChange={handleInputChange}
+          className="w-full border px-3 py-2 rounded"
+/>
 
               <input
                 type="text"
@@ -418,6 +454,36 @@ const handleDeleteProject = async (projectId) => {
 
         </div>
 
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
+            <h3 className="text-lg font-semibold mb-2">Confirm Delete</h3>
+            <p className="text-sm text-gray-700 mb-4">
+              Are you sure you want to delete this project?
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={closeDeleteModal}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={handleDeleteProject}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

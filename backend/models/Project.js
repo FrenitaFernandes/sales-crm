@@ -14,6 +14,10 @@ const projectSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+   email: {              // ✅ ADD THIS
+    type: String,
+    required: true
+  },
   description: {
     type: String
   },
