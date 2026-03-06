@@ -45,43 +45,43 @@ function Profile() {
 
   // UPDATE PROFILE
   const updateProfile = async () => {
+  try {
 
-    try {
+    const token = localStorage.getItem("token");
 
-      const token = localStorage.getItem("token");
-
-      const res = await fetch("http://localhost:5000/api/customer/profile", {
+    const res = await fetch(
+      "http://localhost:5000/api/customers/profile/update",
+      {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(profile)
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-
-        localStorage.setItem("user", JSON.stringify(data.customer));
-
-        alert("Profile updated successfully!");
-
-      } else {
-
-        alert(data.message);
-
       }
+    );
 
-    } catch (error) {
+    const data = await res.json();
 
-      console.error(error);
-      alert("Error updating profile");
+    if (res.ok) {
+
+      localStorage.setItem("user", JSON.stringify(data.data));
+
+      alert("Profile updated successfully!");
+
+    } else {
+
+      alert(data.message);
 
     }
 
-  };
+  } catch (error) {
 
+    console.error(error);
+    alert("Error updating profile");
+
+  }
+};
 
   return (
     <div className="p-6 space-y-10">
