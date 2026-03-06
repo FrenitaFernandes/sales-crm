@@ -9,7 +9,8 @@ const {
   getCustomerById,
   updateCustomer,
   deleteCustomer,
-  updateCustomerProfile
+  updateCustomerProfile,
+  deleteOwnAccount
 } = require("../controllers/customerController");
 
 
@@ -20,7 +21,8 @@ const {
 // Update own profile (country, industryType, etc.)
 router.put("/profile/update", protect, updateCustomerProfile);
 
-
+// Delete own account (customer)
+router.delete("/profile/delete", protect, deleteOwnAccount);
 // ===========================
 // ADMIN CUSTOMER MANAGEMENT
 // ===========================

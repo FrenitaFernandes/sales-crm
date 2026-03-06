@@ -259,3 +259,47 @@ exports.updateCustomerProfile = async (req, res) => {
 
   }
 };
+// ===========================
+// DELETE OWN ACCOUNT (CUSTOMER)
+// ===========================
+exports.deleteOwnAccount = async (req, res) => {
+  try {
+
+    const customer = await Customer.findOneAndDelete({
+  $or: [
+    { userId: req.user._id || req.user.id },
+    { email: req.user.email }
+  ]
+});
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer account not found"
+      });
+    }
+
+    await logActivity(
+      req.user._id,
+      req.user.name,
+      "DELETE",
+      "Customer",
+      `Customer ${customer.name} deleted their own account`,
+      req.ip
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully"
+    });
+
+  } catch (error) {
+
+    console.error("Delete Account Error:", error);
+
+    res.status(500).json({
+      message: "Server Error"
+    });
+
+  }
+};
