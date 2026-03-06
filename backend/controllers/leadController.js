@@ -52,6 +52,24 @@ exports.checkCustomerByEmail = async (req, res) => {
 };
 
 // ============================
+// GET CUSTOMER LEADS
+// ============================
+exports.getCustomerLeads = async (req, res) => {
+  try {
+    const leads = await Lead.find({ email: req.params.email }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: leads.length,
+      data: leads,
+    });
+  } catch (error) {
+    console.error("Get Customer Leads Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================
 // CREATE LEAD
 // ============================
 exports.createLead = async (req, res) => {
@@ -103,6 +121,7 @@ exports.createLead = async (req, res) => {
       message: "Lead created successfully",
       data: lead,
     });
+
   } catch (error) {
     console.error("Create Lead Error:", error);
     res.status(500).json({ 
@@ -110,21 +129,6 @@ exports.createLead = async (req, res) => {
       message: "Server error",
       error: error.message 
     });
-  }
-};
-
-exports.getCustomerLeads = async (req, res) => {
-  try {
-    const leads = await Lead.find({ email: req.params.email }).sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: leads.length,
-      data: leads,
-    });
-  } catch (error) {
-    console.error("Get Customer Leads Error:", error);
-    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -140,6 +144,7 @@ exports.getLeads = async (req, res) => {
       count: leads.length,
       data: leads,
     });
+
   } catch (error) {
     console.error("Get Leads Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -153,9 +158,15 @@ exports.getLeadById = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
-    res.status(200).json({ success: true, data: lead });
+    res.status(200).json({
+      success: true,
+      data: lead
+    });
+
   } catch (error) {
     console.error("Get Lead Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -173,13 +184,16 @@ exports.updateLead = async (req, res) => {
       { new: true }
     );
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     res.status(200).json({
       success: true,
       message: "Lead updated successfully",
       data: lead,
     });
+
   } catch (error) {
     console.error("Update Lead Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -194,7 +208,10 @@ exports.addFollowUp = async (req, res) => {
     const { date, note } = req.body;
 
     const lead = await Lead.findById(req.params.id);
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     lead.followUps.push({ date, note });
     await lead.save();
@@ -204,6 +221,7 @@ exports.addFollowUp = async (req, res) => {
       message: "Follow-up added",
       data: lead,
     });
+
   } catch (error) {
     console.error("Follow-up Error:", error);
     res.status(500).json({ message: "Server error" });
@@ -218,7 +236,10 @@ exports.updateStatus = async (req, res) => {
     const { status } = req.body;
 
     const lead = await Lead.findById(req.params.id);
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     lead.status = status;
     await lead.save();
@@ -250,12 +271,15 @@ exports.deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findByIdAndDelete(req.params.id);
 
-    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
 
     res.status(200).json({
       success: true,
       message: "Lead deleted successfully",
     });
+
   } catch (error) {
     console.error("Delete Lead Error:", error);
     res.status(500).json({ message: "Server error" });
