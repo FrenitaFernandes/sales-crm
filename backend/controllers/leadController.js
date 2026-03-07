@@ -205,7 +205,7 @@ exports.updateLead = async (req, res) => {
 // ============================
 exports.addFollowUp = async (req, res) => {
   try {
-    const { date, note } = req.body;
+    const { date, note, secondNote, followUpDate, status, updatedBy } = req.body;
 
     const lead = await Lead.findById(req.params.id);
 
@@ -213,12 +213,26 @@ exports.addFollowUp = async (req, res) => {
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    lead.followUps.push({ date, note });
+    // Add the follow-up
+    lead.followUps.push({ 
+      date: date || new Date(), 
+      note,
+      secondNote,
+      followUpDate,
+      status,
+      updatedBy
+    });
+
+    // Update the lead status if provided
+    if (status) {
+      lead.status = status;
+    }
+
     await lead.save();
 
     res.status(200).json({
       success: true,
-      message: "Follow-up added",
+      message: "Follow-up added successfully",
       data: lead,
     });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MdAdd, MdEdit, MdDelete, MdPhone, MdEmail, MdClose, MdFileDownload, MdEdit as MdEditIcon, MdPerson, MdBusiness, MdLanguage, MdArrowBack } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import { checkCustomerByEmail, createLead, getAllLeads } from "../../../../services/leadService";
+import { checkCustomerByEmail, createLead, getAllLeads, getLeadById, addFollowUp, deleteLead } from "../../../../services/leadService";
 
 export default function Leads() {
   const navigate = useNavigate();
@@ -191,7 +191,17 @@ export default function Leads() {
             }),
             lastFollowUp: "Follow Up",
             category: "today",
-            followUpHistory: [],
+            // Map backend followUps to followUpHistory
+            followUps: lead.followUps || [],
+            followUpHistory: (lead.followUps || []).map((followUp, index) => ({
+              id: index,
+              note: followUp.note,
+              secondNote: followUp.secondNote,
+              followUpDate: followUp.followUpDate ? new Date(followUp.followUpDate).toLocaleDateString("en-GB") : "",
+              status: followUp.status,
+              assignedTo: followUp.updatedBy || lead.assignedTo,
+              createdAt: followUp.date ? new Date(followUp.date).toLocaleString("en-GB") : "",
+            })),
           }));
           setLeads(transformedLeads);
         }
@@ -269,37 +279,68 @@ export default function Leads() {
     });
   };
 
-  const handleFollowUpSubmit = (e) => {
+  const handleFollowUpSubmit = async (e) => {
     e.preventDefault();
     if (!selectedLeadForFollowUp) return;
 
-    const newFollowUp = {
-      id: Date.now(),
-      note: followUpFormData.note,
-      followUpDate: followUpFormData.followUpDate,
-      status: followUpFormData.status,
-      assignedTo: followUpFormData.assignedTo,
-      reminder: followUpFormData.reminder,
-      createdAt: new Date().toLocaleString("en-GB"),
-    };
+    try {
+      const userEmail = localStorage.getItem("userEmail") || "admin@example.com";
+      
+      // Prepare follow-up data for backend
+      const followUpPayload = {
+        date: new Date(),
+        note: followUpFormData.note || "",
+        secondNote: "", // Can add this field to the form if needed
+        followUpDate: followUpFormData.followUpDate || null,
+        status: followUpFormData.status,
+        updatedBy: followUpFormData.assignedTo || userEmail,
+      };
 
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) => {
-        if (lead.id !== selectedLeadForFollowUp.id) return lead;
+      console.log("Submitting follow-up:", followUpPayload);
+      
+      // Save to backend
+      const response = await addFollowUp(selectedLeadForFollowUp.id, followUpPayload);
+      console.log("Follow-up saved:", response);
 
-        const updatedLead = {
-          ...lead,
-          followUpHistory: [...(lead.followUpHistory || []), newFollowUp],
-          lastFollowUp: followUpFormData.status,
-        };
+      if (response.success) {
+        // Update local state with the new data from backend
+        const updatedLead = response.data;
+        
+        setLeads((prevLeads) =>
+          prevLeads.map((lead) => {
+            if (lead.id !== selectedLeadForFollowUp.id) return lead;
 
-        if (selectedLeadForDetail && selectedLeadForDetail.id === updatedLead.id) {
-          setSelectedLeadForDetail(updatedLead);
-        }
+            const transformedLead = {
+              ...lead,
+              status: updatedLead.status,
+              followUps: updatedLead.followUps || [],
+              followUpHistory: (updatedLead.followUps || []).map((followUp, index) => ({
+                id: index,
+                note: followUp.note,
+                secondNote: followUp.secondNote,
+                followUpDate: followUp.followUpDate ? new Date(followUp.followUpDate).toLocaleDateString("en-GB") : "",
+                status: followUp.status,
+                assignedTo: followUp.updatedBy || lead.assignedTo,
+                createdAt: followUp.date ? new Date(followUp.date).toLocaleString("en-GB") : "",
+              })),
+              lastFollowUp: followUpFormData.status,
+            };
 
-        return updatedLead;
-      })
-    );
+            // Update detail modal if it's open
+            if (selectedLeadForDetail && selectedLeadForDetail.id === lead.id) {
+              setSelectedLeadForDetail(transformedLead);
+            }
+
+            return transformedLead;
+          })
+        );
+
+        alert("Follow-up added successfully!");
+      }
+    } catch (error) {
+      console.error("Error adding follow-up:", error);
+      alert("Failed to add follow-up. Please try again.");
+    }
 
     handleCloseFollowUpModal();
   };
@@ -470,17 +511,176 @@ export default function Leads() {
     a.click();
   };
 
-  const handleViewLead = (leadId) => {
-    const lead = leads.find((item) => item.id === leadId);
-    if (lead) {
-      setSelectedLeadForDetail(lead);
-      setShowDetailModal(true);
+  const handleViewLead = async (leadId) => {
+    try {
+      // Fetch the latest lead data from backend
+      const response = await getLeadById(leadId);
+      console.log("Full response:", response);
+      if (response.success) {
+        const lead = response.data;
+        console.log("Lead data:", lead);
+        console.log("Follow-ups from backend:", lead.followUps);
+        
+        // Transform the backend data to match frontend format
+        const transformedLead = {
+          id: lead._id,
+          leadName: lead.leadName,
+          projectName: lead.projectName,
+          industryType: lead.industryType,
+          phone: lead.phone,
+          email: lead.email,
+          source: lead.source,
+          status: lead.status,
+          assignedTo: lead.assignedTo,
+          date: new Date(lead.date).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          lastFollowUp: "Follow Up",
+          followUps: lead.followUps || [],
+          followUpHistory: (lead.followUps || []).map((followUp, index) => ({
+            id: index,
+            note: followUp.note,
+            secondNote: followUp.secondNote,
+            followUpDate: followUp.followUpDate ? new Date(followUp.followUpDate).toLocaleDateString("en-GB") : "",
+            status: followUp.status,
+            assignedTo: followUp.updatedBy || lead.assignedTo,
+            createdAt: followUp.date ? new Date(followUp.date).toLocaleString("en-GB") : "",
+          })),
+        };
+        console.log("Transformed lead:", transformedLead);
+        console.log("Follow-up history count:", transformedLead.followUpHistory.length);
+        setSelectedLeadForDetail(transformedLead);
+        setShowDetailModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      alert("Failed to load lead details");
     }
   };
 
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedLeadForDetail(null);
+  };
+
+  // Delete specific follow-up entry
+  const handleDeleteFollowUp = async (followUpIndex) => {
+    if (!selectedLeadForDetail) return;
+
+    if (!window.confirm("Are you sure you want to delete this follow-up entry?")) {
+      return;
+    }
+
+    try {
+      // Get the lead data from backend to ensure we have the latest followUps array
+      const response = await getLeadById(selectedLeadForDetail.id);
+      const lead = response.data;
+      
+      // Remove the follow-up at the specified index
+      const updatedFollowUps = [...(lead.followUps || [])];
+      updatedFollowUps.splice(followUpIndex, 1);
+      
+      // Update the lead with new followUps array
+      const updateResponse = await fetch(`http://localhost:5000/api/leads/${selectedLeadForDetail.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ followUps: updatedFollowUps }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to delete follow-up');
+      }
+
+      // Refresh the lead data to show updated follow-ups
+      await handleViewLead(selectedLeadForDetail.id);
+      
+      alert("Follow-up deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting follow-up:", error);
+      alert("Failed to delete follow-up. Please try again.");
+    }
+  };
+
+  // Export lead as PDF
+  const handleExportLeadAsPDF = () => {
+    if (!selectedLeadForDetail) return;
+
+    try {
+      // Create PDF content
+      let pdfContent = `
+========================================
+LEAD DETAILS
+========================================
+
+Contact Information:
+--------------------
+Name: ${selectedLeadForDetail.leadName}
+Email: ${selectedLeadForDetail.email}
+Phone: ${selectedLeadForDetail.phone}
+Industry: ${selectedLeadForDetail.industryType}
+Project: ${selectedLeadForDetail.projectName}
+
+Lead Information:
+-----------------
+Status: ${selectedLeadForDetail.status}
+Source: ${selectedLeadForDetail.source}
+Assigned To: ${selectedLeadForDetail.assignedTo}
+Date Created: ${selectedLeadForDetail.date}
+
+========================================
+FOLLOW-UP HISTORY
+========================================
+`;
+
+      if (selectedLeadForDetail.followUpHistory && selectedLeadForDetail.followUpHistory.length > 0) {
+        selectedLeadForDetail.followUpHistory.forEach((followUp, index) => {
+          pdfContent += `
+${index + 1}. Follow-Up Entry
+--------------------
+Status: ${followUp.status || 'N/A'}
+Date: ${followUp.createdAt || 'N/A'}
+Note: ${followUp.note || 'No notes'}
+${followUp.secondNote ? `Additional Note: ${followUp.secondNote}` : ''}
+${followUp.followUpDate ? `Next Follow-Up: ${followUp.followUpDate}` : ''}
+Assigned To: ${followUp.assignedTo || 'N/A'}
+
+`;
+        });
+      } else {
+        pdfContent += "\nNo follow-up history available.\n";
+      }
+
+      pdfContent += `
+========================================
+Generated on: ${new Date().toLocaleString()}
+========================================
+`;
+
+      // Create a blob and download
+      const blob = new Blob([pdfContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Lead_${selectedLeadForDetail.leadName.replace(/\s+/g, '_')}_${new Date().getTime()}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Show success message
+      alert("Lead details exported successfully!");
+    } catch (error) {
+      console.error("Error exporting lead:", error);
+      alert("Failed to export lead details.");
+    }
   };
 
   // Filter leads based on search and filters
@@ -1259,13 +1459,12 @@ export default function Leads() {
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-6">
-                <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">
-                  <MdDelete size={16} />
-                  Delete
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700">
+                <button 
+                  onClick={handleExportLeadAsPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                >
                   <MdFileDownload size={16} />
-                  Export
+                  Export as PDF
                 </button>
               </div>
 
@@ -1291,7 +1490,7 @@ export default function Leads() {
                         </div>
                         <div className="flex-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                           <div className="flex items-start justify-between mb-2">
-                            <div>
+                            <div className="flex-1">
                               <h5 className="font-semibold text-gray-800 text-sm mb-1">
                                 {activity.status === 'Converted' ? 'Lead Converted' : 
                                  activity.status === 'Interested' ? 'Lead Interested' : 
@@ -1300,19 +1499,28 @@ export default function Leads() {
                               </h5>
                               <p className="text-sm text-gray-600">{activity.note || 'No additional notes'}</p>
                             </div>
-                            <span
-                              className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                                activity.status === "Converted"
-                                  ? "bg-green-100 text-green-700"
-                                  : activity.status === "Interested"
-                                  ? "bg-cyan-100 text-cyan-700"
-                                  : activity.status === "Not Interested"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-blue-100 text-blue-700"
-                              }`}
-                            >
-                              {activity.status}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                                  activity.status === "Converted"
+                                    ? "bg-green-100 text-green-700"
+                                    : activity.status === "Interested"
+                                    ? "bg-cyan-100 text-cyan-700"
+                                    : activity.status === "Not Interested"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                {activity.status}
+                              </span>
+                              <button
+                                onClick={() => handleDeleteFollowUp(selectedLeadForDetail.followUpHistory.length - 1 - index)}
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-full transition-colors"
+                                title="Delete this follow-up"
+                              >
+                                <MdDelete size={18} />
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
                             <div>Next Follow-Up: <span className="font-medium text-gray-700">{activity.followUpDate}</span></div>
