@@ -11,6 +11,8 @@ function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -19,10 +21,15 @@ function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     if (password !== confirmPassword) {
+      setIsSuccess(false);
       setMessage("Passwords do not match!");
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const data = await registerUser({
@@ -32,6 +39,7 @@ function Register() {
         password,
       });
 
+      setIsSuccess(true);
       setMessage(data.message);
 
       setTimeout(() => {
@@ -40,7 +48,10 @@ function Register() {
     } catch (error) {
       console.error("Registration Error:", error);
       const errorMessage = error.response?.data?.message || error.message || "Registration failed";
+      setIsSuccess(false);
       setMessage(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -62,7 +73,7 @@ function Register() {
         </h2>
 
         {message && (
-          <p className="text-center text-sm mb-3 text-red-600">
+          <p className={`text-center text-sm mb-3 ${isSuccess ? "text-green-600" : "text-red-600"}`}>
             {message}
           </p>
         )}
@@ -152,9 +163,10 @@ function Register() {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          disabled={isSubmitting}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Register
+          {isSubmitting ? "Registering..." : "Register"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-2">

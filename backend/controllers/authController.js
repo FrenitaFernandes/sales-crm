@@ -17,13 +17,14 @@ const generateToken = (id) => {
 const registerUser = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || !password) {
       return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     // check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -34,7 +35,7 @@ const registerUser = async (req, res) => {
     // create user (customer only)
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role: "customer",
     });
@@ -44,11 +45,10 @@ const registerUser = async (req, res) => {
       const customerData = {
         userId: user._id,
         name,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         phone,
         status: "Inactive",
       };
-      console.log("Creating customer with data:", customerData);
       await Customer.create(customerData);
     } catch (customerError) {
       // If Customer creation fails, delete the created User (rollback)
@@ -59,16 +59,8 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // send welcome email
-    try {
-      await sendWelcomeEmail(email, name);
-    } catch (emailError) {
-      console.error("Email sending error:", emailError);
-      // Don't fail registration if email fails to send
-    }
-
     res.status(201).json({
-      message: "Registration successful! Welcome email sent.",
+      message: "Registration successful!",
       token: generateToken(user._id),
       user: {
         id: user._id,
@@ -78,7 +70,15 @@ const registerUser = async (req, res) => {
       },
     });
 
+    // Send welcome email in background so signup never waits on SMTP.
+    sendWelcomeEmail(normalizedEmail, name).catch((emailError) => {
+      console.error("Email sending error:", emailError);
+    });
+
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ message: "User already exists" });
+    }
     console.error("Registration Error:", error);
     res.status(500).json({ message: error.message || "Registration failed" });
   }
