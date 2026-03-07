@@ -78,7 +78,7 @@ exports.getCustomers = async (req, res) => {
   try {
 
     const customers = await Customer
-      .find()
+      .find({ isDeleted: false })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -108,7 +108,7 @@ exports.getCustomerById = async (req, res) => {
 
     const customer = await Customer.findById(req.params.id);
 
-    if (!customer) {
+    if (!customer || customer.isDeleted) {
       return res.status(404).json({
         message: "Customer not found"
       });
@@ -184,7 +184,14 @@ exports.updateCustomer = async (req, res) => {
 exports.deleteCustomer = async (req, res) => {
   try {
 
-    const customer = await Customer.findByIdAndDelete(req.params.id);
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      {
+        isDeleted: true,
+        deletedAt: new Date()
+      },
+      { new: true }
+    );
 
     if (!customer) {
       return res.status(404).json({
@@ -230,7 +237,8 @@ exports.updateCustomerProfile = async (req, res) => {
         $or: [
           { userId: req.user._id },
           { email: req.user.email }
-        ]
+        ],
+        isDeleted: false
       },
       req.body,
       { new: true }
@@ -264,27 +272,52 @@ exports.updateCustomerProfile = async (req, res) => {
 // ===========================
 exports.deleteOwnAccount = async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
+    const userEmail = req.user.email;
 
-    const customer = await Customer.findOneAndDelete({
-  $or: [
-    { userId: req.user._id || req.user.id },
-    { email: req.user.email }
-  ]
-});
-
-    if (!customer) {
-      return res.status(404).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "Customer account not found"
+        message: "User not authenticated"
+      });
+    }
+
+    // Try to find and update Customer by userId or email
+    const customer = await Customer.findOneAndUpdate(
+      { 
+        $or: [
+          { userId: userId },
+          { email: userEmail }
+        ]
+      },
+      {
+        isDeleted: true,
+        deletedAt: new Date()
+      },
+      { new: true }
+    );
+
+    // Always mark User as inactive
+    const User = require("../models/user");
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
       });
     }
 
     await logActivity(
-      req.user._id,
-      req.user.name,
+      userId,
+      req.user.name || "Unknown",
       "DELETE",
       "Customer",
-      `Customer ${customer.name} deleted their own account`,
+      `Customer ${customer?.name || req.user.name} deleted their own account`,
       req.ip
     );
 
@@ -298,8 +331,52 @@ exports.deleteOwnAccount = async (req, res) => {
     console.error("Delete Account Error:", error);
 
     res.status(500).json({
+      success: false,
       message: "Server Error"
     });
 
+  }
+};
+
+// ===========================
+// GET CUSTOMER DASHBOARD STATS
+// ===========================
+exports.getCustomerDashboard = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    // Get customer by userId or email
+    const customer = await Customer.findOne({
+      $or: [
+        { userId: userId },
+        { email: req.user.email }
+      ]
+    });
+
+    if (!customer) {
+      // Return default stats if customer record doesn't exist yet
+      return res.status(200).json({
+        invoiceCount: 0,
+        notifications: 0,
+        activeTickets: 0,
+        profileCompletion: "0%"
+      });
+    }
+
+    res.status(200).json({
+      invoiceCount: 0,
+      notifications: 0,
+      activeTickets: 0,
+      profileCompletion: "80%"
+    });
+
+  } catch (error) {
+    console.error("Dashboard Error:", error);
+    res.status(500).json({
+      invoiceCount: 0,
+      notifications: 0,
+      activeTickets: 0,
+      profileCompletion: "0%"
+    });
   }
 };

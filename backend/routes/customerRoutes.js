@@ -10,7 +10,8 @@ const {
   updateCustomer,
   deleteCustomer,
   updateCustomerProfile,
-  deleteOwnAccount
+  deleteOwnAccount,
+  getCustomerDashboard
 } = require("../controllers/customerController");
 
 
@@ -18,11 +19,18 @@ const {
 // CUSTOMER PROFILE (Logged-in user)
 // ===========================
 
+// Get dashboard stats
+router.get("/dashboard", protect, getCustomerDashboard);
+
 // Update own profile (country, industryType, etc.)
 router.put("/profile/update", protect, updateCustomerProfile);
 
 // Delete own account (customer)
 router.delete("/profile/delete", protect, deleteOwnAccount);
+
+// Delete own account - alternative endpoint
+router.delete("/delete-account", protect, deleteOwnAccount);
+
 // ===========================
 // ADMIN CUSTOMER MANAGEMENT
 // ===========================

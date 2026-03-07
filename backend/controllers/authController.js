@@ -41,12 +41,13 @@ const registerUser = async (req, res) => {
       role: "customer",
     });
     // Create Customer entry
-await Customer.create({
-  name,
-  email,
-  phone,
-  status: "Inactive",
-});
+    await Customer.create({
+      userId: user._id,
+      name,
+      email,
+      phone,
+      status: "Inactive",
+    });
 
     // send welcome email
     await sendWelcomeEmail(email, name);
@@ -140,6 +141,41 @@ const registerUser = async (req, res) => {
     // check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      if (existingUser.isActive === false) {
+        // reactivate previously deleted/inactive account
+        const hashedPassword = await bcrypt.hash(password, 10);
+        existingUser.name = name;
+        existingUser.password = hashedPassword;
+        existingUser.isActive = true;
+        await existingUser.save();
+
+        // update or recreate customer record
+        const Customer = require("../models/Customer");
+        await Customer.findOneAndUpdate(
+          { userId: existingUser._id },
+          {
+            isDeleted: false,
+            deletedAt: null,
+            name,
+            email,
+            phone,
+          },
+          { upsert: true, new: true }
+        );
+
+        await sendWelcomeEmail(email, name);
+        return res.status(200).json({
+          message: "Account reactivated. Welcome back!",
+          token: generateToken(existingUser._id),
+          user: {
+            id: existingUser._id,
+            name: existingUser.name,
+            email: existingUser.email,
+            role: existingUser.role,
+          },
+        });
+      }
+
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -189,6 +225,11 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // don't allow login when marked inactive (deleted)
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Account inactive. Please register again." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

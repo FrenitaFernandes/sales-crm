@@ -68,6 +68,16 @@ const CustomerSchema = new mongoose.Schema(
     type: String,
     enum: ["Active", "Inactive", "Suspended"],
     default: "Inactive"
+  },
+
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null
   }
 
 },

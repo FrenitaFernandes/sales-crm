@@ -8,6 +8,13 @@ const {
 
 const { protect } = require("../middleware/authMiddleware");
 
+const {
+  getCustomerDashboard
+} = require("../controllers/customerController");
+
+
+// GET dashboard stats
+router.get("/dashboard", protect, getCustomerDashboard);
 
 // GET notifications
 router.get(
