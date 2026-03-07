@@ -22,6 +22,35 @@ const {
 // Get dashboard stats
 router.get("/dashboard", protect, getCustomerDashboard);
 
+// Get own profile data
+router.get("/profile", protect, async (req, res) => {
+  try {
+    const Customer = require("../models/Customer");
+    console.log("Fetching profile for userId:", req.user._id, "email:", req.user.email);
+    
+    let customer = await Customer.findOne({
+      $or: [{ userId: req.user._id }, { email: req.user.email }],
+      isDeleted: false
+    });
+    
+    // If customer doesn't exist, create one
+    if (!customer) {
+      console.log("Customer profile not found, creating new one...");
+      customer = await Customer.create({
+        userId: req.user._id,
+        name: req.user.name || "",
+        email: req.user.email,
+        status: "Active"
+      });
+    }
+    
+    res.status(200).json({ success: true, customer });
+  } catch (err) {
+    console.error("Get Profile Error:", err);
+    res.status(500).json({ success: false, message: "Server error: " + err.message });
+  }
+});
+
 // Update own profile (country, industryType, etc.)
 router.put("/profile/update", protect, updateCustomerProfile);
 

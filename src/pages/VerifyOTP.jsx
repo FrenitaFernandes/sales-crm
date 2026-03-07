@@ -86,6 +86,13 @@ function VerifyOTP() {
 
   const email = location.state?.email;
 
+  // if user navigated here without going through forgot-password
+  if (!email) {
+    // send them back to start
+    navigate("/forgot-password");
+    return null; // prevent rendering
+  }
+
   const handleVerify = async (e) => {
     e.preventDefault();
 

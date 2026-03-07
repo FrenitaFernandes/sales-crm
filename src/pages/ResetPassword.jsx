@@ -99,6 +99,12 @@ function ResetPassword() {
 
   const email = location.state?.email;
 
+  // redirect if we don't know which email is being reset
+  if (!email) {
+    navigate("/forgot-password");
+    return null;
+  }
+
   const handleReset = async (e) => {
     e.preventDefault();
 

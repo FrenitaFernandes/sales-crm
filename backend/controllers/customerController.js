@@ -231,8 +231,9 @@ exports.deleteCustomer = async (req, res) => {
 // ===========================
 exports.updateCustomerProfile = async (req, res) => {
   try {
+    console.log("Update Profile Request:", { userId: req.user._id, email: req.user.email });
 
-    const customer = await Customer.findOneAndUpdate(
+    let customer = await Customer.findOneAndUpdate(
       {
         $or: [
           { userId: req.user._id },
@@ -244,27 +245,30 @@ exports.updateCustomerProfile = async (req, res) => {
       { new: true }
     );
 
+    // If customer doesn't exist, create one
     if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer profile not found"
+      console.log("Customer not found, creating new profile...");
+      customer = await Customer.create({
+        userId: req.user._id,
+        name: req.user.name || req.body.name || "",
+        email: req.user.email,
+        ...req.body,
+        status: "Active"
       });
     }
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: customer
+      customer: customer
     });
 
   } catch (error) {
-
     console.error("Update Profile Error:", error);
-
     res.status(500).json({
-      message: "Server Error"
+      success: false,
+      message: "Server Error: " + error.message
     });
-
   }
 };
 // ===========================

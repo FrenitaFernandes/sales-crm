@@ -188,6 +188,17 @@ const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role: "customer",
+      phone
+    });
+
+    // CREATE CUSTOMER RECORD (with timestamps - createdAt will be auto-set)
+    const Customer = require("../models/Customer");
+    await Customer.create({
+      userId: user._id,
+      name,
+      email,
+      phone,
+      status: "Inactive"
     });
 
     // send welcome email
@@ -198,6 +209,7 @@ const registerUser = async (req, res) => {
       token: generateToken(user._id),
       user: {
         id: user._id,
+
         name: user.name,
         email: user.email,
         role: user.role,

@@ -45,6 +45,15 @@ const CustomerSchema = new mongoose.Schema(
   company: {
     type: String
   },
+  description: {
+    type: String
+  },
+  website: {
+    type: String
+  },
+  avatar: {
+    type: String
+  },
 
   industryType: {
     type: String,
