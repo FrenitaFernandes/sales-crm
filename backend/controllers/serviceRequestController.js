@@ -242,12 +242,14 @@ exports.deleteServiceRequest = async (req, res) => {
 exports.allowServiceRequestChat = async (req, res) => {
   try {
     if (getUserRole(req.user) !== "admin") {
-      return res.status(403).json({ message: "Only admin can allow chat" });
+      return res.status(403).json({ message: "Only admin can update chat access" });
     }
+
+    const enableChat = typeof req.body?.enableChat === "boolean" ? req.body.enableChat : true;
 
     const request = await ServiceRequest.findByIdAndUpdate(
       req.params.id,
-      { enableChat: true },
+      { enableChat },
       { new: true }
     );
     if (!request) {
@@ -256,7 +258,7 @@ exports.allowServiceRequestChat = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Chat enabled",
+      message: enableChat ? "Chat enabled" : "Chat disabled",
       data: request,
     });
   } catch (error) {
@@ -317,10 +319,11 @@ exports.sendServiceRequestChatMessage = async (req, res) => {
       return res.status(403).json({ message: "Chat is not enabled yet" });
     }
 
+    const isAdmin = getUserRole(req.user) === "admin";
     const message = await ChatMessage.create({
       serviceRequestId: request._id,
-      senderRole: getUserRole(req.user) === "admin" ? "admin" : "customer",
-      senderName: req.user.name || (getUserRole(req.user) === "admin" ? "Admin" : "Customer"),
+      senderRole: isAdmin ? "admin" : "customer",
+      senderName: isAdmin ? "Admin" : (req.user.name || "Customer"),
       message: messageText,
     });
 
@@ -330,6 +333,57 @@ exports.sendServiceRequestChatMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Send Chat Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================
+// ADMIN CHAT NOTIFICATIONS
+// =============================
+exports.getAdminChatNotifications = async (req, res) => {
+  try {
+    if (getUserRole(req.user) !== "admin") {
+      return res.status(403).json({ message: "Only admin can access chat notifications" });
+    }
+
+    const sinceRaw = String(req.query?.since || "").trim();
+    const sinceDate = sinceRaw ? new Date(sinceRaw) : new Date(0);
+    const validSince = Number.isNaN(sinceDate.getTime()) ? new Date(0) : sinceDate;
+
+    const messages = await ChatMessage.find({
+      senderRole: "customer",
+      createdAt: { $gt: validSince },
+    })
+      .sort({ createdAt: 1 })
+      .limit(30)
+      .populate({
+        path: "serviceRequestId",
+        select: "subject title customerId",
+        populate: { path: "customerId", select: "name" },
+      });
+
+    const data = messages.map((msg) => ({
+      _id: msg._id,
+      serviceRequestId: msg.serviceRequestId?._id || null,
+      customerName:
+        msg.serviceRequestId?.customerId?.name ||
+        msg.senderName ||
+        "Customer",
+      subject:
+        msg.serviceRequestId?.subject ||
+        msg.serviceRequestId?.title ||
+        "Support Request",
+      message: msg.message,
+      createdAt: msg.createdAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("Admin Chat Notifications Error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };

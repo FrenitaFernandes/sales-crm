@@ -13,6 +13,7 @@ const {
   allowServiceRequestChat,
   getServiceRequestChat,
   sendServiceRequestChatMessage,
+  getAdminChatNotifications,
 } = require("../controllers/serviceRequestController");
 
 const router = express.Router();
@@ -46,6 +47,7 @@ router.get("/customer/:customerId", protect, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+router.get("/admin/chat-notifications", protect, getAdminChatNotifications);
 
 router.get("/:id", protect, getServiceRequestById);
 router.put("/:id", protect, updateServiceRequest);

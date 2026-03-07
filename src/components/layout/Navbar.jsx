@@ -13,9 +13,12 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getCustomerUnreadCount } from "../../utils/customerNotifications";
 
+const ADMIN_CHAT_LAST_SEEN_KEY = "admin_chat_last_seen_v1";
+
 const Navbar = ({ title, onLogout, onToggleSidebar }) => {
 
   const [notificationCount, setNotificationCount] = useState(0);
+  const [chatPopup, setChatPopup] = useState("");
   const navigate = useNavigate();
 
   const role = localStorage.getItem("userRole"); // admin or customer
@@ -63,6 +66,56 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
     };
   }, [role]);
 
+  useEffect(() => {
+    if (role !== "admin") return undefined;
+
+    const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+    if (!token) return undefined;
+
+    if (!localStorage.getItem(ADMIN_CHAT_LAST_SEEN_KEY)) {
+      localStorage.setItem(ADMIN_CHAT_LAST_SEEN_KEY, new Date().toISOString());
+    }
+
+    let popupTimer = null;
+
+    const checkNewCustomerMessages = async () => {
+      try {
+        const since = localStorage.getItem(ADMIN_CHAT_LAST_SEEN_KEY) || new Date(0).toISOString();
+        const res = await axios.get("http://localhost:5000/api/services/admin/chat-notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { since },
+        });
+
+        const rows = res.data?.data || [];
+        if (!rows.length) return;
+
+        const latest = rows[rows.length - 1];
+        localStorage.setItem(
+          ADMIN_CHAT_LAST_SEEN_KEY,
+          String(latest?.createdAt || new Date().toISOString())
+        );
+
+        const customerName = String(latest?.customerName || "Customer").trim() || "Customer";
+        setChatPopup(`Received a message from ${customerName}`);
+        if (popupTimer) clearTimeout(popupTimer);
+        popupTimer = setTimeout(() => setChatPopup(""), 3500);
+      } catch {
+        // Ignore polling errors to avoid noisy UI.
+      }
+    };
+
+    checkNewCustomerMessages();
+    const intervalId = setInterval(checkNewCustomerMessages, 10000);
+    const onFocus = () => checkNewCustomerMessages();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (popupTimer) clearTimeout(popupTimer);
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [role]);
+
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -82,6 +135,11 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
       expand="lg"
       className="bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex items-center"
     >
+      {chatPopup && role === "admin" && (
+        <div className="fixed top-5 right-5 z-[11000] rounded bg-blue-600 px-4 py-3 text-sm text-white shadow-lg">
+          {chatPopup}
+        </div>
+      )}
       <Container fluid>
 
         {/* LEFT SIDE */}

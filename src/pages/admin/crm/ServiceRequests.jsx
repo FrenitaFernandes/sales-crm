@@ -8,18 +8,34 @@ const statuses = ["All", "Pending", "In Progress", "Completed"];
 const priorities = ["Low", "Medium", "High"];
 
 function buildTicketId() {
-  return `TKT-${Date.now()}`;
+  return `TKT-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
+}
+
+function normalizeTicketId(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length >= 5) return `TKT-${digits.slice(-5)}`;
+  if (digits.length > 0) return `TKT-${digits.padStart(5, "0")}`;
+  return buildTicketId();
+}
+
+function fallbackTicketIdFromRequestId(rawId) {
+  const id = String(rawId || "").trim();
+  if (!id || id.startsWith("local-")) return "-";
+
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) % 100000;
+  }
+
+  return `TKT-${String(hash).padStart(5, "0")}`;
 }
 
 function resolveTicketId(request) {
   const existing = String(request?.ticketId || "").trim();
-  if (existing) return existing;
-
-  const id = String(request?._id || "").trim();
-  if (!id || id.startsWith("local-")) return "-";
+  if (existing) return normalizeTicketId(existing);
 
   // Fallback for older records that were created without ticketId.
-  return `TKT-${id.slice(-6).toUpperCase()}`;
+  return fallbackTicketIdFromRequestId(request?._id);
 }
 
 function resolveAttachmentSrc(rawValue) {
@@ -189,7 +205,7 @@ const ServiceRequests = () => {
 
     const resolvedSubject = subject.trim();
     const resolvedTitle = resolvedSubject;
-    const resolvedTicketId = String(ticketId || "").trim() || buildTicketId();
+    const resolvedTicketId = normalizeTicketId(ticketId);
 
     if (!customerId || !resolvedSubject) {
       showToast("Please select customer and enter subject.", "error");
@@ -261,7 +277,7 @@ const ServiceRequests = () => {
 
           return {
             ...created,
-            ticketId: String(created.ticketId || "").trim() || resolvedTicketId,
+            ticketId: normalizeTicketId(created.ticketId || resolvedTicketId),
           };
         })
       );
@@ -333,7 +349,7 @@ const ServiceRequests = () => {
     }
   };
 
-  const allowChat = async (id) => {
+  const toggleChat = async (id, nextEnabled) => {
     if (!id) return;
 
     try {
@@ -343,48 +359,59 @@ const ServiceRequests = () => {
       try {
         await axios.put(
           `http://localhost:5000/api/services/${id}/allow-chat`,
-          {},
+          { enableChat: !!nextEnabled },
           { headers: { Authorization: `Bearer ${token}` } }
         );
       } catch {
         await axios.put(
           `http://localhost:5000/api/services/${id}`,
-          { enableChat: true },
+          { enableChat: !!nextEnabled },
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
 
       setRequests((prev) =>
-        prev.map((item) => (item._id === id ? { ...item, enableChat: true } : item))
+        prev.map((item) =>
+          item._id === id ? { ...item, enableChat: !!nextEnabled } : item
+        )
       );
-      showToast("Chat allowed for this request.");
+      showToast(nextEnabled ? "Chat enabled for this request." : "Chat disabled for this request.");
     } catch (err) {
-      showToast(err?.response?.data?.message || "Unable to allow chat", "error");
+      showToast(err?.response?.data?.message || "Unable to update chat status", "error");
     } finally {
       setAllowingChatId("");
+    }
+  };
+
+  const fetchChatMessages = async (requestId, options = {}) => {
+    if (!requestId) return;
+    const { silent = false } = options;
+
+    try {
+      if (!silent) setChatLoading(true);
+      setChatError("");
+      const token = getToken();
+
+      const res = await axios.get(`http://localhost:5000/api/services/${requestId}/chat`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setChatMessages(res.data?.data || []);
+    } catch (err) {
+      if (!silent) {
+        setChatMessages([]);
+      }
+      setChatError(err?.response?.data?.message || "Failed to load chat");
+    } finally {
+      if (!silent) setChatLoading(false);
     }
   };
 
   const openChat = async (item) => {
     if (!item?._id || !item?.enableChat) return;
 
-    try {
-      setActiveChat(item);
-      setChatError("");
-      setChatLoading(true);
-      const token = getToken();
-
-      const res = await axios.get(`http://localhost:5000/api/services/${item._id}/chat`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setChatMessages(res.data?.data || []);
-    } catch (err) {
-      setChatMessages([]);
-      setChatError(err?.response?.data?.message || "Failed to load chat");
-    } finally {
-      setChatLoading(false);
-    }
+    setActiveChat(item);
+    await fetchChatMessages(item._id);
   };
 
   const sendChatMessage = async () => {
@@ -397,20 +424,34 @@ const ServiceRequests = () => {
       setChatError("");
       const token = getToken();
 
-      const res = await axios.post(
+      await axios.post(
         `http://localhost:5000/api/services/${activeChat._id}/chat`,
         { message },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (res.data?.data) {
-        setChatMessages((prev) => [...prev, res.data.data]);
-      }
       setChatInput("");
+      await fetchChatMessages(activeChat._id, { silent: true });
     } catch (err) {
       setChatError(err?.response?.data?.message || "Failed to send message");
     }
   };
+
+  useEffect(() => {
+    if (!activeChat?._id) return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchChatMessages(activeChat._id, { silent: true });
+    }, 3000);
+
+    const onFocus = () => fetchChatMessages(activeChat._id, { silent: true });
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [activeChat?._id]);
 
   // KPI cards
   const kpis = useMemo(() => {
@@ -513,11 +554,11 @@ const ServiceRequests = () => {
               <th className="p-3 border">Ticket ID</th>
               <th className="p-3 border">Subject</th>
               <th className="p-3 border">Category</th>
-              <th className="p-3 border">Description</th>
+              <th className="p-3 border w-44">Description</th>
               <th className="p-3 border">Priority</th>
               <th className="p-3 border">Attachment</th>
               <th className="p-3 border">Created</th>
-              <th className="p-3 border">Status</th>
+              <th className="p-3 border min-w-[130px]">Status</th>
               <th className="p-3 border">Actions</th>
             </tr>
           </thead>
@@ -543,8 +584,8 @@ const ServiceRequests = () => {
                     <div className="text-sm">{r.category || "-"}</div>
                   </td>
 
-                  <td className="p-3 border">
-                    <div className="text-xs text-gray-500 line-clamp-2">
+                  <td className="p-3 border w-44">
+                    <div className="max-w-[170px] text-xs text-gray-500 line-clamp-2">
                       {r.description || "-"}
                     </div>
                   </td>
@@ -587,9 +628,9 @@ const ServiceRequests = () => {
 
                   <td className="p-3 border text-sm">{formatDate(r.createdAt)}</td>
 
-                  <td className="p-3 border">
+                  <td className="p-3 border min-w-[130px]">
                     <select
-                      className="border p-2 rounded w-full"
+                      className="border p-2 rounded w-full min-w-[120px]"
                       value={r.status}
                       onChange={(e) => handleStatusChange(r._id, e.target.value)}
                     >
@@ -600,17 +641,24 @@ const ServiceRequests = () => {
                   </td>
 
                   <td className="p-3 border">
-                    <div className="flex gap-2">
-                      {!r.enableChat ? (
-                        <button
-                          type="button"
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                          onClick={() => allowChat(r._id)}
-                          disabled={allowingChatId === r._id}
-                        >
-                          {allowingChatId === r._id ? "Allowing..." : "Allow Chat"}
-                        </button>
-                      ) : (
+                    <div className="flex gap-2 items-center">
+                      <button
+                        type="button"
+                        className={`relative h-5 w-10 overflow-hidden rounded-full transition ${
+                          r.enableChat ? "bg-blue-600" : "bg-gray-300"
+                        } ${allowingChatId === r._id ? "opacity-60 cursor-not-allowed" : ""}`}
+                        onClick={() => toggleChat(r._id, !r.enableChat)}
+                        disabled={allowingChatId === r._id}
+                        aria-label={r.enableChat ? "Disable chat" : "Enable chat"}
+                        title={r.enableChat ? "Disable chat" : "Enable chat"}
+                      >
+                        <span
+                          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                            r.enableChat ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                      {r.enableChat && (
                         <button
                           type="button"
                           className="h-8 w-8 rounded-full bg-slate-600 hover:bg-slate-700 text-white inline-flex items-center justify-center"

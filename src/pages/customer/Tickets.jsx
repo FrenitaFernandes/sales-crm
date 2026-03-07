@@ -88,22 +88,31 @@ function Tickets() {
   const openChat = async (ticket) => {
     if (!ticket?.enableChat) return;
 
+    setActiveChat(ticket);
+    await fetchChatMessages(ticket._id);
+  };
+
+  const fetchChatMessages = async (requestId, options = {}) => {
+    if (!requestId) return;
+    const { silent = false } = options;
+
     try {
-      setActiveChat(ticket);
+      if (!silent) setChatLoading(true);
       setChatError("");
-      setChatLoading(true);
       const token = getToken();
 
-      const res = await axios.get(`http://localhost:5000/api/services/${ticket._id}/chat`, {
+      const res = await axios.get(`http://localhost:5000/api/services/${requestId}/chat`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setChatMessages(res.data?.data || []);
     } catch (error) {
-      setChatMessages([]);
+      if (!silent) {
+        setChatMessages([]);
+      }
       setChatError(error?.response?.data?.message || "Failed to load chat");
     } finally {
-      setChatLoading(false);
+      if (!silent) setChatLoading(false);
     }
   };
 
@@ -117,16 +126,14 @@ function Tickets() {
       setChatError("");
       const token = getToken();
 
-      const res = await axios.post(
+      await axios.post(
         `http://localhost:5000/api/services/${activeChat._id}/chat`,
         { message },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (res.data?.data) {
-        setChatMessages((prev) => [...prev, res.data.data]);
-      }
       setChatInput("");
+      await fetchChatMessages(activeChat._id, { silent: true });
     } catch (error) {
       setChatError(error?.response?.data?.message || "Failed to send message");
     }
@@ -143,6 +150,22 @@ function Tickets() {
       window.removeEventListener("focus", onFocus);
     };
   }, []);
+
+  useEffect(() => {
+    if (!activeChat?._id) return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchChatMessages(activeChat._id, { silent: true });
+    }, 3000);
+
+    const onFocus = () => fetchChatMessages(activeChat._id, { silent: true });
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [activeChat?._id]);
 
   return (
     <div className="p-6 space-y-6">
