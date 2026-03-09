@@ -20,6 +20,7 @@ const parseNumber = (value) => {
 exports.createInvoice = async (req, res) => {
   try {
     const {
+      customerId,
       invoiceNumber,
       customerName,
       customerEmail,
@@ -69,6 +70,7 @@ exports.createInvoice = async (req, res) => {
     }
 
     const invoice = await Invoice.create({
+      customerId: customerId || null,
       invoiceNumber: trimmedInvoiceNumber,
       customerName: trimmedCustomerName,
       customerEmail,
@@ -211,6 +213,31 @@ exports.deleteInvoice = async (req, res) => {
 
   } catch (error) {
     console.error("Delete Invoice Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =============================
+// GET INVOICES BY CUSTOMER
+// =============================
+exports.getInvoicesByCustomer = async (req, res) => {
+  try {
+    const customerId = req.params.customerId;
+
+    if (!customerId) {
+      return res.status(400).json({ message: "Customer ID is required" });
+    }
+
+    const invoices = await Invoice.find({ customerId }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: invoices.length,
+      data: invoices,
+    });
+
+  } catch (error) {
+    console.error("Get Invoices By Customer Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

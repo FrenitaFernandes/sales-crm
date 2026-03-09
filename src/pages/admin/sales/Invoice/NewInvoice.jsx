@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createInvoice, getInvoiceById, updateInvoice, updateInvoiceStatus } from "../../../../services/invoiceService";
+import axios from "axios";
 
 export default function NewInvoice() {
 	const navigate = useNavigate();
@@ -8,6 +9,7 @@ export default function NewInvoice() {
 	const editingInvoiceId = searchParams.get("invoiceId");
 	const isEditMode = useMemo(() => Boolean(editingInvoiceId), [editingInvoiceId]);
 	const [form, setForm] = useState({
+		customerId: "",
 		customerName: "",
 		invoiceNumber: "",
 		date: "",
@@ -18,8 +20,33 @@ export default function NewInvoice() {
 	});
 	const [isSaving, setIsSaving] = useState(false);
 	const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
+	const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
 	const [message, setMessage] = useState("");
 	const [error, setError] = useState("");
+	const [customers, setCustomers] = useState([]);
+
+	// Load customers on component mount
+	useEffect(() => {
+		const loadCustomers = async () => {
+			try {
+				setIsLoadingCustomers(true);
+				const token = localStorage.getItem("authToken") || localStorage.getItem("token");
+				const response = await axios.get("http://localhost:5000/api/customers", {
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				});
+				if (response.data.data) {
+					setCustomers(response.data.data);
+				}
+			} catch (err) {
+				console.error("Failed to load customers:", err);
+			} finally {
+				setIsLoadingCustomers(false);
+			}
+		};
+		loadCustomers();
+	}, []);
 
 	useEffect(() => {
 		const loadInvoiceForEdit = async () => {
@@ -73,8 +100,17 @@ export default function NewInvoice() {
 	const handleChange = (e) => {
 		const { name, value } = e.target;
 		
+		// Handle customer selection
+		if (name === "customerId") {
+			const selectedCustomer = customers.find(c => c._id === value);
+			setForm((prev) => ({ 
+				...prev, 
+				customerId: value,
+				customerName: selectedCustomer ? selectedCustomer.name : ""
+			}));
+		}
 		// Auto-update due date when invoice date changes (30 days later)
-		if (name === "date" && value) {
+		else if (name === "date" && value) {
 			const invoiceDate = new Date(value);
 			const dueDate = new Date(invoiceDate);
 			dueDate.setDate(dueDate.getDate() + 30);
@@ -98,6 +134,7 @@ export default function NewInvoice() {
 			const numericAmount = Number(form.amount);
 			const descriptionText = String(form.description || "").trim();
 			const payload = {
+				customerId: form.customerId || undefined,
 				customerName: form.customerName,
 				invoiceNumber: form.invoiceNumber,
 				amount: form.amount,
@@ -141,6 +178,7 @@ export default function NewInvoice() {
 			}
 
 			setForm({
+				customerId: "",
 				customerName: "",
 				invoiceNumber: "",
 				date: "",
@@ -175,6 +213,26 @@ export default function NewInvoice() {
 
 				<div className="row">
 					<div className="col-4 mb-3">
+						<label className="form-label">Customer</label>
+						<select
+							name="customerId"
+							className="form-select"
+							value={form.customerId}
+							onChange={handleChange}
+							disabled={isLoadingCustomers}
+						>
+							<option value="">
+								{isLoadingCustomers ? "Loading customers..." : "Select a Customer (Optional)"}
+							</option>
+							{customers.map((customer) => (
+								<option key={customer._id} value={customer._id}>
+									{customer.name}
+								</option>
+							))}
+						</select>
+					</div>
+
+					<div className="col-4 mb-3">
 						<label className="form-label">Customer Name</label>
 						<input
 							type="text"
@@ -197,7 +255,9 @@ export default function NewInvoice() {
 							required
 						/>
 					</div>
+				</div>
 
+				<div className="row">
 					<div className="col-4 mb-3">
 						<label className="form-label">Amount</label>
 						<input

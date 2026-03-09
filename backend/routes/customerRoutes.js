@@ -44,7 +44,7 @@ router.get("/profile", protect, async (req, res) => {
       });
     }
     
-    res.status(200).json({ success: true, customer });
+    res.status(200).json({ success: true, data: customer });
   } catch (err) {
     console.error("Get Profile Error:", err);
     res.status(500).json({ success: false, message: "Server error: " + err.message });
