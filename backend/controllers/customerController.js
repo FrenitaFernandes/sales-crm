@@ -248,9 +248,15 @@ exports.updateCustomerProfile = async (req, res) => {
     // If customer doesn't exist, create one
     if (!customer) {
       console.log("Customer not found, creating new profile...");
+      const fallbackName =
+        req.user?.name ||
+        req.body?.name ||
+        (req.user?.email ? req.user.email.split("@")[0] : "") ||
+        "Customer";
+
       customer = await Customer.create({
         userId: req.user._id,
-        name: req.user.name || req.body.name || "",
+        name: fallbackName,
         email: req.user.email,
         ...req.body,
         status: "Active"

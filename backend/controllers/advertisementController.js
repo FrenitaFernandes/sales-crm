@@ -2,6 +2,18 @@ const Customer = require("../models/Customer");
 const Notification = require("../models/Notification");
 const Advertisement = require("../models/Advertisement");
 
+const PREFERENCE_IMAGE_MAP = {
+  "Data Logger IIoT 4.0": "/DataLogger.png",
+  "Cloud PLC 4.0": "/CloudPLC.png",
+  "Biometric Authentication": "/Biometric.png",
+  "HMI & Display Board": "/HMI.png",
+  "RFID Reader": "/RFID.png",
+  "R-LiFi": "/R-LiFi.png",
+  "Vibration Sensor": "/VibrationSensor.png",
+  "Data Acquisition System": "/DataAcquistion.png",
+  "DAS Datalogger": "/DAS_Datalogger.png"
+};
+
 
 // ===========================
 // CREATE ADVERTISEMENT
@@ -20,6 +32,11 @@ exports.createAdvertisement = async (req, res) => {
       thumbnail
     } = req.body;
 
+    const derivedThumbnail =
+      thumbnail ||
+      PREFERENCE_IMAGE_MAP[String(targetAudience || "").trim()] ||
+      "";
+
     // Validation
     if (!date || !productName) {
       return res.status(400).json({
@@ -37,7 +54,7 @@ exports.createAdvertisement = async (req, res) => {
       type,
       targetArea,
       targetAudience,
-      thumbnail
+      thumbnail: derivedThumbnail
     });
 
     console.log("Advertisement Created:", productName);
@@ -53,7 +70,10 @@ exports.createAdvertisement = async (req, res) => {
     }
 
     if (targetAudience && targetAudience !== "All") {
-      customerQuery.industryType = { $regex: `^${targetAudience}$`, $options: "i" };
+      customerQuery.$or = [
+        { preferences: { $in: [targetAudience] } },
+        { industryType: { $regex: `^${targetAudience}$`, $options: "i" } }
+      ];
     }
 
     const customers = await Customer.find(customerQuery);
@@ -68,9 +88,10 @@ exports.createAdvertisement = async (req, res) => {
 
       const notifications = customers.map((customer) => ({
         customerId: customer._id,
-        title: `New Product: ${productName}`,
+        title: productName,
         message: tagline || description,
         type: "advertisement",
+        image: ad.thumbnail || "",
         read: false
       }));
 

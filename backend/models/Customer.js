@@ -73,6 +73,22 @@ const CustomerSchema = new mongoose.Schema(
     ]
   },
 
+  preferences: {
+    type: [String],
+    default: [],
+    enum: [
+      "Data Logger IIoT 4.0",
+      "Cloud PLC 4.0",
+      "Biometric Authentication",
+      "HMI & Display Board",
+      "RFID Reader",
+      "R-LiFi",
+      "Vibration Sensor",
+      "Data Acquisition System",
+      "DAS Datalogger"
+    ]
+  },
+
   status: {
     type: String,
     enum: ["Active", "Inactive", "Suspended"],

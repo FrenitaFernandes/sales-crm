@@ -28,6 +28,10 @@ const notificationSchema = new mongoose.Schema({
     type: String
   },
 
+  image: {
+    type: String
+  },
+
   read: {
     type: Boolean,
     default: false

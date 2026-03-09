@@ -9,6 +9,7 @@ import {
 
 function Notifications() {
   const [notifs, setNotifs] = useState([]);
+  const [activeAd, setActiveAd] = useState(null);
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
@@ -89,6 +90,19 @@ function Notifications() {
     window.dispatchEvent(new Event("notifications-updated"));
   };
 
+  const resolveNotificationImage = (raw) => {
+    const val = String(raw || "").trim();
+    if (!val) return "";
+    if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("data:image/")) return val;
+    if (val.startsWith("/")) return val;
+    return `/${val}`;
+  };
+
+  const getNotificationTitle = (title) => {
+    const text = String(title || "").trim();
+    return text.replace(/^New Product:\s*/i, "") || text;
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold flex gap-2 items-center">
@@ -107,8 +121,23 @@ function Notifications() {
               className={`p-4 shadow rounded-xl flex justify-between gap-3 ${n.read ? "bg-gray-100" : "bg-blue-50"}`}
             >
               <div>
-                <h3 className="font-semibold text-sm">{n.title}</h3>
+                <h3 className="font-semibold text-sm">{getNotificationTitle(n.title)}</h3>
                 <p className="text-gray-600 text-sm">{n.message}</p>
+                {resolveNotificationImage(n.image) && (
+                  <button
+                    type="button"
+                    className="mt-2 p-0 border-0 bg-transparent"
+                    onClick={() => setActiveAd(n)}
+                    title="Open advertisement"
+                  >
+                    <img
+                      src={resolveNotificationImage(n.image)}
+                      alt="Advertisement"
+                      className="rounded"
+                      style={{ width: "170px", height: "96px", objectFit: "cover", cursor: "zoom-in" }}
+                    />
+                  </button>
+                )}
                 <p className="text-xs text-gray-400 mt-1">
                   {n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}
                 </p>
@@ -129,6 +158,36 @@ function Notifications() {
           ))
         )}
       </div>
+
+      {activeAd && resolveNotificationImage(activeAd.image) && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-base font-semibold">{getNotificationTitle(activeAd.title) || "Advertisement"}</h3>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+                onClick={() => setActiveAd(null)}
+                aria-label="Close advertisement preview"
+              >
+                x
+              </button>
+            </div>
+
+            <div className="p-4">
+              <img
+                src={resolveNotificationImage(activeAd.image)}
+                alt={activeAd.title || "Advertisement"}
+                className="w-full rounded"
+                style={{ maxHeight: "70vh", objectFit: "contain" }}
+              />
+              {activeAd.message && (
+                <p className="mt-3 text-sm text-gray-700">{activeAd.message}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

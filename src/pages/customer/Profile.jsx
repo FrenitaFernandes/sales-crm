@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 
+const PREFERENCE_OPTIONS = [
+  "Data Logger IIoT 4.0",
+  "Cloud PLC 4.0",
+  "Biometric Authentication",
+  "HMI & Display Board",
+  "RFID Reader",
+  "R-LiFi",
+  "Vibration Sensor",
+  "Data Acquisition System",
+  "DAS Datalogger"
+];
+
 function Profile() {
   const [profile, setProfile] = useState({
     name: "",           // company name
@@ -10,6 +22,7 @@ function Profile() {
     address: "",
     country: "",
     industryType: "",
+    preferences: [],
     avatar: "",
     description: "",
     website: "",
@@ -25,7 +38,7 @@ function Profile() {
   // LOAD USER PROFILE
   useEffect(() => {
     const loadProfile = async () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
       if (!token) {
         setLoading(false);
         return;
@@ -50,7 +63,15 @@ function Profile() {
         const apiCustomer = data.customer || data.data || null;
 
         if (data.success && apiCustomer) {
-          setProfile((prev) => ({ ...prev, ...apiCustomer }));
+          const normalizedPreferences = Array.isArray(apiCustomer.preferences)
+            ? apiCustomer.preferences
+            : [];
+
+          setProfile((prev) => ({
+            ...prev,
+            ...apiCustomer,
+            preferences: normalizedPreferences
+          }));
           localStorage.setItem("user", JSON.stringify(apiCustomer));
           setError("");
         } else {
@@ -96,7 +117,7 @@ function Profile() {
         phone: profile.phone,
         address: profile.address,
         country: profile.country,
-        industryType: profile.industryType,
+        preferences: Array.isArray(profile.preferences) ? profile.preferences : [],
         avatar: profile.avatar,
         description: profile.description,
         website: profile.website
@@ -146,14 +167,31 @@ function Profile() {
   };
 
   // Format date safely
+  let storedUser = {};
   let storedCreatedAt = "";
   try {
-    storedCreatedAt = JSON.parse(localStorage.getItem("user") || "{}").createdAt || "";
+    storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    storedCreatedAt = storedUser.createdAt || "";
   } catch (parseError) {
+    storedUser = {};
     storedCreatedAt = "";
   }
 
-  const memberSinceRaw = profile.memberSince || profile.createdAt || storedCreatedAt;
+  const objectIdToDate = (id) => {
+    if (!id || typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id)) return "";
+    const ts = parseInt(id.slice(0, 8), 16) * 1000;
+    const date = new Date(ts);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+  };
+
+  const memberSinceRaw =
+    profile.memberSince ||
+    profile.createdAt ||
+    storedCreatedAt ||
+    objectIdToDate(profile._id) ||
+    objectIdToDate(profile.id) ||
+    objectIdToDate(storedUser._id) ||
+    objectIdToDate(storedUser.id);
 
   const formattedDate = memberSinceRaw
     ? new Date(memberSinceRaw).toLocaleDateString("en-US", {
@@ -289,28 +327,28 @@ function Profile() {
                 {/* Company Name */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Company Name
+                    Customer Name
                   </label>
                   <input
                     type="text"
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    placeholder="Enter company name"
+                    placeholder="Enter customer name"
                   />
                 </div>
 
                 {/* Contact Person Name */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Contact Person Name
+                    Enter company name
                   </label>
                   <input
                     type="text"
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={profile.company}
                     onChange={(e) => setProfile({ ...profile, company: e.target.value })}
-                    placeholder="Enter contact person name"
+                    placeholder="Enter company name"
                   />
                 </div>
 
@@ -357,32 +395,6 @@ function Profile() {
                     <option value="USA">USA</option>
                     <option value="UK">UK</option>
                     <option value="UAE">UAE</option>
-                  </select>
-                </div>
-
-                {/* Industry Type */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Industry Type
-                  </label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={profile.industryType}
-                    onChange={(e) => setProfile({ ...profile, industryType: e.target.value })}
-                  >
-                    <option value="">Select Industry</option>
-                    <option value="Manufacturing Companies">Manufacturing Companies</option>
-                    <option value="Industrial Businesses">Industrial Businesses</option>
-                    <option value="Smart Buildings">Smart Buildings</option>
-                    <option value="Educational Institutions">Educational Institutions</option>
-                    <option value="Technology Startups">Technology Startups</option>
-                    <option value="Automotive Companies">Automotive Companies</option>
-                    <option value="Energy & Utility Companies">Energy & Utility Companies</option>
-                    <option value="Agriculture Technology Companies">Agriculture Technology</option>
-                    <option value="Logistics & Supply Chain Companies">Logistics & Supply Chain</option>
-                    <option value="Retail Businesses">Retail Businesses</option>
-                    <option value="Healthcare Organizations">Healthcare Organizations</option>
-                    <option value="Government Organizations">Government Organizations</option>
                   </select>
                 </div>
 
@@ -440,6 +452,39 @@ function Profile() {
                   placeholder="Describe your company"
                   rows="4"
                 />
+              </div>
+
+              {/* Preferences */}
+              <div className="mt-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Preferences
+                </label>
+                <div className="max-h-56 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2 bg-white">
+                  {PREFERENCE_OPTIONS.map((option) => {
+                    const selected = Array.isArray(profile.preferences)
+                      ? profile.preferences.includes(option)
+                      : false;
+
+                    return (
+                      <label key={option} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(e) => {
+                            const current = Array.isArray(profile.preferences) ? profile.preferences : [];
+                            const next = e.target.checked
+                              ? [...current, option]
+                              : current.filter((item) => item !== option);
+
+                            setProfile({ ...profile, preferences: next });
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <span>{option}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Action Buttons */}

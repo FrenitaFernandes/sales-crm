@@ -47,16 +47,28 @@ router.get("/profile", protect, async (req, res) => {
     // If customer doesn't exist, create one
     if (!customer) {
       console.log("Customer profile not found, creating new one...");
+      const fallbackName =
+        req.user?.name ||
+        (userEmail ? userEmail.split("@")[0] : "") ||
+        "Customer";
+
       customer = await Customer.create({
         userId,
-        name: req.user.name || "",
+        name: fallbackName,
         email: userEmail,
+        phone: req.user?.phone || "",
         status: "Active"
       });
     }
 
+    if (!customer.phone && req.user?.phone) {
+      customer.phone = req.user.phone;
+      await customer.save();
+    }
+
     const payload = {
       ...customer.toObject(),
+      phone: customer.phone || req.user?.phone || "",
       memberSince: customer.createdAt || req.user.createdAt || null
     };
 

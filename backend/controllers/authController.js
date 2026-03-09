@@ -130,7 +130,7 @@ const generateToken = (id) => {
 // ===============================
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     if (!name || !email || !password) {
       return res
@@ -145,6 +145,7 @@ const registerUser = async (req, res) => {
         // reactivate previously deleted/inactive account
         const hashedPassword = await bcrypt.hash(password, 10);
         existingUser.name = name;
+        existingUser.phone = phone || existingUser.phone;
         existingUser.password = hashedPassword;
         existingUser.isActive = true;
         await existingUser.save();
@@ -171,6 +172,7 @@ const registerUser = async (req, res) => {
             id: existingUser._id,
             name: existingUser.name,
             email: existingUser.email,
+            phone: existingUser.phone,
             role: existingUser.role,
           },
         });
@@ -212,6 +214,7 @@ const registerUser = async (req, res) => {
 
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
       },
     });
@@ -256,6 +259,7 @@ const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
       },
     });

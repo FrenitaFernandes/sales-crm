@@ -10,6 +10,7 @@ const Advertisement = require("../models/Advertisement.js");
 const {
   createAdvertisement,
   getAdvertisements,
+  deleteAdvertisement,
 } = require("../controllers/advertisementController");
 
 // GET: Dashboard stats
@@ -612,6 +613,10 @@ router.post("/advertisement", async (req, res) => {
 
 router.get("/advertisement", async (req, res) => {
   return getAdvertisements(req, res);
+});
+
+router.delete("/advertisement/:id", async (req, res) => {
+  return deleteAdvertisement(req, res);
 });
 
 

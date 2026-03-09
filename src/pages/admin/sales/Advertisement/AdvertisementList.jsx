@@ -1,20 +1,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-function resolveAdImageSrc(rawValue) {
-  const raw = String(rawValue || "").trim();
-
-  if (!raw) return "";
-  if (raw.startsWith("data:image/")) return raw;
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  if (raw.startsWith("/uploads/")) return `http://localhost:5000${raw}`;
-  if (raw.startsWith("uploads/")) return `http://localhost:5000/${raw}`;
-
-  return `http://localhost:5000/${raw}`;
-}
-
 export default function AdvertisementList() {
   const [ads, setAds] = useState([]);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
     fetchAds();
@@ -29,9 +19,43 @@ export default function AdvertisementList() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!id) return;
+
+    try {
+      setStatusError("");
+      setStatusMessage("");
+
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+
+      try {
+        await axios.delete(`http://localhost:5000/api/admin/advertisement/${id}`);
+      } catch (adminErr) {
+        // Fallback to existing protected ads route if admin route is not loaded yet.
+        await axios.delete(`http://localhost:5000/api/ads/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      }
+
+      setAds((prev) => prev.filter((ad) => ad._id !== id));
+      setStatusMessage("Advertisement deleted successfully.");
+    } catch (err) {
+      console.error("Error deleting advertisement:", err);
+      setStatusError("Failed to delete advertisement");
+    }
+  };
+
   return (
     <div className="container-fluid px-4">
       <h2 className="mt-4 mb-3">Advertisement List</h2>
+
+      {statusMessage && (
+        <div className="alert alert-success py-2 mb-3">{statusMessage}</div>
+      )}
+
+      {statusError && (
+        <div className="alert alert-danger py-2 mb-3">{statusError}</div>
+      )}
 
       <div className="table-responsive shadow-sm bg-white p-3 rounded">
         <table className="table table-bordered table-striped">
@@ -40,19 +64,17 @@ export default function AdvertisementList() {
               <th>S.No</th>
               <th>Date</th>
               <th>Product Name</th>
-              <th>Tagline</th>
               <th>Description</th>
-              <th>Type</th>
               <th>Target Area</th>
               <th>Target Audience</th>
-              <th>Product Image</th>
+              <th>Action</th>
             </tr>
           </thead>
 
           <tbody>
             {ads.length === 0 ? (
               <tr>
-                <td colSpan="9" className="text-center py-3">
+                <td colSpan="7" className="text-center py-3">
                   No advertisements found
                 </td>
               </tr>
@@ -66,23 +88,17 @@ export default function AdvertisementList() {
                       : "-"}
                   </td>
                   <td>{ad.productName}</td>
-                  <td>{ad.tagline}</td>
                   <td>{ad.description}</td>
-                  <td>{ad.type}</td>
                   <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>
                   <td className="text-center">
-                    {resolveAdImageSrc(ad.thumbnail) ? (
-                      <img
-                        src={resolveAdImageSrc(ad.thumbnail)}
-                        alt="thumb"
-                        width={50}
-                        height={50}
-                        style={{ objectFit: "cover", borderRadius: "5px" }}
-                      />
-                    ) : (
-                      "No image"
-                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDelete(ad._id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))

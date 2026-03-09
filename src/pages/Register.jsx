@@ -90,7 +90,7 @@ function Register() {
 
         <input
           type="text"
-          placeholder="Company Name"
+          placeholder="Cusromer Name"
           className="w-full p-2 mb-4 border rounded"
           value={name}
           onChange={(e) => setName(e.target.value)}
