@@ -25,6 +25,11 @@ export const getInvoiceById = async (invoiceId) => {
   return response.data;
 };
 
+export const getInvoicesByCustomer = async (customerId) => {
+  const response = await axios.get(`${API_URL}/customer/${customerId}`, getAuthConfig());
+  return response.data;
+};
+
 export const updateInvoiceStatus = async (invoiceId, status) => {
   const response = await axios.put(`${API_URL}/${invoiceId}/status`, { status }, getAuthConfig());
   return response.data;

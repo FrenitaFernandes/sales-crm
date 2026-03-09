@@ -45,6 +45,15 @@ const CustomerSchema = new mongoose.Schema(
   company: {
     type: String
   },
+  description: {
+    type: String
+  },
+  website: {
+    type: String
+  },
+  avatar: {
+    type: String
+  },
 
   industryType: {
     type: String,
@@ -68,6 +77,16 @@ const CustomerSchema = new mongoose.Schema(
     type: String,
     enum: ["Active", "Inactive", "Suspended"],
     default: "Inactive"
+  },
+
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null
   }
 
 },
