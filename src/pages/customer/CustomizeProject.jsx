@@ -16,18 +16,71 @@ export default function CustomizeProject() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [uiMessage, setUiMessage] = useState("");
+  const [uiMessageType, setUiMessageType] = useState("success");
+
+  const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+
+  const getStoredUserContact = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      return {
+        customerName: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      };
+    } catch (error) {
+      return {
+        customerName: "",
+        email: "",
+        phone: "",
+      };
+    }
+  };
 
   // AUTH CHECK
   useEffect(() => {
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const role = localStorage.getItem("userRole");
 
     if (!token || role !== "customer") {
-      alert("Please login as customer to access this page.");
+      setUiMessageType("error");
+      setUiMessage("Please login as customer to access this page.");
       navigate("/login");
       return;
     }
+
+    // Prefill from localStorage immediately for better UX.
+    const localContact = getStoredUserContact();
+    setFormData((prev) => ({
+      ...prev,
+      customerName: localContact.customerName || prev.customerName,
+      email: localContact.email || prev.email,
+      phone: localContact.phone || prev.phone,
+    }));
+
+    // Refresh with backend profile data when available.
+    const loadCustomerProfile = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/customers/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const profile = res.data?.customer || res.data?.data || {};
+
+        setFormData((prev) => ({
+          ...prev,
+          customerName: profile.name || prev.customerName,
+          email: profile.email || prev.email,
+          phone: profile.phone || prev.phone,
+        }));
+      } catch (error) {
+        console.error("Profile prefill error:", error);
+      }
+    };
+
+    loadCustomerProfile();
 
   }, [navigate]);
 
@@ -51,7 +104,7 @@ export default function CustomizeProject() {
 
     try {
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       await axios.post(
         "http://localhost:5000/api/projects",
@@ -71,13 +124,14 @@ export default function CustomizeProject() {
         }
       );
 
-      alert("Project Customization Request Submitted Successfully!");
+      setUiMessageType("success");
+      setUiMessage("Project customization request submitted successfully.");
 
       setFormData({
         projectName: "",
-        customerName: "",
-        email: "",             // ✅ reset email
-        phone: "",
+        customerName: formData.customerName,
+        email: formData.email,
+        phone: formData.phone,
         customizationDetails: "",
         dueDate: "",
       });
@@ -91,7 +145,8 @@ export default function CustomizeProject() {
         error.message ||
         "Something went wrong!";
 
-      alert(errorMsg);
+      setUiMessageType("error");
+      setUiMessage(errorMsg);
 
     } finally {
 
@@ -105,6 +160,23 @@ export default function CustomizeProject() {
   return (
 
     <div className="p-6 bg-gray-50 min-h-screen flex justify-center items-start">
+
+      {uiMessage && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-10 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-5 text-center">
+            <p className={`text-sm font-semibold ${uiMessageType === "success" ? "text-green-700" : "text-red-700"}`}>
+              {uiMessage}
+            </p>
+            <button
+              type="button"
+              className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => setUiMessage("")}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow-lg rounded-lg w-full max-w-2xl p-6">
 

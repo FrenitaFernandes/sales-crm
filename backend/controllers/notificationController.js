@@ -13,21 +13,23 @@ exports.getCustomerNotifications = async (req, res) => {
     const userEmail = req.user.email;
 
     // Find customer profile linked with this user (supports older records without userId).
-    const customer = await Customer.findOne({
+    const customers = await Customer.find({
       $or: [
         { userId },
         { email: userEmail }
       ]
-    });
+    }).select("_id");
 
-    if (!customer) {
+    if (!customers || customers.length === 0) {
       return res.status(404).json({
         message: "Customer profile not found"
       });
     }
 
+    const customerIds = customers.map((c) => c._id);
+
     const notifications = await Notification
-      .find({ customerId: customer._id })
+      .find({ customerId: { $in: customerIds } })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -59,22 +61,24 @@ exports.markNotificationRead = async (req, res) => {
     const userId = req.user.id;
     const userEmail = req.user.email;
 
-    const customer = await Customer.findOne({
+    const customers = await Customer.find({
       $or: [
         { userId },
         { email: userEmail }
       ]
-    });
+    }).select("_id");
 
-    if (!customer) {
+    if (!customers || customers.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Customer profile not found"
       });
     }
 
+    const customerIds = customers.map((c) => c._id);
+
     const notif = await Notification.findByIdAndUpdate(
-      { _id: req.params.id, customerId: customer._id },
+      { _id: req.params.id, customerId: { $in: customerIds } },
       { read: true },
       { new: true }
     );

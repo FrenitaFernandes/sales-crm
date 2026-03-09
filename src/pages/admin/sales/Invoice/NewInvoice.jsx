@@ -8,45 +8,91 @@ export default function NewInvoice() {
 	const [searchParams] = useSearchParams();
 	const editingInvoiceId = searchParams.get("invoiceId");
 	const isEditMode = useMemo(() => Boolean(editingInvoiceId), [editingInvoiceId]);
+
 	const [form, setForm] = useState({
-		customerId: "",
-		customerName: "",
 		invoiceNumber: "",
+		customerId: "",
+		customerEmail: "",
+		customerName: "",
+		projectName: "",
+		customerPhone: "",
+		amount: "",
 		date: "",
 		dueDate: "",
-		description: "",
-		amount: "",
 		status: "Pending",
+		description: "",
 	});
+
+	const [projectRequests, setProjectRequests] = useState([]);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
-	const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+	const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 	const [message, setMessage] = useState("");
 	const [error, setError] = useState("");
-	const [customers, setCustomers] = useState([]);
 
-	// Load customers on component mount
+	const addDaysToInputDate = (inputDate, days) => {
+		if (!inputDate) return "";
+		const base = new Date(inputDate);
+		if (Number.isNaN(base.getTime())) return "";
+		base.setDate(base.getDate() + days);
+		return base.toISOString().split("T")[0];
+	};
+
+	const getTodayInputDate = () => new Date().toISOString().split("T")[0];
+
+	const toInputDate = (dateValue) => {
+		if (!dateValue) return "";
+		const parsedDate = new Date(dateValue);
+		if (Number.isNaN(parsedDate.getTime())) return "";
+		return parsedDate.toISOString().split("T")[0];
+	};
+
+	const normalizeProjectRequest = (item) => {
+		const customerObj = item?.customerId && typeof item.customerId === "object" ? item.customerId : null;
+		return {
+			id: item?._id || "",
+			customerId: customerObj?._id || item?.customerId || "",
+			customerEmail: item?.email || customerObj?.email || "",
+			customerName: item?.customerName || customerObj?.name || item?.clientName || "",
+			customerPhone: item?.phone || customerObj?.phone || "",
+			projectName: item?.projectName || "",
+			createdAt: item?.createdAt || item?.updatedAt || "",
+		};
+	};
+
 	useEffect(() => {
-		const loadCustomers = async () => {
+		const loadInitialData = async () => {
 			try {
-				setIsLoadingCustomers(true);
+				setIsLoadingProjects(true);
 				const token = localStorage.getItem("authToken") || localStorage.getItem("token");
-				const response = await axios.get("http://localhost:5000/api/customers", {
-					headers: {
-						Authorization: `Bearer ${token}`,
-					},
-				});
-				if (response.data.data) {
-					setCustomers(response.data.data);
+
+				const [projectRes] = await Promise.all([
+					axios.get("http://localhost:5000/api/projects", {
+						headers: { Authorization: `Bearer ${token}` },
+					}),
+				]);
+
+				const requests = (projectRes.data?.data || []).map(normalizeProjectRequest);
+				requests.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+				setProjectRequests(requests);
+
+				if (!isEditMode) {
+					const today = getTodayInputDate();
+					setForm((prev) => ({
+						...prev,
+						date: prev.date || today,
+						dueDate: prev.dueDate || addDaysToInputDate(today, 14),
+					}));
 				}
-			} catch (err) {
-				console.error("Failed to load customers:", err);
+			} catch (loadError) {
+				console.error("Failed to load invoice prerequisites:", loadError);
 			} finally {
-				setIsLoadingCustomers(false);
+				setIsLoadingProjects(false);
 			}
 		};
-		loadCustomers();
-	}, []);
+
+		loadInitialData();
+	}, [isEditMode]);
 
 	useEffect(() => {
 		const loadInvoiceForEdit = async () => {
@@ -71,16 +117,13 @@ export default function NewInvoice() {
 					cancelled: "Pending",
 				};
 
-				const toInputDate = (dateValue) => {
-					if (!dateValue) return "";
-					const parsedDate = new Date(dateValue);
-					if (Number.isNaN(parsedDate.getTime())) return "";
-					return parsedDate.toISOString().split("T")[0];
-				};
-
 				setForm({
-					customerName: invoice.customerName || "",
 					invoiceNumber: invoice.invoiceNumber || "",
+					customerId: invoice.customerId || "",
+					customerEmail: invoice.customerEmail || "",
+					customerName: invoice.customerName || "",
+					projectName: invoice.projectName || "",
+					customerPhone: invoice.customerPhone || "",
 					date: toInputDate(invoice.invoiceDate),
 					dueDate: toInputDate(invoice.dueDate),
 					description: invoice.description || invoice.items?.[0]?.itemName || "",
@@ -99,31 +142,40 @@ export default function NewInvoice() {
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
-		
-		// Handle customer selection
-		if (name === "customerId") {
-			const selectedCustomer = customers.find(c => c._id === value);
-			setForm((prev) => ({ 
-				...prev, 
-				customerId: value,
-				customerName: selectedCustomer ? selectedCustomer.name : ""
+
+		if (name === "date" && value) {
+			setForm((prev) => ({
+				...prev,
+				[name]: value,
+				dueDate: addDaysToInputDate(value, 14),
 			}));
+			return;
 		}
-		// Auto-update due date when invoice date changes (30 days later)
-		else if (name === "date" && value) {
-			const invoiceDate = new Date(value);
-			const dueDate = new Date(invoiceDate);
-			dueDate.setDate(dueDate.getDate() + 30);
-			const formattedDueDate = dueDate.toISOString().split('T')[0];
-			setForm((prev) => ({ ...prev, [name]: value, dueDate: formattedDueDate }));
-		} else {
-			setForm((prev) => ({ ...prev, [name]: value }));
+
+		if (name === "customerEmail") {
+			const normalizedInput = String(value || "").trim().toLowerCase();
+			const selected = projectRequests.find(
+				(item) => String(item.customerEmail || "").trim().toLowerCase() === normalizedInput
+			);
+
+			if (selected) {
+				setForm((prev) => ({
+					...prev,
+					customerEmail: String(value || "").trim(),
+					customerId: selected.customerId || prev.customerId,
+					customerName: selected.customerName || prev.customerName,
+					projectName: selected.projectName || prev.projectName,
+					customerPhone: selected.customerPhone || prev.customerPhone,
+				}));
+				return;
+			}
 		}
+
+		setForm((prev) => ({ ...prev, [name]: value }));
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-
 		if (isLoadingInvoice) return;
 
 		setIsSaving(true);
@@ -135,7 +187,10 @@ export default function NewInvoice() {
 			const descriptionText = String(form.description || "").trim();
 			const payload = {
 				customerId: form.customerId || undefined,
+				customerEmail: form.customerEmail,
+				customerPhone: form.customerPhone,
 				customerName: form.customerName,
+				projectName: form.projectName,
 				invoiceNumber: form.invoiceNumber,
 				amount: form.amount,
 				subtotal: numericAmount,
@@ -164,29 +219,30 @@ export default function NewInvoice() {
 					try {
 						await updateInvoiceStatus(createdInvoiceId, normalizedStatus);
 					} catch (statusUpdateError) {
-						console.error("Status update failed:", statusUpdateError?.response?.data || statusUpdateError.message);
 						try {
 							await updateInvoice(createdInvoiceId, { status: normalizedStatus });
 						} catch (fallbackUpdateError) {
-							console.error("Fallback status update failed:", fallbackUpdateError?.response?.data || fallbackUpdateError.message);
-							setMessage("Invoice saved, but status update failed");
+							console.error("Status update fallback failed:", fallbackUpdateError);
 						}
 					}
 				}
 
-				setMessage((prev) => prev || "Invoice saved successfully");
-			}
+				setMessage("Invoice saved successfully");
 
-			setForm({
-				customerId: "",
-				customerName: "",
-				invoiceNumber: "",
-				date: "",
-				dueDate: "",
-				description: "",
-				amount: "",
-				status: "Pending",
-			});
+				setForm({
+					invoiceNumber: "",
+					customerId: "",
+					customerEmail: "",
+					customerName: "",
+					projectName: "",
+					customerPhone: "",
+					date: getTodayInputDate(),
+					dueDate: addDaysToInputDate(getTodayInputDate(), 14),
+					description: "",
+					amount: "",
+					status: "Pending",
+				});
+			}
 
 			setTimeout(() => {
 				navigate("/admin/sales/invoice/history");
@@ -213,23 +269,37 @@ export default function NewInvoice() {
 
 				<div className="row">
 					<div className="col-4 mb-3">
-						<label className="form-label">Customer</label>
-						<select
-							name="customerId"
-							className="form-select"
-							value={form.customerId}
+						<label className="form-label">Invoice Number</label>
+						<input
+							type="text"
+							name="invoiceNumber"
+							className="form-control"
+							value={form.invoiceNumber}
 							onChange={handleChange}
-							disabled={isLoadingCustomers}
-						>
-							<option value="">
-								{isLoadingCustomers ? "Loading customers..." : "Select a Customer (Optional)"}
-							</option>
-							{customers.map((customer) => (
-								<option key={customer._id} value={customer._id}>
-									{customer.name}
+							required
+						/>
+					</div>
+
+					<div className="col-4 mb-3">
+						<label className="form-label">Customer Email</label>
+						<input
+							type="text"
+							name="customerEmail"
+							list="invoice-customer-email-options"
+							className="form-control"
+							value={form.customerEmail}
+							onChange={handleChange}
+							required
+							placeholder={isLoadingProjects ? "Loading requests..." : "Search/select customer email"}
+							disabled={isLoadingProjects}
+						/>
+						<datalist id="invoice-customer-email-options">
+							{projectRequests.map((item) => (
+								<option key={item.id || `${item.customerEmail}-${item.projectName}`} value={item.customerEmail}>
+									{item.customerName} - {item.projectName}
 								</option>
 							))}
-						</select>
+						</datalist>
 					</div>
 
 					<div className="col-4 mb-3">
@@ -243,21 +313,21 @@ export default function NewInvoice() {
 							required
 						/>
 					</div>
+				</div>
 
+				<div className="row">
 					<div className="col-4 mb-3">
-						<label className="form-label">Invoice Number</label>
+						<label className="form-label">Project Name</label>
 						<input
 							type="text"
-							name="invoiceNumber"
+							name="projectName"
 							className="form-control"
-							value={form.invoiceNumber}
+							value={form.projectName}
 							onChange={handleChange}
 							required
 						/>
 					</div>
-				</div>
 
-				<div className="row">
 					<div className="col-4 mb-3">
 						<label className="form-label">Amount</label>
 						<input
@@ -271,9 +341,7 @@ export default function NewInvoice() {
 							required
 						/>
 					</div>
-				</div>
 
-				<div className="row">
 					<div className="col-4 mb-3">
 						<label className="form-label">Invoice Date</label>
 						<input
@@ -285,7 +353,9 @@ export default function NewInvoice() {
 							required
 						/>
 					</div>
+				</div>
 
+				<div className="row">
 					<div className="col-4 mb-3">
 						<label className="form-label">Due Date</label>
 						<input
@@ -329,11 +399,7 @@ export default function NewInvoice() {
 					<button type="submit" className="btn btn-primary" disabled={isSaving}>
 						{isSaving ? "Saving..." : isEditMode ? "Update Invoice" : "Save Invoice"}
 					</button>
-					<button 
-						type="button" 
-						className="btn btn-secondary"
-						onClick={handleEdit}
-					>
+					<button type="button" className="btn btn-secondary" onClick={handleEdit}>
 						{isEditMode ? "Back to History" : "Edit Invoice"}
 					</button>
 				</div>

@@ -1,4 +1,7 @@
 const Invoice = require("../models/Invoice");
+const Customer = require("../models/Customer");
+const Notification = require("../models/Notification");
+const Project = require("../models/Project");
 
 const normalizeStatus = (status) => {
   if (!status) return "pending";
@@ -23,6 +26,7 @@ exports.createInvoice = async (req, res) => {
       customerId,
       invoiceNumber,
       customerName,
+      projectName,
       customerEmail,
       customerPhone,
       items,
@@ -69,12 +73,43 @@ exports.createInvoice = async (req, res) => {
       return res.status(400).json({ message: "Invoice number already exists" });
     }
 
+    let resolvedCustomerId = customerId || null;
+    let resolvedCustomerName = trimmedCustomerName;
+    let resolvedCustomerEmail = customerEmail || "";
+    let resolvedCustomerPhone = customerPhone || "";
+
+    if (!resolvedCustomerId && resolvedCustomerEmail) {
+      const matchedCustomer = await Customer.findOne({ email: resolvedCustomerEmail, isDeleted: false });
+      if (matchedCustomer) {
+        resolvedCustomerId = matchedCustomer._id;
+        resolvedCustomerName = matchedCustomer.name || resolvedCustomerName;
+        resolvedCustomerPhone = matchedCustomer.phone || resolvedCustomerPhone;
+      }
+    }
+
+    let resolvedProjectName = String(projectName || "").trim();
+
+    if (!resolvedProjectName) {
+      const projectQuery = {};
+      if (resolvedCustomerEmail) {
+        projectQuery.email = resolvedCustomerEmail;
+      } else if (resolvedCustomerId) {
+        projectQuery.customerId = resolvedCustomerId;
+      }
+
+      if (Object.keys(projectQuery).length > 0) {
+        const latestProject = await Project.findOne(projectQuery).sort({ createdAt: -1 });
+        resolvedProjectName = latestProject?.projectName || "";
+      }
+    }
+
     const invoice = await Invoice.create({
-      customerId: customerId || null,
+      customerId: resolvedCustomerId,
       invoiceNumber: trimmedInvoiceNumber,
-      customerName: trimmedCustomerName,
-      customerEmail,
-      customerPhone,
+      customerName: resolvedCustomerName,
+      projectName: resolvedProjectName,
+      customerEmail: resolvedCustomerEmail,
+      customerPhone: resolvedCustomerPhone,
       description: description || "",
       items,
       amount: numericAmount,
@@ -86,6 +121,16 @@ exports.createInvoice = async (req, res) => {
       invoiceDate: invoiceDate || date,
       dueDate
     });
+
+    if (resolvedCustomerId) {
+      await Notification.create({
+        customerId: resolvedCustomerId,
+        title: `Invoice ${trimmedInvoiceNumber}`,
+        message: `A new invoice has been generated for Rs.${numericAmount}.`,
+        type: "order",
+        read: false,
+      });
+    }
 
     res.status(201).json({
       success: true,
