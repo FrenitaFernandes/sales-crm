@@ -17,6 +17,7 @@ import AdminCRMDashboard from "./pages/admin/crm/Dashboard";
 import CustomerDetails from "./pages/admin/crm/CustomerDetails";
 import ServiceRequests from "./pages/admin/crm/ServiceRequests";
 import CRMNotifications from "./pages/admin/crm/Notifications";
+import AdminSettings from "./pages/admin/Settings";
 
 // ADMIN SALES PAGES
 import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
@@ -96,6 +97,14 @@ function App() {
           element={
             <MainLayout>
               <CRMNotifications />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <MainLayout>
+              <AdminSettings />
             </MainLayout>
           }
         />
