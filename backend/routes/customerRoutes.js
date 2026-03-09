@@ -26,10 +26,21 @@ router.get("/dashboard", protect, getCustomerDashboard);
 router.get("/profile", protect, async (req, res) => {
   try {
     const Customer = require("../models/Customer");
-    console.log("Fetching profile for userId:", req.user._id, "email:", req.user.email);
-    
+    const userId = req.user?._id || req.user?.id;
+    const userEmail = req.user?.email;
+
+    if (!userId && !userEmail) {
+      return res.status(401).json({ success: false, message: "Unauthorized user context" });
+    }
+
+    console.log("Fetching profile for userId:", userId, "email:", userEmail);
+
+    const orFilters = [];
+    if (userId) orFilters.push({ userId });
+    if (userEmail) orFilters.push({ email: userEmail });
+
     let customer = await Customer.findOne({
-      $or: [{ userId: req.user._id }, { email: req.user.email }],
+      $or: orFilters,
       isDeleted: false
     });
     
@@ -37,14 +48,19 @@ router.get("/profile", protect, async (req, res) => {
     if (!customer) {
       console.log("Customer profile not found, creating new one...");
       customer = await Customer.create({
-        userId: req.user._id,
+        userId,
         name: req.user.name || "",
-        email: req.user.email,
+        email: userEmail,
         status: "Active"
       });
     }
-    
-    res.status(200).json({ success: true, data: customer });
+
+    const payload = {
+      ...customer.toObject(),
+      memberSince: customer.createdAt || req.user.createdAt || null
+    };
+
+    res.status(200).json({ success: true, customer: payload, data: payload });
   } catch (err) {
     console.error("Get Profile Error:", err);
     res.status(500).json({ success: false, message: "Server error: " + err.message });

@@ -47,9 +47,11 @@ function Profile() {
         const data = await res.json();
         console.log("Profile data received:", data);
 
-        if (data.success && data.customer) {
-          setProfile(data.customer);
-          localStorage.setItem("user", JSON.stringify(data.customer));
+        const apiCustomer = data.customer || data.data || null;
+
+        if (data.success && apiCustomer) {
+          setProfile((prev) => ({ ...prev, ...apiCustomer }));
+          localStorage.setItem("user", JSON.stringify(apiCustomer));
           setError("");
         } else {
           throw new Error(data.message || "Failed to load profile");
@@ -65,6 +67,7 @@ function Profile() {
             const parsed = JSON.parse(storedUser);
             console.log("Loaded from localStorage:", parsed);
             setProfile(parsed);
+            setError("");
           } catch (e) {
             console.error("Stored user parse error:", e);
           }
@@ -143,8 +146,17 @@ function Profile() {
   };
 
   // Format date safely
-  const formattedDate = profile.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString("en-US", {
+  let storedCreatedAt = "";
+  try {
+    storedCreatedAt = JSON.parse(localStorage.getItem("user") || "{}").createdAt || "";
+  } catch (parseError) {
+    storedCreatedAt = "";
+  }
+
+  const memberSinceRaw = profile.memberSince || profile.createdAt || storedCreatedAt;
+
+  const formattedDate = memberSinceRaw
+    ? new Date(memberSinceRaw).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric"
