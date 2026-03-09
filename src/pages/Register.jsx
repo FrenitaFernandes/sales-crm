@@ -1,7 +1,14 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
+
+const phoneLength = {
+  "+91": 10,
+  "+1": 10,
+  "+44": 10,
+  "+971": 9,
+};
 
 function Register() {
   const [name, setName] = useState("");
@@ -11,35 +18,34 @@ function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const navigate = useNavigate();
 
-  // Phone length rules
-  const phoneLength = {
-    "+91": 10,
-    "+1": 10,
-    "+44": 10,
-    "+971": 9,
-  };
-
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     if (password !== confirmPassword) {
+      setIsSuccess(false);
       setMessage("Passwords do not match!");
       return;
     }
-
     const requiredLength = phoneLength[countryCode];
 
     if (phone.length !== requiredLength) {
+      setIsSuccess(false);
       setMessage(
         `Phone number must be exactly ${requiredLength} digits for ${countryCode}`
       );
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const data = await registerUser({
@@ -49,20 +55,20 @@ function Register() {
         password,
       });
 
+      setIsSuccess(true);
       setMessage(data.message);
 
       setTimeout(() => {
         navigate("/login");
       }, 1000);
     } catch (error) {
-      setMessage(error.response?.data?.message || "Registration failed");
+      console.error("Registration Error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Registration failed";
+      setIsSuccess(false);
+      setMessage(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  // Allow only numbers
-  const handlePhoneChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "");
-    setPhone(value);
   };
 
   return (
@@ -83,14 +89,14 @@ function Register() {
         </h2>
 
         {message && (
-          <p className="text-center text-sm mb-3 text-red-600">
+          <p className={`text-center text-sm mb-3 ${isSuccess ? "text-green-600" : "text-red-600"}`}>
             {message}
           </p>
         )}
 
         <input
           type="text"
-          placeholder="Cusromer Name"
+          placeholder="Full Name"
           className="w-full p-2 mb-4 border rounded"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -113,19 +119,18 @@ function Register() {
             value={countryCode}
             onChange={(e) => setCountryCode(e.target.value)}
           >
-            <option value="+91">🇮🇳 +91</option>
-            <option value="+1">🇺🇸 +1</option>
-            <option value="+44">🇬🇧 +44</option>
-            <option value="+971">🇦🇪 +971</option>
+            <option value="+91">ðŸ‡®ðŸ‡³ +91</option>
+            <option value="+1">ðŸ‡ºðŸ‡¸ +1</option>
+            <option value="+44">ðŸ‡¬ðŸ‡§ +44</option>
+            <option value="+971">ðŸ‡¦ðŸ‡ª +971</option>
           </select>
 
           <input
             type="tel"
-            placeholder={`Enter ${phoneLength[countryCode]} digit number`}
+            placeholder="Contact Number"
             className="flex-1 p-2 border rounded"
             value={phone}
-            onChange={handlePhoneChange}
-            maxLength={phoneLength[countryCode]}
+            onChange={(e) => setPhone(e.target.value)}
             required
           />
         </div>
@@ -174,9 +179,10 @@ function Register() {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          disabled={isSubmitting}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Register
+          {isSubmitting ? "Registering..." : "Register"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-2">

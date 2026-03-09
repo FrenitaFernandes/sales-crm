@@ -14,14 +14,24 @@ export default function Projects() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [notification, setNotification] = useState({ show: false, message: "", type: "" });
 
   const [formData, setFormData] = useState({
     projectName: "",
     customerName: "",
+    email: "",
     phone: "",
     customizationDetails: "",
     dueDate: ""
   });
+
+  // Show notification function
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: "", type: "" });
+    }, 3000);
+  };
 
   // AUTH CHECK + FETCH
   useEffect(() => {
@@ -30,7 +40,7 @@ export default function Projects() {
     const role = localStorage.getItem("userRole");
 
     if (!token || role !== "admin") {
-      alert("Please login as admin to view projects");
+      showNotification("Please login as admin to view projects", "error");
       navigate("/login");
       return;
     }
@@ -83,6 +93,7 @@ export default function Projects() {
     setFormData({
       projectName: "",
       customerName: "",
+      email: "",
       phone: "",
       customizationDetails: "",
       dueDate: ""
@@ -141,12 +152,14 @@ export default function Projects() {
       }
 
       handleCloseModal();
-      alert("Project added successfully!");
+      showNotification("Project added successfully!", "success");
 
     } catch (error) {
 
       console.error("Error adding project:", error);
-      alert("Failed to add project");
+      console.error("Error response:", error.response?.data);
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || "Failed to add project";
+      showNotification(errorMsg, "error");
 
     }
   };
@@ -171,12 +184,12 @@ export default function Projects() {
         )
       );
 
-      alert("Status updated successfully!");
+      showNotification("Status updated successfully!", "success");
 
     } catch (error) {
 
       console.error("Error updating status:", error);
-      alert("Failed to update status");
+      showNotification("Failed to update status", "error");
 
     }
   };
@@ -223,6 +236,17 @@ const handleDeleteProject = async () => {
   return (
 
     <div className="p-6 bg-gray-50 min-h-screen">
+
+      {/* Notification */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-semibold animate-fade-in ${
+          notification.type === "success" ? "bg-green-500" : 
+          notification.type === "error" ? "bg-red-500" : 
+          "bg-blue-500"
+        }`}>
+          {notification.message}
+        </div>
+      )}
 
       {/* HEADER */}
 

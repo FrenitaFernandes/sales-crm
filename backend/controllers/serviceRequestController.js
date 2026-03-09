@@ -38,18 +38,9 @@ const hasRequestAccess = async (request, user) => {
 // =============================
 exports.createServiceRequest = async (req, res) => {
   try {
-    const {
-      customerId,
-      title,
-      description,
-      priority,
-      subject,
-      category,
-      uploadedPreview,
-      uploadedImage,
-      attachment,
-      file,
-    } = req.body;
+    // Data comes from req.body (text) and req.file (image)
+    const { customerId, title, subject, description, priority, category, enableChat } = req.body;
+
     let resolvedCustomerId = customerId;
     if (!resolvedCustomerId && req.user) {
       const userEmail = String(req.user.email || "").trim().toLowerCase();
@@ -88,20 +79,39 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const resolvedAttachment = String(
-      uploadedPreview || uploadedImage || attachment || file || ""
-    ).trim();
+    // 🔹 Generate Ticket ID
+    const lastTicket = await ServiceRequest.findOne().sort({ createdAt: -1 });
+    let ticketNumber = 2001;
+    if (lastTicket && lastTicket.ticketId) {
+      const parts = lastTicket.ticketId.split("-");
+      const lastNumber = parseInt(parts[1]);
+      if (!isNaN(lastNumber)) {
+        ticketNumber = lastNumber + 1;
+      }
+    }
+    const ticketId = `TCK-${ticketNumber}`;
+
+    // 🔹 Handle File Path
+    // req.file is created by Multer in the routes file
+    let imagePath = "";
+    if (req.file) {
+      imagePath = `/uploads/${req.file.filename}`;
+    }
 
     const request = await ServiceRequest.create({
+      ticketId,
       customerId: resolvedCustomerId,
       title: resolvedTitle,
       subject: String(subject || "").trim() || resolvedTitle,
       category: String(category || "").trim(),
-      description: String(description || "").trim(),
-      priority: String(priority || "").trim() || "Medium",
-      uploadedImage: resolvedAttachment || undefined,
+      description,
+      priority: priority || "Medium",
+      enableChat: enableChat === "true" || enableChat === true,
+      uploadedImage: imagePath,
+      status: "Open",
     });
 
+    // Requirement #1: Success response
     res.status(201).json({
       success: true,
       message: "Service request created successfully",

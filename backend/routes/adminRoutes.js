@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-console.log('Loading adminRoutes.js');
 const bcrypt = require("bcryptjs");
 
 const Customer = require("../models/Customer.js");
@@ -667,4 +666,3 @@ router.put("/project/:id", async (req, res) => {
 });
 
 module.exports = router;
-console.log('adminRoutes.js loaded and router exported');

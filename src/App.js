@@ -23,7 +23,6 @@ import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
 // Leads
 import Leads from "./pages/admin/sales/Leads/Leads";
 import LeadDetails from "./pages/admin/sales/Leads/LeadDetails";
-import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
 // Stock
 import StockEntry from "./pages/admin/sales/Stock/StockEntry";
 import StockSummary from "./pages/admin/sales/Stock/StockSummary";
@@ -128,14 +127,6 @@ function App() {
           element={
             <MainLayout>
               <LeadDetails />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/download-lead"
-          element={
-            <MainLayout>
-              <DownloadLead />
             </MainLayout>
           }
         />
