@@ -11,6 +11,7 @@ const {
   updateStatus,
   deleteLead,
   checkCustomerByEmail,
+  exportLeadsToPDF,
 } = require("../controllers/leadController");
 
 const router = express.Router();
@@ -22,6 +23,9 @@ router.get("/", protect, getLeads);
 
 // customer-specific lookup must come before parameterized :id route
 router.get("/customer/:email", protect, getCustomerLeads);
+
+// Export endpoints must come before parameterized routes
+router.post("/export/pdf", protect, exportLeadsToPDF);
 
 router.get("/:id", protect, getLeadById);
 router.put("/:id", protect, updateLead);

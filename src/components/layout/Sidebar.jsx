@@ -95,7 +95,6 @@ const Sidebar = ({ role = "admin" }) => {
         icon: "leads",
         subMenu: [
           { name: "Leads", path: "/admin/sales/leads", icon: "leads" },
-          { name: "Download Lead", path: "/admin/sales/leads/download-lead", icon: "download" },
         ]
       },
       { 

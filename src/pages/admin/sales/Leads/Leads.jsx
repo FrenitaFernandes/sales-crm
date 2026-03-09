@@ -1,11 +1,35 @@
 import { useState, useEffect } from "react";
 import { MdAdd, MdEdit, MdDelete, MdPhone, MdEmail, MdClose, MdFileDownload, MdEdit as MdEditIcon, MdPerson, MdBusiness, MdLanguage, MdArrowBack } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import { checkCustomerByEmail, createLead, getAllLeads, getLeadById, addFollowUp, deleteLead } from "../../../../services/leadService";
+import { checkCustomerByEmail, createLead, getAllLeads, getLeadById, addFollowUp, deleteLead, updateLead, exportLeadsToPDF } from "../../../../services/leadService";
+
+// Helper function to convert UTC to IST
+const convertToIST = (date) => {
+  if (!date) return "";
+  const utcDate = new Date(date);
+  // Add 5 hours 30 minutes for IST
+  const istDate = new Date(utcDate.getTime() + (5.5 * 60 * 60 * 1000));
+  return istDate;
+};
+
+// Helper function to format date in DD/MM/YYYY HH:MM:SS IST format
+const formatDateToIST = (date) => {
+  if (!date) return "";
+  const istDate = convertToIST(date);
+  const day = String(istDate.getDate()).padStart(2, '0');
+  const month = String(istDate.getMonth() + 1).padStart(2, '0');
+  const year = istDate.getFullYear();
+  const hours = String(istDate.getHours()).padStart(2, '0');
+  const minutes = String(istDate.getMinutes()).padStart(2, '0');
+  const seconds = String(istDate.getSeconds()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+};
 
 export default function Leads() {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [selectedLeadForFollowUp, setSelectedLeadForFollowUp] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -20,6 +44,9 @@ export default function Leads() {
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [notification, setNotification] = useState({ show: false, message: "", type: "" });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [followUpToDelete, setFollowUpToDelete] = useState(null);
 
   const [leads, setLeads] = useState([
     {
@@ -164,6 +191,14 @@ export default function Leads() {
     reminder: "1 day before",
   });
 
+  // Show notification function
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: "", type: "" });
+    }, 3000);
+  };
+
   // Fetch leads from MongoDB on component mount
   useEffect(() => {
     const fetchLeads = async () => {
@@ -181,14 +216,7 @@ export default function Leads() {
             source: lead.source,
             status: lead.status,
             assignedTo: lead.assignedTo,
-            date: new Date(lead.date).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            }),
+            date: formatDateToIST(lead.date),
             lastFollowUp: "Follow Up",
             category: "today",
             // Map backend followUps to followUpHistory
@@ -197,10 +225,10 @@ export default function Leads() {
               id: index,
               note: followUp.note,
               secondNote: followUp.secondNote,
-              followUpDate: followUp.followUpDate ? new Date(followUp.followUpDate).toLocaleDateString("en-GB") : "",
+              followUpDate: followUp.followUpDate ? formatDateToIST(followUp.followUpDate).split(' ')[0] : "",
               status: followUp.status,
               assignedTo: followUp.updatedBy || lead.assignedTo,
-              createdAt: followUp.date ? new Date(followUp.date).toLocaleString("en-GB") : "",
+              createdAt: followUp.date ? formatDateToIST(followUp.date) : "",
             })),
           }));
           setLeads(transformedLeads);
@@ -240,6 +268,48 @@ export default function Leads() {
 
   const handleCloseModal = () => {
     setShowAddModal(false);
+    setFormData({
+      email: "",
+      leadName: "",
+      projectName: "",
+      industryType: "",
+      phone: "",
+      date: "",
+      source: "",
+      status: "",
+      assignedTo: "",
+    });
+    setIsCheckingCustomer(false);
+    setIsSubmitting(false);
+  };
+
+  const handleOpenEditModal = (lead) => {
+    setSelectedLeadForEdit(lead);
+    // Convert date back to YYYY-MM-DD format for input field
+    let dateValue = "";
+    if (lead.date) {
+      const parts = lead.date.split(/[\s\/:]/);
+      if (parts.length >= 3) {
+        dateValue = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+      }
+    }
+    setFormData({
+      email: lead.email,
+      leadName: lead.leadName,
+      projectName: lead.projectName,
+      industryType: lead.industryType,
+      phone: lead.phone,
+      date: dateValue,
+      source: lead.source,
+      status: lead.status,
+      assignedTo: lead.assignedTo,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setSelectedLeadForEdit(null);
     setFormData({
       email: "",
       leadName: "",
@@ -335,11 +405,11 @@ export default function Leads() {
           })
         );
 
-        alert("Follow-up added successfully!");
+        showNotification("Follow-up added successfully!", "success");
       }
     } catch (error) {
       console.error("Error adding follow-up:", error);
-      alert("Failed to add follow-up. Please try again.");
+      showNotification("Failed to add follow-up. Please try again.", "error");
     }
 
     handleCloseFollowUpModal();
@@ -378,7 +448,7 @@ export default function Leads() {
         }));
         
         // Show success message
-        alert("Customer found! Details auto-filled.");
+        showNotification("Customer found! Details auto-filled.", "info");
       }
     } catch (error) {
       console.error("Error checking customer:", error);
@@ -408,7 +478,7 @@ export default function Leads() {
       const response = await createLead(leadData);
 
       if (response.success) {
-        alert("Lead created successfully!");
+        showNotification("Lead created successfully!", "success");
         
         // Add the new lead to the local state
         const newLead = {
@@ -421,14 +491,7 @@ export default function Leads() {
           source: response.data.source,
           status: response.data.status,
           assignedTo: response.data.assignedTo,
-          date: new Date(response.data.date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
+          date: formatDateToIST(response.data.date),
           lastFollowUp: "Follow Up",
           category: "today",
           followUpHistory: [],
@@ -439,7 +502,58 @@ export default function Leads() {
       }
     } catch (error) {
       console.error("Error creating lead:", error);
-      alert(error.response?.data?.message || "Failed to create lead. Please try again.");
+      showNotification(error.response?.data?.message || "Failed to create lead. Please try again.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const leadData = {
+        leadName: formData.leadName,
+        email: formData.email,
+        phone: formData.phone,
+        projectName: formData.projectName,
+        industryType: formData.industryType,
+        date: formData.date,
+        source: formData.source,
+        status: formData.status,
+        assignedTo: formData.assignedTo,
+      };
+
+      const response = await updateLead(selectedLeadForEdit.id, leadData);
+
+      if (response.success) {
+        showNotification("Lead updated successfully!", "success");
+        
+        // Update the lead in the local state
+        setLeads(prevLeads =>
+          prevLeads.map(lead =>
+            lead.id === selectedLeadForEdit.id
+              ? {
+                  ...lead,
+                  leadName: response.data.leadName,
+                  projectName: response.data.projectName,
+                  industryType: response.data.industryType,
+                  phone: response.data.phone,
+                  email: response.data.email,
+                  source: response.data.source,
+                  status: response.data.status,
+                  assignedTo: response.data.assignedTo,
+                  date: formatDateToIST(response.data.date),
+                }
+              : lead
+          )
+        );
+        handleCloseEditModal();
+      }
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      showNotification(error.response?.data?.message || "Failed to update lead. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -481,10 +595,12 @@ export default function Leads() {
     setSelectedLeads([]);
   };
 
-  const handleExport = () => {
+  const handleDownloadCSV = () => {
     const dataToExport = selectedLeads.length > 0
       ? leads.filter((lead) => selectedLeads.includes(lead.id))
       : filteredLeads;
+    
+    // CSV export
     const csv = [
       ["Date", "Lead Name", "Project Name", "Industry Type", "Phone", "Email", "Source", "Status", "Assigned To", "Last Follow Up"],
       ...dataToExport.map((lead) => [
@@ -500,15 +616,38 @@ export default function Leads() {
         lead.lastFollowUp,
       ]),
     ]
-      .map((row) => row.join(","))
+      .map((row) => row.map(cell => `"${cell}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "leads.csv";
+    a.download = `leads_${new Date().getTime()}.csv`;
     a.click();
+    window.URL.revokeObjectURL(url);
+    setShowDownloadMenu(false);
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const dataToExport = selectedLeads.length > 0
+        ? leads.filter((lead) => selectedLeads.includes(lead.id))
+        : filteredLeads;
+
+      // Call backend to generate PDF
+      const blob = await exportLeadsToPDF(dataToExport);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leads_${new Date().getTime()}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setShowDownloadMenu(false);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      showNotification("Failed to download PDF. Please try again.", "error");
+    }
   };
 
   const handleViewLead = async (leadId) => {
@@ -532,24 +671,17 @@ export default function Leads() {
           source: lead.source,
           status: lead.status,
           assignedTo: lead.assignedTo,
-          date: new Date(lead.date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
+          date: formatDateToIST(lead.date),
           lastFollowUp: "Follow Up",
           followUps: lead.followUps || [],
           followUpHistory: (lead.followUps || []).map((followUp, index) => ({
             id: index,
             note: followUp.note,
             secondNote: followUp.secondNote,
-            followUpDate: followUp.followUpDate ? new Date(followUp.followUpDate).toLocaleDateString("en-GB") : "",
+            followUpDate: followUp.followUpDate ? formatDateToIST(followUp.followUpDate).split(' ')[0] : "",
             status: followUp.status,
             assignedTo: followUp.updatedBy || lead.assignedTo,
-            createdAt: followUp.date ? new Date(followUp.date).toLocaleString("en-GB") : "",
+            createdAt: followUp.date ? formatDateToIST(followUp.date) : "",
           })),
         };
         console.log("Transformed lead:", transformedLead);
@@ -559,7 +691,7 @@ export default function Leads() {
       }
     } catch (error) {
       console.error("Error fetching lead:", error);
-      alert("Failed to load lead details");
+      showNotification("Failed to load lead details", "error");
     }
   };
 
@@ -572,9 +704,16 @@ export default function Leads() {
   const handleDeleteFollowUp = async (followUpIndex) => {
     if (!selectedLeadForDetail) return;
 
-    if (!window.confirm("Are you sure you want to delete this follow-up entry?")) {
-      return;
-    }
+    setFollowUpToDelete(followUpIndex);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteFollowUp = async () => {
+    if (!selectedLeadForDetail || followUpToDelete === null) return;
+
+    setShowDeleteConfirm(false);
+    const followUpIndex = followUpToDelete;
+    setFollowUpToDelete(null);
 
     try {
       // Get the lead data from backend to ensure we have the latest followUps array
@@ -602,11 +741,16 @@ export default function Leads() {
       // Refresh the lead data to show updated follow-ups
       await handleViewLead(selectedLeadForDetail.id);
       
-      alert("Follow-up deleted successfully!");
+      showNotification("Follow-up deleted successfully!", "success");
     } catch (error) {
       console.error("Error deleting follow-up:", error);
-      alert("Failed to delete follow-up. Please try again.");
+      showNotification("Failed to delete follow-up. Please try again.", "error");
     }
+  };
+
+  const cancelDeleteFollowUp = () => {
+    setShowDeleteConfirm(false);
+    setFollowUpToDelete(null);
   };
 
   // Export lead as PDF
@@ -676,10 +820,10 @@ Generated on: ${new Date().toLocaleString()}
       window.URL.revokeObjectURL(url);
 
       // Show success message
-      alert("Lead details exported successfully!");
+      showNotification("Lead details exported successfully!", "success");
     } catch (error) {
       console.error("Error exporting lead:", error);
-      alert("Failed to export lead details.");
+      showNotification("Failed to export lead details.", "error");
     }
   };
 
@@ -723,6 +867,17 @@ Generated on: ${new Date().toLocaleString()}
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Notification */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-semibold animate-fade-in ${
+          notification.type === "success" ? "bg-green-500" : 
+          notification.type === "error" ? "bg-red-500" : 
+          "bg-blue-500"
+        }`}>
+          {notification.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-800">Leads Management</h2>
@@ -843,11 +998,16 @@ Generated on: ${new Date().toLocaleString()}
             Delete
           </button>
           <button
-            onClick={handleExport}
+            onClick={handleDownloadCSV}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-semibold text-sm"
           >
-            <MdFileDownload size={16} />
-            Export
+            <MdFileDownload size={16} /> Download CSV
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm"
+          >
+            <MdFileDownload size={16} /> Download PDF
           </button>
           <span className="text-sm text-gray-600 self-center ml-2">
             {selectedLeads.length} selected
@@ -856,22 +1016,9 @@ Generated on: ${new Date().toLocaleString()}
       )}
 
       {/* Main Action Buttons */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4 flex gap-2">
+      <div className="bg-white rounded-lg shadow p-4 mb-4 flex gap-2 relative">
         <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">
           <span>⚙️</span> Assign
-        </button>
-        <button 
-          onClick={handleDeleteSelected}
-          disabled={selectedLeads.length === 0}
-          className="flex items-center gap-2 bg-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors font-semibold text-sm disabled:opacity-50"
-        >
-          <MdDelete size={16} /> Delete
-        </button>
-        <button 
-          onClick={handleExport}
-          className="flex items-center gap-2 bg-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors font-semibold text-sm"
-        >
-          <MdFileDownload size={16} /> Export
         </button>
       </div>
 
@@ -974,7 +1121,8 @@ Generated on: ${new Date().toLocaleString()}
                           View
                         </button>
                         <button
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded transition-colors"
+                          onClick={() => handleOpenEditModal(lead)}
+                          className="flex items-center gap-1 text-green-600 hover:text-green-800 font-medium text-xs bg-green-50 hover:bg-green-100 px-3 py-1 rounded transition-colors"
                           title="Edit"
                         >
                           ✏️ Edit
@@ -1206,6 +1354,179 @@ Generated on: ${new Date().toLocaleString()}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Creating..." : "Add Lead"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {showEditModal && selectedLeadForEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-green-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Edit Lead</h3>
+              <button
+                onClick={handleCloseEditModal}
+                className="text-white hover:text-gray-200"
+              >
+                <MdClose size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="p-6">
+              <div className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter email address"
+                  />
+                </div>
+
+                {/* Lead Name */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Lead Name</label>
+                  <input
+                    type="text"
+                    name="leadName"
+                    value={formData.leadName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter lead name"
+                  />
+                </div>
+
+                {/* Project Name */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Project Name</label>
+                  <input
+                    type="text"
+                    name="projectName"
+                    value={formData.projectName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter project name"
+                  />
+                </div>
+
+                {/* Industry Type */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Industry Type</label>
+                  <input
+                    type="text"
+                    name="industryType"
+                    value={formData.industryType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter industry type"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                {/* Date Picker */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Date</label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                {/* Source */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Source</label>
+                  <select
+                    name="source"
+                    value={formData.source}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  >
+                    <option value="">Select Source</option>
+                    {sources.map((src) => (
+                      <option key={src} value={src}>
+                        {src}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  >
+                    <option value="">Select Status</option>
+                    {statuses.map((stat) => (
+                      <option key={stat} value={stat}>
+                        {stat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Assigned To */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Assigned To</label>
+                  <input
+                    type="text"
+                    name="assignedTo"
+                    value={formData.assignedTo}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter assignee name"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isCheckingCustomer}
+                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? "Updating..." : "Update Lead"}
                 </button>
               </div>
             </form>
@@ -1558,6 +1879,30 @@ Generated on: ${new Date().toLocaleString()}
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">Are you sure you want to delete this follow-up entry?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelDeleteFollowUp}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteFollowUp}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

@@ -10,6 +10,9 @@ export default function LeadDetails() {
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [notification, setNotification] = useState({ show: false, message: "", type: "" });
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState("");
 
   const [followUpData, setFollowUpData] = useState({
     note: "",
@@ -17,6 +20,14 @@ export default function LeadDetails() {
     followUpDate: "",
     status: "",
   });
+
+  // Show notification function
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: "", type: "" });
+    }, 3000);
+  };
 
   // Fetch lead data on component mount
   useEffect(() => {
@@ -34,7 +45,7 @@ export default function LeadDetails() {
       }
     } catch (error) {
       console.error("Error fetching lead:", error);
-      alert("Failed to load lead details. Please try again.");
+      showNotification("Failed to load lead details. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -51,7 +62,7 @@ export default function LeadDetails() {
     e.preventDefault();
     
     if (!followUpData.note || !followUpData.status) {
-      alert("Please fill in note and status fields");
+      showNotification("Please fill in note and status fields", "error");
       return;
     }
 
@@ -80,28 +91,38 @@ export default function LeadDetails() {
 
       // Refresh lead data to show new follow-up
       await fetchLeadData();
-      alert("Follow-up added successfully!");
+      showNotification("Follow-up added successfully!", "success");
     } catch (error) {
       console.error("Error adding follow-up:", error);
-      alert("Failed to add follow-up");
+      showNotification("Failed to add follow-up", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleStatusUpdate = async (status) => {
-    if (!window.confirm(`Are you sure you want to mark this lead as ${status}?`)) {
-      return;
-    }
+    setPendingStatus(status);
+    setShowStatusConfirm(true);
+  };
+
+  const confirmStatusUpdate = async () => {
+    setShowStatusConfirm(false);
+    const status = pendingStatus;
+    setPendingStatus("");
 
     try {
       await updateLeadStatus(id, status);
-      alert(`Lead marked as ${status}`);
+      showNotification(`Lead marked as ${status}`, "success");
       await fetchLeadData();
     } catch (error) {
       console.error("Error updating status:", error);
-      alert("Failed to update lead status");
+      showNotification("Failed to update lead status", "error");
     }
+  };
+
+  const cancelStatusUpdate = () => {
+    setShowStatusConfirm(false);
+    setPendingStatus("");
   };
 
   if (loading) {
@@ -122,6 +143,17 @@ export default function LeadDetails() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Notification */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-semibold animate-fade-in ${
+          notification.type === "success" ? "bg-green-500" : 
+          notification.type === "error" ? "bg-red-500" : 
+          "bg-blue-500"
+        }`}>
+          {notification.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -346,6 +378,30 @@ export default function LeadDetails() {
           </div>
         )}
       </div>
+
+      {/* Status Update Confirmation Modal */}
+      {showStatusConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Status Update</h3>
+            <p className="text-gray-600 mb-6">Are you sure you want to mark this lead as <strong>{pendingStatus}</strong>?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelStatusUpdate}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStatusUpdate}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
