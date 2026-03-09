@@ -45,7 +45,6 @@ function Profile() {
 
   // UPDATE PROFILE
   const updateProfile = async () => {
-
     try {
 
       const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
@@ -66,12 +65,12 @@ function Profile() {
 
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (res.ok && (data.success === undefined || data.success)) {
 
         const updatedProfile = data.data || {};
         const existingUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-        // Preserve auth fields from user object while merging profile fields.
+        // Keep existing auth/user fields while updating profile data.
         localStorage.setItem(
           "user",
           JSON.stringify({
@@ -96,9 +95,7 @@ function Profile() {
       alert("Error updating profile");
 
     }
-
   };
-
 
   return (
     <div className="p-6 space-y-10">
