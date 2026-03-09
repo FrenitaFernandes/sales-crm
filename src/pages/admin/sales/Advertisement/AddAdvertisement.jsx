@@ -16,7 +16,6 @@ const PREFERENCE_IMAGE_MAP = {
 export default function AddAdvertisement() {
 
   const [form, setForm] = useState({
-    productName: "",
     description: "",
     targetArea: "",
     targetAudience: "",
@@ -32,8 +31,14 @@ export default function AddAdvertisement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const fallbackProductName =
+      String(form.targetAudience || "").trim() ||
+      String(form.description || "").trim() ||
+      "Advertisement";
+
     const payload = {
       ...form,
+      productName: fallbackProductName,
       thumbnail: PREFERENCE_IMAGE_MAP[form.targetAudience] || ""
     };
 
@@ -47,7 +52,6 @@ export default function AddAdvertisement() {
       setMessage("Advertisement added successfully!");
 
       setForm({
-        productName: "",
         description: "",
         targetArea: "",
         targetAudience: "",
@@ -57,7 +61,7 @@ export default function AddAdvertisement() {
     } catch (err) {
 
       console.error(err);
-      setMessage("Failed to add advertisement");
+      setMessage(err.response?.data?.message || "Failed to add advertisement");
 
     }
   };
@@ -77,25 +81,9 @@ export default function AddAdvertisement() {
 
       <form onSubmit={handleSubmit}>
 
-        {/* PRODUCT / DATE */}
+        {/* DATE */}
 
         <div className="row">
-
-          <div className="col-md-4 mb-3">
-            <label className="form-label">
-              Product Name
-            </label>
-
-            <input
-              type="text"
-              name="productName"
-              className="form-control"
-              value={form.productName}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
           <div className="col-md-4 mb-3">
             <label className="form-label">
               Date
@@ -116,7 +104,7 @@ export default function AddAdvertisement() {
 
         {/* DESCRIPTION */}
 
-        <div className="mb-3">
+        <div className="col-md-6 mb-3">
 
           <label className="form-label">
             Description
@@ -125,7 +113,7 @@ export default function AddAdvertisement() {
           <textarea
             name="description"
             className="form-control"
-            rows="3"
+            rows="2"
             value={form.description}
             onChange={handleChange}
           />

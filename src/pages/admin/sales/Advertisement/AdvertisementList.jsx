@@ -63,7 +63,6 @@ export default function AdvertisementList() {
             <tr>
               <th>S.No</th>
               <th>Date</th>
-              <th>Product Name</th>
               <th>Description</th>
               <th>Target Area</th>
               <th>Target Audience</th>
@@ -74,7 +73,7 @@ export default function AdvertisementList() {
           <tbody>
             {ads.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center py-3">
+                <td colSpan="6" className="text-center py-3">
                   No advertisements found
                 </td>
               </tr>
@@ -87,7 +86,6 @@ export default function AdvertisementList() {
                       ? new Date(ad.date).toLocaleDateString()
                       : "-"}
                   </td>
-                  <td>{ad.productName}</td>
                   <td>{ad.description}</td>
                   <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>

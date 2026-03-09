@@ -37,11 +37,13 @@ exports.createAdvertisement = async (req, res) => {
       PREFERENCE_IMAGE_MAP[String(targetAudience || "").trim()] ||
       "";
 
+    const adTitle = String(productName || "").trim() || String(targetAudience || "").trim() || "Advertisement";
+
     // Validation
-    if (!date || !productName) {
+    if (!date) {
       return res.status(400).json({
         success: false,
-        message: "Date and Product Name are required"
+        message: "Date is required"
       });
     }
 
@@ -88,7 +90,7 @@ exports.createAdvertisement = async (req, res) => {
 
       const notifications = customers.map((customer) => ({
         customerId: customer._id,
-        title: productName,
+        title: adTitle,
         message: tagline || description,
         type: "advertisement",
         image: ad.thumbnail || "",

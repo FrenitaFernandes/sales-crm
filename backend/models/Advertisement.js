@@ -8,7 +8,7 @@ const advertisementSchema = new mongoose.Schema(
     },
     productName: {
       type: String,
-      required: true
+      default: ""
     },
     tagline: {
       type: String
