@@ -1,5 +1,54 @@
 const Customer = require("../models/Customer");
+const Invoice = require("../models/Invoice");
+const Notification = require("../models/Notification");
+const ServiceRequest = require("../models/ServiceRequest");
+const Project = require("../models/Project");
 const { logActivity } = require("../utils/activityLogger");
+
+const formatTimeAgo = (dateValue) => {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
+  const units = [
+    [31536000, "year"],
+    [2592000, "month"],
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "minute"],
+    [1, "second"],
+  ];
+
+  for (const [size, label] of units) {
+    const value = Math.floor(seconds / size);
+    if (value >= 1) {
+      return `${value} ${label}${value > 1 ? "s" : ""} ago`;
+    }
+  }
+
+  return "just now";
+};
+
+const calculateProfileCompletion = (customer) => {
+  if (!customer) return 0;
+
+  const checks = [
+    Boolean(customer.name),
+    Boolean(customer.email),
+    Boolean(customer.phone),
+    Boolean(customer.address),
+    Boolean(customer.city),
+    Boolean(customer.state),
+    Boolean(customer.country),
+    Boolean(customer.company),
+    Boolean(customer.industryType),
+    Array.isArray(customer.preferences) && customer.preferences.length > 0,
+  ];
+
+  const completed = checks.filter(Boolean).length;
+  return Math.round((completed / checks.length) * 100);
+};
 
 
 // ===========================
@@ -354,30 +403,148 @@ exports.deleteOwnAccount = async (req, res) => {
 exports.getCustomerDashboard = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userEmail = String(req.user.email || "").trim().toLowerCase();
     
     // Get customer by userId or email
     const customer = await Customer.findOne({
       $or: [
         { userId: userId },
-        { email: req.user.email }
-      ]
+        { email: userEmail }
+      ],
+      isDeleted: false,
     });
 
     if (!customer) {
       // Return default stats if customer record doesn't exist yet
       return res.status(200).json({
         invoiceCount: 0,
-        notifications: 0,
+        notificationCount: 0,
+        unreadNotifications: 0,
         activeTickets: 0,
-        profileCompletion: "0%"
+        profileCompletion: 0,
+        totalInvoiced: 0,
+        totalPaid: 0,
+        projectCount: 0,
+        salesOverview: [],
+        recentActivity: [],
+        recommendedMessage: "Check back later for relevant offers.",
       });
     }
 
+    const customerId = customer._id;
+
+    const [invoices, notifications, tickets, projects] = await Promise.all([
+      Invoice.find({
+        $or: [{ customerId }, { customerEmail: customer.email }],
+      })
+        .select("amount status invoiceNumber createdAt")
+        .sort({ createdAt: -1 }),
+      Notification.find({ customerId })
+        .select("title message type read createdAt")
+        .sort({ createdAt: -1 }),
+      ServiceRequest.find({ customerId })
+        .select("ticketId title status createdAt")
+        .sort({ createdAt: -1 }),
+      Project.find({ customerId })
+        .select("projectName status createdAt")
+        .sort({ createdAt: -1 }),
+    ]);
+
+    const invoiceCount = invoices.length;
+    const notificationCount = notifications.length;
+    const unreadNotifications = notifications.filter((n) => !n.read).length;
+    const activeTickets = tickets.filter((t) => ["Pending", "Open", "In Progress"].includes(t.status)).length;
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const totalPaid = invoices
+      .filter((inv) => String(inv.status || "").toLowerCase() === "paid")
+      .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const profileCompletion = calculateProfileCompletion(customer);
+
+    const monthMap = new Map();
+    const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "short" });
+    const now = new Date();
+    const monthlyRows = [];
+
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthMap.set(key, {
+        month: monthFormatter.format(d),
+        invoiced: 0,
+        paid: 0,
+      });
+    }
+
+    invoices.forEach((inv) => {
+      const createdAt = new Date(inv.createdAt);
+      if (Number.isNaN(createdAt.getTime())) return;
+
+      const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthMap.has(key)) return;
+
+      const row = monthMap.get(key);
+      const amount = Number(inv.amount || 0);
+      row.invoiced += amount;
+      if (String(inv.status || "").toLowerCase() === "paid") {
+        row.paid += amount;
+      }
+    });
+
+    monthMap.forEach((value) => monthlyRows.push(value));
+
+    const recentActivity = [];
+
+    notifications.slice(0, 3).forEach((n) => {
+      recentActivity.push({
+        type: n.type || "system",
+        title: n.title || "Notification",
+        subtitle: n.message || "",
+        timeAgo: formatTimeAgo(n.createdAt),
+      });
+    });
+
+    tickets.slice(0, 2).forEach((t) => {
+      recentActivity.push({
+        type: "ticket",
+        title: `Ticket ${t.ticketId || ""}`.trim(),
+        subtitle: `${t.title || "Support request"} (${t.status || "Pending"})`,
+        timeAgo: formatTimeAgo(t.createdAt),
+      });
+    });
+
+    projects.slice(0, 2).forEach((p) => {
+      recentActivity.push({
+        type: "project",
+        title: `Project ${p.projectName || ""}`.trim(),
+        subtitle: `Status: ${p.status || "ongoing"}`,
+        timeAgo: formatTimeAgo(p.createdAt),
+      });
+    });
+
+    recentActivity.sort((a, b) => {
+      const parseAgo = (txt) => {
+        const m = String(txt || "").match(/^(\d+)\s+(\w+)/);
+        if (!m) return Number.MAX_SAFE_INTEGER;
+        const value = Number(m[1]);
+        const unit = m[2].toLowerCase();
+        const map = { second: 1, seconds: 1, minute: 60, minutes: 60, hour: 3600, hours: 3600, day: 86400, days: 86400, month: 2592000, months: 2592000, year: 31536000, years: 31536000 };
+        return value * (map[unit] || 1);
+      };
+      return parseAgo(a.timeAgo) - parseAgo(b.timeAgo);
+    });
+
     res.status(200).json({
-      invoiceCount: 0,
-      notifications: 0,
-      activeTickets: 0,
-      profileCompletion: "80%"
+      invoiceCount,
+      notificationCount,
+      unreadNotifications,
+      activeTickets,
+      profileCompletion,
+      totalInvoiced,
+      totalPaid,
+      projectCount: projects.length,
+      salesOverview: monthlyRows,
+      recentActivity: recentActivity.slice(0, 6),
+      recommendedMessage: "Check back later for relevant offers.",
     });
 
   } catch (error) {

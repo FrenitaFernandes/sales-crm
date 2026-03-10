@@ -80,6 +80,7 @@ function Invoices() {
     const amountText = amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const status = String(invoice?.status || "").toUpperCase() || "PENDING";
     const description = String(invoice?.description || "").trim() || "Invoice item";
+    const projectName = String(invoice?.projectName || "").trim() || "-";
 
     // Header strip
     doc.setFillColor(30, 64, 175);
@@ -109,14 +110,13 @@ function Invoices() {
     doc.setFontSize(10);
     doc.text(`${invoice?.customerName || "-"}`, 18, 57);
     doc.text(`${invoice?.customerEmail || "-"}`, 18, 63);
-    doc.text(`Project: ${invoice?.projectName || "-"}`, 18, 69);
+    doc.text(`Project: ${projectName}`, 18, 69);
 
     doc.setFontSize(11);
     doc.text("Invoice Info", 134, 49);
     doc.setFontSize(10);
     doc.text(`Status: ${status}`, 134, 57);
     doc.text(`Currency: INR`, 134, 63);
-    doc.text(`Prepared For: Customer`, 134, 69);
 
     // Item table header
     doc.setFillColor(243, 244, 246);

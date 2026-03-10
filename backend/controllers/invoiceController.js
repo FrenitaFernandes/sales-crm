@@ -2,6 +2,7 @@ const Invoice = require("../models/Invoice");
 const Customer = require("../models/Customer");
 const Notification = require("../models/Notification");
 const Project = require("../models/Project");
+const Lead = require("../models/Lead");
 
 const normalizeStatus = (status) => {
   if (!status) return "pending";
@@ -15,6 +16,66 @@ const parseNumber = (value) => {
   const cleaned = String(value).replace(/,/g, "").trim();
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+const resolveFallbackProjectName = async (invoice) => {
+  const existingProjectName = String(invoice?.projectName || "").trim();
+  if (existingProjectName) return existingProjectName;
+
+  const customerEmail = String(invoice?.customerEmail || "").trim();
+  const customerId = invoice?.customerId;
+
+  if (customerEmail) {
+    const latestProjectByEmail = await Project.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromEmail = String(latestProjectByEmail?.projectName || "").trim();
+    if (projectFromEmail) return projectFromEmail;
+
+    const customerByEmail = await Customer.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .select("_id");
+
+    if (customerByEmail?._id) {
+      const latestProjectByCustomer = await Project.findOne({ customerId: customerByEmail._id })
+        .sort({ createdAt: -1 })
+        .select("projectName");
+      const projectFromCustomer = String(latestProjectByCustomer?.projectName || "").trim();
+      if (projectFromCustomer) return projectFromCustomer;
+    }
+
+    const latestLead = await Lead.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromLead = String(latestLead?.projectName || "").trim();
+    if (projectFromLead) return projectFromLead;
+  }
+
+  if (customerId) {
+    const latestProjectByCustomerId = await Project.findOne({ customerId })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromCustomerId = String(latestProjectByCustomerId?.projectName || "").trim();
+    if (projectFromCustomerId) return projectFromCustomerId;
+  }
+
+  return "";
+};
+
+const hydrateInvoiceProjectNames = async (invoices = []) => {
+  return Promise.all(
+    invoices.map(async (invoiceDoc) => {
+      const fallbackProjectName = await resolveFallbackProjectName(invoiceDoc);
+      const invoice = invoiceDoc.toObject ? invoiceDoc.toObject() : { ...invoiceDoc };
+
+      return {
+        ...invoice,
+        projectName: fallbackProjectName || invoice.projectName || "",
+      };
+    })
+  );
 };
 
 // =============================
@@ -149,7 +210,8 @@ exports.createInvoice = async (req, res) => {
 // =============================
 exports.getInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    const invoiceDocs = await Invoice.find().sort({ createdAt: -1 });
+    const invoices = await hydrateInvoiceProjectNames(invoiceDocs);
 
     res.status(200).json({
       success: true,
@@ -168,11 +230,13 @@ exports.getInvoices = async (req, res) => {
 // =============================
 exports.getInvoiceById = async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const invoiceDoc = await Invoice.findById(req.params.id);
 
-    if (!invoice) {
+    if (!invoiceDoc) {
       return res.status(404).json({ message: "Invoice not found" });
     }
+
+    const [invoice] = await hydrateInvoiceProjectNames([invoiceDoc]);
 
     res.status(200).json({
       success: true,
@@ -273,7 +337,8 @@ exports.getInvoicesByCustomer = async (req, res) => {
       return res.status(400).json({ message: "Customer ID is required" });
     }
 
-    const invoices = await Invoice.find({ customerId }).sort({ createdAt: -1 });
+    const invoiceDocs = await Invoice.find({ customerId }).sort({ createdAt: -1 });
+    const invoices = await hydrateInvoiceProjectNames(invoiceDocs);
 
     res.status(200).json({
       success: true,

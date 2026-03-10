@@ -8,8 +8,6 @@ import {
   MdSettings,
   MdMenu,
   MdDelete,
-  MdBrightness4,
-  MdBrightness7,
   MdHelp,
   MdChevronRight,
 } from "react-icons/md";
@@ -24,8 +22,6 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
   const [modalInfo, setModalInfo] = useState({ show: false, title: '', message: '' });
   const [confirmInfo, setConfirmInfo] = useState({ show: false, message: '', onConfirm: null });
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
-  const [blockAds, setBlockAds] = useState(localStorage.getItem('blockAds') === 'true');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const navigate = useNavigate();
 
@@ -82,19 +78,12 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
       loadNotificationCount();
     };
 
-    // Apply saved dark mode on mount
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.style.backgroundColor = '#1f2937';
-      document.body.style.color = '#f3f4f6';
-    }
-
     window.addEventListener("notifications-updated", handleNotificationsUpdated);
 
     return () => {
       window.removeEventListener("notifications-updated", handleNotificationsUpdated);
     };
-  }, [role, darkMode]);
+  }, [role]);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -107,29 +96,6 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
 
       navigate("/login");
     }
-  };
-
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode);
-    
-    // Apply dark mode to document
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.style.backgroundColor = '#1f2937';
-      document.body.style.color = '#f3f4f6';
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.style.backgroundColor = '#ffffff';
-      document.body.style.color = '#000000';
-    }
-  };
-
-  const toggleBlockAds = () => {
-    const newBlockAds = !blockAds;
-    setBlockAds(newBlockAds);
-    localStorage.setItem('blockAds', newBlockAds);
   };
 
   const handleDeleteAccount = () => {
@@ -356,39 +322,6 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
                     >
                       <MdAccountCircle size={16} /> My Profile
                     </Dropdown.Item>
-
-                    {/* Appearance */}
-                    <div
-                      className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-100 hover:text-blue-600 transition-all cursor-pointer ml-4 border-l-2 border-slate-300 rounded-md"
-                      onClick={toggleDarkMode}
-                    >
-                      {darkMode ? (
-                        <MdBrightness7 size={16} />
-                      ) : (
-                        <MdBrightness4 size={16} />
-                      )}{' '}
-                      Appearance
-                      <span className="ml-auto text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
-                        {darkMode ? 'Dark' : 'Light'}
-                      </span>
-                    </div>
-
-                    {/* Notifications/Ads */}
-                    <div
-                      className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-100 hover:text-blue-600 transition-all cursor-pointer ml-4 border-l-2 border-slate-300 rounded-md"
-                      onClick={toggleBlockAds}
-                    >
-                      <MdNotifications size={16} /> Notifications
-                      <span
-                        className={`ml-auto text-xs px-2 py-1 rounded ${
-                          blockAds
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-green-100 text-green-600'
-                        }`}
-                      >
-                        {blockAds ? 'Ads Off' : 'Ads On'}
-                      </span>
-                    </div>
 
                     {/* Help */}
                     <Dropdown.Item

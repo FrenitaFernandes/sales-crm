@@ -26,8 +26,9 @@ router.get("/dashboard", protect, getCustomerDashboard);
 router.get("/profile", protect, async (req, res) => {
   try {
     const Customer = require("../models/Customer");
+    const User = require("../models/user");
     const userId = req.user?._id || req.user?.id;
-    const userEmail = req.user?.email;
+    const userEmail = String(req.user?.email || "").trim().toLowerCase();
 
     if (!userId && !userEmail) {
       return res.status(401).json({ success: false, message: "Unauthorized user context" });
@@ -43,8 +44,17 @@ router.get("/profile", protect, async (req, res) => {
       $or: orFilters,
       isDeleted: false
     });
-    
-    // If customer doesn't exist, create one
+
+    // Reuse an existing record (even if soft-deleted) to avoid duplicate email errors.
+    if (!customer) {
+      const existingCustomer = await Customer.findOne({ $or: orFilters });
+
+      if (existingCustomer) {
+        customer = existingCustomer;
+      }
+    }
+
+    // If customer still doesn't exist, create one
     if (!customer) {
       console.log("Customer profile not found, creating new one...");
       const fallbackName =
@@ -52,8 +62,18 @@ router.get("/profile", protect, async (req, res) => {
         (userEmail ? userEmail.split("@")[0] : "") ||
         "Customer";
 
+      let resolvedUserId = userId;
+      if (!resolvedUserId && userEmail) {
+        const matchedUser = await User.findOne({ email: userEmail }).select("_id");
+        resolvedUserId = matchedUser?._id || null;
+      }
+
+      if (!resolvedUserId) {
+        return res.status(400).json({ success: false, message: "Unable to resolve user profile." });
+      }
+
       customer = await Customer.create({
-        userId,
+        userId: resolvedUserId,
         name: fallbackName,
         email: userEmail,
         phone: req.user?.phone || "",
@@ -63,7 +83,12 @@ router.get("/profile", protect, async (req, res) => {
 
     if (!customer.phone && req.user?.phone) {
       customer.phone = req.user.phone;
-      await customer.save();
+      try {
+        await customer.save();
+      } catch (saveError) {
+        // If legacy duplicate emails exist, avoid failing profile load.
+        console.warn("Profile phone sync skipped:", saveError?.message || saveError);
+      }
     }
 
     const payload = {

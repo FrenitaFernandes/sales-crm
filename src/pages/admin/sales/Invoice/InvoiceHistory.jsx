@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getInvoices } from "../../../../services/invoiceService";
 import jsPDF from "jspdf";
+import axios from "axios";
 
 const InvoiceHistory = () => {
   const navigate = useNavigate();
@@ -10,12 +11,38 @@ const InvoiceHistory = () => {
   const [error, setError] = useState("");
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
   const [activeInvoiceLabel, setActiveInvoiceLabel] = useState("");
+  const [projectNameByEmail, setProjectNameByEmail] = useState({});
+  const [projectNameByCustomerId, setProjectNameByCustomerId] = useState({});
 
   useEffect(() => {
     const loadInvoices = async () => {
       try {
         setLoading(true);
-        const res = await getInvoices();
+        const token = localStorage.getItem("authToken") || localStorage.getItem("token") || "";
+        const [res, projectRes] = await Promise.all([
+          getInvoices(),
+          axios.get("http://localhost:5000/api/projects", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        const projects = projectRes.data?.data || [];
+        const emailLookup = {};
+        const customerLookup = {};
+
+        projects.forEach((project) => {
+          const projectName = String(project?.projectName || "").trim();
+          if (!projectName) return;
+
+          const emailKey = String(project?.email || project?.customerId?.email || "").trim().toLowerCase();
+          const customerIdKey = String(project?.customerId?._id || project?.customerId || "").trim();
+
+          if (emailKey && !emailLookup[emailKey]) emailLookup[emailKey] = projectName;
+          if (customerIdKey && !customerLookup[customerIdKey]) customerLookup[customerIdKey] = projectName;
+        });
+
+        setProjectNameByEmail(emailLookup);
+        setProjectNameByCustomerId(customerLookup);
         setInvoices(res.data || []);
       } catch (fetchError) {
         setError(fetchError.response?.data?.message || "Failed to load invoices");
@@ -39,12 +66,26 @@ const InvoiceHistory = () => {
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   };
 
+  const resolveInvoiceProjectName = (invoice) => {
+    const explicitProject = String(invoice?.projectName || "").trim();
+    if (explicitProject) return explicitProject;
+
+    const emailKey = String(invoice?.customerEmail || "").trim().toLowerCase();
+    if (emailKey && projectNameByEmail[emailKey]) return projectNameByEmail[emailKey];
+
+    const customerIdKey = String(invoice?.customerId?._id || invoice?.customerId || "").trim();
+    if (customerIdKey && projectNameByCustomerId[customerIdKey]) return projectNameByCustomerId[customerIdKey];
+
+    return "-";
+  };
+
   const buildInvoicePdfBlob = (invoice) => {
     const doc = new jsPDF();
     const amount = Number(invoice?.amount || 0);
     const amountText = amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const status = String(invoice?.status || "").toUpperCase() || "PENDING";
     const description = String(invoice?.description || "").trim() || "Invoice item";
+    const projectName = resolveInvoiceProjectName(invoice);
 
     doc.setFillColor(30, 64, 175);
     doc.rect(0, 0, 210, 34, "F");
@@ -69,14 +110,13 @@ const InvoiceHistory = () => {
     doc.setFontSize(10);
     doc.text(`${invoice?.customerName || "-"}`, 18, 57);
     doc.text(`${invoice?.customerEmail || "-"}`, 18, 63);
-    doc.text(`Project: ${invoice?.projectName || "-"}`, 18, 69);
+    doc.text(`Project: ${projectName}`, 18, 69);
 
     doc.setFontSize(11);
     doc.text("Invoice Info", 134, 49);
     doc.setFontSize(10);
     doc.text(`Status: ${status}`, 134, 57);
     doc.text("Currency: INR", 134, 63);
-    doc.text("Prepared For: Customer", 134, 69);
 
     doc.setFillColor(243, 244, 246);
     doc.rect(14, 88, 182, 10, "F");

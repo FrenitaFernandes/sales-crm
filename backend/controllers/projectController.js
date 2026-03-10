@@ -2,6 +2,68 @@ const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const Customer = require("../models/Customer");
 
+const parseFlexibleDate = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+
+  // Support dd-mm-yyyy.
+  const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddmmyyyy) {
+    const [, dd, mm, yyyy] = ddmmyyyy;
+    const parsed = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+
+// =============================
+// GET MY PROJECTS (CUSTOMER)
+// =============================
+exports.getMyProjects = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const userEmail = String(req.user?.email || "").trim();
+
+    // Strictly bind projects to the logged-in user's customer profile.
+    // Prefer userId linkage, fallback to exact email only to locate that profile.
+    const customer = await Customer.findOne({
+      $or: [
+        ...(userId ? [{ userId }] : []),
+        ...(userEmail ? [{ email: userEmail }] : []),
+      ],
+      isDeleted: false,
+    }).select("_id");
+
+    if (!customer?._id) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+
+    const projects = await Project.find({ customerId: customer._id })
+      .populate("customerId", "name email phone")
+      .sort({ createdAt: -1 });
+
+    const payload = projects.map((project) => {
+      const obj = project.toObject();
+      return {
+        ...obj,
+        phone: obj.phone || obj.customerId?.phone || "",
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: payload.length,
+      data: payload,
+    });
+  } catch (error) {
+    console.error("Get My Projects Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 
 // =============================
 // CREATE PROJECT
@@ -30,10 +92,20 @@ exports.createProject = async (req, res) => {
       phone
     } = req.body;
 
-    const fallbackUserId = req.user?._id || new mongoose.Types.ObjectId();
+    const authUserId = req.user?._id || null;
+    const tokenUserEmail = String(req.user?.email || "").trim().toLowerCase();
+
+    if (!authUserId) {
+      return res.status(401).json({ message: "Unauthorized user context" });
+    }
 
     if (dueDate && !endDate) endDate = dueDate;
     if (customizationDetails && !description) description = customizationDetails;
+
+    const normalizedEndDate = parseFlexibleDate(endDate || dueDate);
+    if ((endDate || dueDate) && !normalizedEndDate) {
+      return res.status(400).json({ message: "Invalid due date format. Use yyyy-mm-dd." });
+    }
 
     if (!projectName) {
       return res.status(400).json({ message: "Project Name is required" });
@@ -42,22 +114,59 @@ exports.createProject = async (req, res) => {
     // =============================
     // FIND OR CREATE CUSTOMER
     // =============================
+    // For customer users, always bind project to their own profile.
+    if (req.user?.role === "customer") {
+      const userEmail = String(req.user?.email || "").trim().toLowerCase();
+
+      let customer = await Customer.findOne({
+        $or: [
+          ...(req.user?._id ? [{ userId: req.user._id }] : []),
+          ...(userEmail ? [{ email: userEmail }] : []),
+        ],
+      }).sort({ createdAt: -1 });
+
+      if (!customer) {
+        customer = await Customer.create({
+          userId: authUserId,
+          name: customerName || req.user?.name || "Customer",
+          email: userEmail,
+          phone: phone || req.user?.phone,
+          status: "Active",
+        });
+      }
+
+      customerId = customer._id;
+      email = customer.email || userEmail;
+      customerName = customer.name || customerName;
+
+      if (!customer.userId) {
+        customer.userId = authUserId;
+      }
+
+      if (phone && customer.phone !== phone) {
+        customer.phone = phone;
+        if (customer.userId) {
+          await customer.save();
+        }
+      }
+    }
+
     if (!customerId) {
 
       let customer = null;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
 
       // 1️⃣ Try finding by email first
-      if (email) {
-        customer = await Customer.findOne({ email });
+      if (normalizedEmail) {
+        customer = await Customer.findOne({ email: normalizedEmail }).sort({ createdAt: -1 });
       }
 
       // 2️⃣ If not found, create new customer
       if (!customer) {
-
         customer = await Customer.create({
-          userId: fallbackUserId,
+          userId: authUserId,
           name: customerName || req.user?.name || "Customer",
-          email: email || req.user?.email,
+          email: normalizedEmail || req.user?.email,
           phone: phone || req.user?.phone
         });
 
@@ -66,7 +175,12 @@ exports.createProject = async (req, res) => {
       // 3️⃣ Update phone if changed
       if (phone && customer.phone !== phone) {
         customer.phone = phone;
-        await customer.save();
+        if (!customer.userId) {
+          customer.userId = authUserId;
+        }
+        if (customer.userId) {
+          await customer.save();
+        }
       }
 
       customerId = customer._id;
@@ -92,7 +206,7 @@ exports.createProject = async (req, res) => {
       phone,
       status: status || "ongoing",
       startDate: startDate || Date.now(),
-      endDate,
+      endDate: normalizedEndDate || undefined,
       budget,
       assignedTo,
       progress: progress || 0
@@ -122,9 +236,8 @@ exports.createProject = async (req, res) => {
 
     console.error("Create Project Error:", error);
 
-    res.status(500).json({
-      message: "Server Error"
-    });
+    const message = error?.message || "Server Error";
+    res.status(500).json({ message });
   }
 };
 

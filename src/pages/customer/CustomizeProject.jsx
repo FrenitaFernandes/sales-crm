@@ -7,6 +7,7 @@ export default function CustomizeProject() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    customerId: "",
     projectName: "",
     customerName: "",
     email: "",
@@ -71,6 +72,7 @@ export default function CustomizeProject() {
 
         setFormData((prev) => ({
           ...prev,
+          customerId: profile._id || prev.customerId,
           customerName: profile.name || prev.customerName,
           email: profile.email || prev.email,
           phone: profile.phone || prev.phone,
@@ -105,16 +107,31 @@ export default function CustomizeProject() {
     try {
 
       const token = getToken();
+      const normalizeDueDate = (value) => {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+
+        // Accept dd-mm-yyyy from manual typing and convert to yyyy-mm-dd.
+        const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (ddmmyyyy) {
+          const [, dd, mm, yyyy] = ddmmyyyy;
+          return `${yyyy}-${mm}-${dd}`;
+        }
+
+        return raw;
+      };
 
       await axios.post(
         "http://localhost:5000/api/projects",
         {
+          customerId: formData.customerId || undefined,
           projectName: formData.projectName,
           customerName: formData.customerName,
-          email: formData.email,                 // ✅ added
+          // Always submit logged-in identity values from profile-prefilled form state.
+          email: formData.email,
           phone: formData.phone,
           description: formData.customizationDetails,
-          endDate: formData.dueDate,
+          endDate: normalizeDueDate(formData.dueDate),
           status: "ongoing"
         },
         {
@@ -128,6 +145,7 @@ export default function CustomizeProject() {
       setUiMessage("Project customization request submitted successfully.");
 
       setFormData({
+        customerId: formData.customerId,
         projectName: "",
         customerName: formData.customerName,
         email: formData.email,
