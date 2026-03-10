@@ -160,6 +160,7 @@ function Tickets() {
       setChatError("");
       const token = getToken();
       const payload = { message };
+      payload.senderContext = "customer";
       if (chatAttachment) {
         payload.attachment = chatAttachment;
       }

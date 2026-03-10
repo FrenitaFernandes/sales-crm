@@ -457,6 +457,7 @@ const ServiceRequests = () => {
       setChatError("");
       const token = getToken();
       const payload = { message };
+      payload.senderContext = "admin";
       if (chatAttachment) {
         payload.attachment = chatAttachment;
       }

@@ -388,11 +388,17 @@ exports.sendServiceRequestChatMessage = async (req, res) => {
       return res.status(403).json({ message: "Chat is not enabled yet" });
     }
 
-    const isAdmin = getUserRole(req.user) === "admin";
+    const authenticatedRole = getUserRole(req.user) === "admin" ? "admin" : "customer";
+    const senderContext = String(req.body?.senderContext || "").trim().toLowerCase();
+    if (senderContext && senderContext !== authenticatedRole) {
+      return res.status(403).json({ message: `Role mismatch. You are logged in as ${authenticatedRole}.` });
+    }
+
+    const isAdmin = authenticatedRole === "admin";
     const customer = isAdmin ? null : await resolveCustomerByUser(req.user);
     const message = await ChatMessage.create({
       serviceRequestId: request._id,
-      senderRole: isAdmin ? "admin" : "customer",
+      senderRole: authenticatedRole,
       senderName: isAdmin ? "Admin" : (customer?.name || req.user.name || "Customer"),
       message: messageText,
       attachment: attachment || undefined,
