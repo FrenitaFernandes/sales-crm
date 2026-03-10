@@ -47,6 +47,7 @@ export default function Leads() {
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [followUpToDelete, setFollowUpToDelete] = useState(null);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const [leads, setLeads] = useState([
     {
@@ -1612,23 +1613,6 @@ Generated on: ${new Date().toLocaleString()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter assignee name"
                   />
-                </div>
-
-                {/* Set Reminder */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Set Reminder</label>
-                  <select
-                    name="reminder"
-                    value={followUpFormData.reminder}
-                    onChange={handleFollowUpInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="1 day before">1 day before</option>
-                    <option value="2 days before">2 days before</option>
-                    <option value="1 week before">1 week before</option>
-                    <option value="On the day">On the day</option>
-                    <option value="No reminder">No reminder</option>
-                  </select>
                 </div>
 
                 {/* Follow Up History */}
