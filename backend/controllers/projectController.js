@@ -2,13 +2,12 @@ const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const Customer = require("../models/Customer");
 
-
 // =============================
 // CREATE PROJECT
 // =============================
 exports.createProject = async (req, res) => {
-
   console.log("[projectController] createProject body:", req.body);
+  console.log("[projectController] req.user:", req.user);
 
   try {
 
@@ -30,10 +29,15 @@ exports.createProject = async (req, res) => {
       phone
     } = req.body;
 
-    const fallbackUserId = req.user?._id || new mongoose.Types.ObjectId();
+    // map dueDate → endDate
+    if (dueDate && !endDate) {
+      endDate = dueDate;
+    }
 
-    if (dueDate && !endDate) endDate = dueDate;
-    if (customizationDetails && !description) description = customizationDetails;
+    // map customizationDetails → description
+    if (customizationDetails && !description) {
+      description = customizationDetails;
+    }
 
     if (!projectName) {
       return res.status(400).json({ message: "Project Name is required" });
@@ -43,42 +47,79 @@ exports.createProject = async (req, res) => {
     // FIND OR CREATE CUSTOMER
     // =============================
     if (!customerId) {
+      const role = String(req.user?.role || "").toLowerCase();
+      const userEmail = String(req.user?.email || "").trim().toLowerCase();
 
-      let customer = null;
+      // For customer login, always resolve by authenticated identity first.
+      if (role === "customer" && userEmail) {
+        let customer = await Customer.findOne({ email: userEmail });
 
-      // 1️⃣ Try finding by email first
-      if (email) {
-        customer = await Customer.findOne({ email });
+        if (!customer) {
+          customer = await Customer.create({
+            userId: req.user?._id || new mongoose.Types.ObjectId(),
+            name: req.user?.name || customerName || "Customer",
+            email: userEmail,
+            phone: phone || req.user?.phone || undefined,
+            status: "Active",
+          });
+        } else if (phone && customer.phone !== phone) {
+          customer.phone = phone;
+          await customer.save();
+        }
+
+        customerId = customer._id;
+        customerName = customerName || customer.name;
+        email = email || customer.email;
+      } else if (customerName) {
+        let customer = await Customer.findOne({ name: customerName });
+
+        if (!customer && email) {
+          customer = await Customer.findOne({ email: String(email).trim().toLowerCase() });
+        }
+
+        if (customer) {
+          if (phone && customer.phone !== phone) {
+            customer.phone = phone;
+            await customer.save();
+          }
+        } else {
+          const userId = req.user?._id || new mongoose.Types.ObjectId();
+          customer = await Customer.create({
+            userId,
+            name: customerName,
+            email: email || `${customerName.toLowerCase().replace(/\s+/g, ".")}@placeholder.com`,
+            phone: phone || undefined,
+          });
+        }
+
+        customerId = customer._id;
       }
-
-      // 2️⃣ If not found, create new customer
-      if (!customer) {
-
-        customer = await Customer.create({
-          userId: fallbackUserId,
-          name: customerName || req.user?.name || "Customer",
-          email: email || req.user?.email,
-          phone: phone || req.user?.phone
-        });
-
-      }
-
-      // 3️⃣ Update phone if changed
-      if (phone && customer.phone !== phone) {
-        customer.phone = phone;
-        await customer.save();
-      }
-
-      customerId = customer._id;
     }
 
     if (!customerId) {
       return res.status(400).json({ message: "Customer information is required" });
     }
 
+    // set default clientName
     if (!clientName) {
-      clientName = customerName || req.user?.name;
+      clientName = customerName || (req.user && req.user.name);
     }
+
+    // Validate email
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    console.log("[projectController] About to create project with:", {
+      customerId,
+      projectName,
+      clientName,
+      email,
+      description,
+      phone,
+      status,
+      endDate
+    });
 
     // =============================
     // CREATE PROJECT
@@ -87,7 +128,7 @@ exports.createProject = async (req, res) => {
       customerId,
       projectName,
       clientName,
-      email,
+      email: email.toLowerCase(),
       description,
       phone,
       status: status || "ongoing",
@@ -98,9 +139,20 @@ exports.createProject = async (req, res) => {
       progress: progress || 0
     });
 
+    // populate customer info
     const populatedProject = await project.populate(
       "customerId",
       "name email company phone"
+    );
+
+    console.log(
+      "[projectController] createProject -> project.phone:",
+      project.phone
+    );
+
+    console.log(
+      "[projectController] createProject -> customer.phone:",
+      populatedProject.customerId?.phone
     );
 
     let resp;
@@ -118,23 +170,34 @@ exports.createProject = async (req, res) => {
       data: resp
     });
 
+    console.log("[projectController] Project created successfully:", project._id);
+
   } catch (error) {
-
-    console.error("Create Project Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
+    console.error("[projectController] Create Project Error:", error.message);
+    console.error("[projectController] Full Error:", error);
+    
+    // Check if it's a validation error
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        success: false,
+        message: "Validation Error",
+        error: messages.join(', ') 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: "Server Error",
+      error: error.message 
     });
   }
 };
-
-
 
 // =============================
 // GET ALL PROJECTS
 // =============================
 exports.getProjects = async (req, res) => {
-
   try {
 
     const projects = await Project.find()
@@ -142,11 +205,8 @@ exports.getProjects = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const payload = projects.map(p => {
-
       const obj = p.toObject();
-
       obj.phone = obj.phone || obj.customerId?.phone || null;
-
       return obj;
     });
 
@@ -157,31 +217,22 @@ exports.getProjects = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Get Projects Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };
-
-
 
 // =============================
 // GET SINGLE PROJECT
 // =============================
 exports.getProjectById = async (req, res) => {
-
   try {
 
     const project = await Project.findById(req.params.id)
       .populate("customerId", "name email company phone");
 
     if (!project) {
-      return res.status(404).json({
-        message: "Project not found"
-      });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     res.status(200).json({
@@ -190,22 +241,15 @@ exports.getProjectById = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Get Project Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };
-
-
 
 // =============================
 // UPDATE PROJECT
 // =============================
 exports.updateProject = async (req, res) => {
-
   try {
 
     if (req.body.phone) {
@@ -220,6 +264,7 @@ exports.updateProject = async (req, res) => {
           cust.phone = req.body.phone;
           await cust.save();
         }
+
       }
     }
 
@@ -230,9 +275,7 @@ exports.updateProject = async (req, res) => {
     );
 
     if (!project) {
-      return res.status(404).json({
-        message: "Project not found"
-      });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     res.status(200).json({
@@ -242,22 +285,15 @@ exports.updateProject = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Update Project Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-
-
 // =============================
-// UPDATE PROJECT STATUS
+// UPDATE STATUS
 // =============================
 exports.updateProjectStatus = async (req, res) => {
-
   try {
 
     const { status } = req.body;
@@ -265,13 +301,10 @@ exports.updateProjectStatus = async (req, res) => {
     const project = await Project.findById(req.params.id);
 
     if (!project) {
-      return res.status(404).json({
-        message: "Project not found"
-      });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     project.status = status;
-
     await project.save();
 
     res.status(200).json({
@@ -281,30 +314,21 @@ exports.updateProjectStatus = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Status Update Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };
-
-
 
 // =============================
 // DELETE PROJECT
 // =============================
 exports.deleteProject = async (req, res) => {
-
   try {
 
     const project = await Project.findByIdAndDelete(req.params.id);
 
     if (!project) {
-      return res.status(404).json({
-        message: "Project not found"
-      });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     res.status(200).json({
@@ -313,11 +337,7 @@ exports.deleteProject = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Delete Project Error:", error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };

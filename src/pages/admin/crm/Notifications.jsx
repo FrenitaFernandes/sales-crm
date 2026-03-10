@@ -4,7 +4,6 @@ import axios from "axios";
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [notificationStatus, setNotificationStatus] = useState({});
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
@@ -55,16 +54,6 @@ export default function Notifications() {
   };
 
 
-  const getNotificationStatus = (item) => {
-    const current = notificationStatus[item._id];
-    if (current) return current;
-
-    const statusValue = (item?.status || "").toLowerCase();
-    return ["completed", "resolved", "closed", "done"].includes(statusValue)
-      ? "completed"
-      : "ongoing";
-  };
-
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold">Notifications</h2>
@@ -86,19 +75,6 @@ export default function Notifications() {
               </div>
 
               <div className="flex items-center gap-2">
-                <select
-                  className="form-select form-select-sm"
-                  value={getNotificationStatus(item)}
-                  onChange={(e) =>
-                    setNotificationStatus((prev) => ({
-                      ...prev,
-                      [item._id]: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="ongoing">Ongoing</option>
-                  <option value="completed">Completed</option>
-                </select>
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-primary"

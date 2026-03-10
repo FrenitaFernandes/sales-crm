@@ -1,10 +1,9 @@
-/*
-
-const User = require("../models/user");
+﻿const User = require("../models/user");
 const Customer = require("../models/Customer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { sendWelcomeEmail } = require("../services/emailService");
+const transporter = require("../config/mail");
+const { sendWelcomeEmail, sendPasswordChangedEmail } = require("../services/emailService");
 
 // ===============================
 // Generate JWT Token
@@ -19,13 +18,14 @@ const generateToken = (id) => {
 const registerUser = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || !password) {
       return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     // check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -36,24 +36,32 @@ const registerUser = async (req, res) => {
     // create user (customer only)
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role: "customer",
     });
-  // Create linked Customer entry so profile updates can resolve by userId.
-    await Customer.create({
-      userId: user._id,
-      name,
-      email,
-      phone,
-      status: "Inactive",
-    });
 
-    // send welcome email
-    await sendWelcomeEmail(email, name);
+    // Create linked Customer entry so profile updates can resolve by userId.
+    try {
+      const customerData = {
+        userId: user._id,
+        name,
+        email: normalizedEmail,
+        phone,
+        status: "Inactive",
+      };
+      await Customer.create(customerData);
+    } catch (customerError) {
+      // If Customer creation fails, delete the created User (rollback)
+      console.error("Customer Creation Error Details:", customerError.message, customerError.errors);
+      await User.deleteOne({ _id: user._id });
+      return res.status(400).json({
+        message: customerError.message || "Failed to create customer profile"
+      });
+    }
 
     res.status(201).json({
-      message: "Registration successful! Welcome email sent.",
+      message: "Registration successful!",
       token: generateToken(user._id),
       user: {
         id: user._id,
@@ -63,9 +71,17 @@ const registerUser = async (req, res) => {
       },
     });
 
+    // Send welcome email in background so signup never waits on SMTP.
+    sendWelcomeEmail(normalizedEmail, name).catch((emailError) => {
+      console.error("Email sending error:", emailError);
+    });
+
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ message: "User already exists" });
+    }
     console.error("Registration Error:", error);
-    res.status(500).json({ message: "Registration failed" });
+    res.status(500).json({ message: error.message || "Registration failed" });
   }
 };
 
@@ -107,206 +123,46 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = {
-  registerUser,
-  loginUser,
-};
-*/
-const User = require("../models/user");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { sendWelcomeEmail } = require("../services/emailService");
-const transporter = require("../config/mail");
-const { sendPasswordChangedEmail } = require("../services/emailService");
 // ===============================
-// Generate JWT Token
-// ===============================
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-};
-
-// ===============================
-// REGISTER (CUSTOMER ONLY)
-// ===============================
-const registerUser = async (req, res) => {
-  try {
-    const { name, email, phone, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please fill all required fields" });
-    }
-
-    // check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      if (existingUser.isActive === false) {
-        // reactivate previously deleted/inactive account
-        const hashedPassword = await bcrypt.hash(password, 10);
-        existingUser.name = name;
-        existingUser.phone = phone || existingUser.phone;
-        existingUser.password = hashedPassword;
-        existingUser.isActive = true;
-        await existingUser.save();
-
-        // update or recreate customer record
-        const Customer = require("../models/Customer");
-        await Customer.findOneAndUpdate(
-          { userId: existingUser._id },
-          {
-            isDeleted: false,
-            deletedAt: null,
-            name,
-            email,
-            phone,
-          },
-          { upsert: true, new: true }
-        );
-
-        await sendWelcomeEmail(email, name);
-        return res.status(200).json({
-          message: "Account reactivated. Welcome back!",
-          token: generateToken(existingUser._id),
-          user: {
-            id: existingUser._id,
-            name: existingUser.name,
-            email: existingUser.email,
-            phone: existingUser.phone,
-            role: existingUser.role,
-          },
-        });
-      }
-
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // create user (customer only)
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: "customer",
-      phone
-    });
-
-    // CREATE CUSTOMER RECORD (with timestamps - createdAt will be auto-set)
-    const Customer = require("../models/Customer");
-    await Customer.create({
-      userId: user._id,
-      name,
-      email,
-      phone,
-      status: "Inactive"
-    });
-
-    // send welcome email
-    await sendWelcomeEmail(email, name);
-
-    res.status(201).json({
-      message: "Registration successful! Welcome email sent.",
-      token: generateToken(user._id),
-      user: {
-        id: user._id,
-
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Registration Error:", error);
-    res.status(500).json({ message: "Registration failed" });
-  }
-};
-
-// ===============================
-// LOGIN (ADMIN + CUSTOMER)
-// ===============================
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please enter email and password" });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // don't allow login when marked inactive (deleted)
-    if (user.isActive === false) {
-      return res.status(403).json({ message: "Account inactive. Please register again." });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    res.status(200).json({
-      message: "Login successful",
-      token: generateToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ===============================
-// FORGOT PASSWORD (Send OTP)
+// FORGOT PASSWORD (SEND OTP)
 // ===============================
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "Email not found" });
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    // Save OTP + Expiry (10 minutes)
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
     user.otp = otp;
-    user.otpExpiry = Date.now() + 10 * 60 * 1000;
+    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    // Send email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset OTP",
-      html: `
-        <h2>Password Reset Request</h2>
-        <p>Your OTP to reset the password is:</p>
-        <h1>${otp}</h1>
-        <p>This OTP is valid for 10 minutes.</p>
-      `,
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Your OTP for Password Reset",
+        html: `
+          <h2>Password Reset Request</h2>
+          <p>Your OTP is: <b>${otp}</b></p>
+          <p>This OTP will expire in 10 minutes.</p>
+        `,
+      });
+    } catch (mailError) {
+      console.error("Forgot Password Email Error:", mailError);
+      return res.status(500).json({ message: "Failed to send OTP email" });
+    }
 
-    res.json({ message: "OTP sent to your email" });
+    return res.status(200).json({ message: "OTP sent to your email" });
   } catch (error) {
     console.error("Forgot Password Error:", error);
-    res.status(500).json({ message: "Failed to send OTP" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -315,27 +171,34 @@ const forgotPassword = async (req, res) => {
 // ===============================
 const verifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const otp = String(req.body?.otp || "").trim();
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
 
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.otp || user.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not requested" });
     }
 
-    if (user.otpExpiry < Date.now()) {
+    if (new Date(user.otpExpiry).getTime() < Date.now()) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    res.json({ message: "OTP verified successfully" });
+    if (String(user.otp) !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
+    return res.status(200).json({ message: "OTP verified" });
   } catch (error) {
-    console.error("OTP Verify Error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Verify OTP Error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -344,40 +207,46 @@ const verifyOTP = async (req, res) => {
 // ===============================
 const resetPassword = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
 
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!user.otp || !user.otpExpiry || new Date(user.otpExpiry).getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP verification required" });
+    }
 
-    // update password
-    user.password = hashedPassword;
-
-    // clear OTP fields
-    user.otp = null;
-    user.otpExpiry = null;
-
+    user.password = await bcrypt.hash(password, 10);
+    user.otp = undefined;
+    user.otpExpiry = undefined;
     await user.save();
 
-    // send email notification
-    await sendPasswordChangedEmail(email);
+    sendPasswordChangedEmail(email).catch((mailError) => {
+      console.error("Password Changed Email Error:", mailError);
+    });
 
-    res.json({ message: "Password reset successful" });
-
+    return res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
     console.error("Reset Password Error:", error);
-    res.status(500).json({ message: "Failed to reset password" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
 module.exports = {
   registerUser,
   loginUser,
-  forgotPassword, // ⬅ added export
-  verifyOTP,   // ✅ add this
-  resetPassword// ✅ add this
+  forgotPassword,
+  verifyOTP,
+  resetPassword,
 };

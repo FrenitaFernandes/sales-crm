@@ -35,8 +35,12 @@ const LeadSchema = new mongoose.Schema(
 
     followUps: [
       {
-        date: Date,
+        date: { type: Date, default: Date.now },
         note: String,
+        secondNote: String,
+        followUpDate: Date,
+        status: String,
+        updatedBy: String,
       }
     ],
 

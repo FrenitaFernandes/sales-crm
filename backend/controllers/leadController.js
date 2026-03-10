@@ -205,7 +205,7 @@ exports.updateLead = async (req, res) => {
 // ============================
 exports.addFollowUp = async (req, res) => {
   try {
-    const { date, note } = req.body;
+    const { date, note, secondNote, followUpDate, status, updatedBy } = req.body;
 
     const lead = await Lead.findById(req.params.id);
 
@@ -213,12 +213,26 @@ exports.addFollowUp = async (req, res) => {
       return res.status(404).json({ message: "Lead not found" });
     }
 
-    lead.followUps.push({ date, note });
+    // Add the follow-up
+    lead.followUps.push({ 
+      date: date || new Date(), 
+      note,
+      secondNote,
+      followUpDate,
+      status,
+      updatedBy
+    });
+
+    // Update the lead status if provided
+    if (status) {
+      lead.status = status;
+    }
+
     await lead.save();
 
     res.status(200).json({
       success: true,
-      message: "Follow-up added",
+      message: "Follow-up added successfully",
       data: lead,
     });
 
@@ -283,5 +297,140 @@ exports.deleteLead = async (req, res) => {
   } catch (error) {
     console.error("Delete Lead Error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================
+// EXPORT LEADS AS PDF
+// ============================
+exports.exportLeadsToPDF = async (req, res) => {
+  const PDFDocument = require('pdfkit');
+  const formatToIST = (value) => {
+    if (!value) return "N/A";
+
+    // If date already arrives in DD/MM/YYYY HH:MM:SS format, keep it.
+    if (typeof value === "string" && value.includes("/") && value.includes(":")) {
+      return value;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return String(value);
+    }
+
+    return parsed.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const writeField = (doc, label, value) => {
+    doc.font("Helvetica-Bold").fontSize(10).text(`${label}: `, { continued: true });
+    doc.font("Helvetica").fontSize(10).text(value || "N/A");
+  };
+  
+  try {
+    const { leads } = req.body;
+
+    if (!leads || !Array.isArray(leads) || leads.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No leads provided for export"
+      });
+    }
+
+    // Create a new PDF document
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50,
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="leads_${new Date().getTime()}.pdf"`);
+
+    // Pipe document to response
+    doc.pipe(res);
+
+    // Add title
+    doc.fontSize(24).font('Helvetica-Bold').text('Leads Report', { align: 'center' });
+    doc.fontSize(12).font('Helvetica').text(`Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, { align: 'center' });
+    doc.moveDown(1);
+
+    // Add summary
+    doc.fontSize(14).font('Helvetica-Bold').text('Summary');
+    doc.fontSize(11).font('Helvetica').text(`Total Leads: ${leads.length}`);
+    doc.moveDown(1);
+
+    leads.forEach((lead, index) => {
+      if (doc.y > 680) {
+        doc.addPage();
+      }
+
+      doc
+        .fontSize(12)
+        .font("Helvetica-Bold")
+        .fill("black")
+        .text(`Lead ${index + 1}`, { underline: true });
+      doc.moveDown(0.4);
+
+      writeField(doc, "Date", formatToIST(lead.date));
+      writeField(doc, "Lead Name", lead.leadName);
+      writeField(doc, "Project Name", lead.projectName);
+      writeField(doc, "Industry Type", lead.industryType);
+      writeField(doc, "Phone", lead.phone);
+      writeField(doc, "Email", lead.email);
+      writeField(doc, "Source", lead.source);
+      writeField(doc, "Status", lead.status);
+      writeField(doc, "Assigned To", lead.assignedTo);
+      writeField(doc, "Last Follow Up", lead.lastFollowUp || "Follow Up");
+
+      const followUps = Array.isArray(lead.followUps)
+        ? lead.followUps
+        : Array.isArray(lead.followUpHistory)
+        ? lead.followUpHistory
+        : [];
+
+      if (followUps.length > 0) {
+        doc.moveDown(0.2);
+        doc.fontSize(10).font("Helvetica-Bold").text("Follow-Up History:");
+        followUps.forEach((item, followIndex) => {
+          const note = item.note || item.secondNote || "No notes";
+          const status = item.status || "N/A";
+          const followDate = formatToIST(item.followUpDate || item.date || item.createdAt);
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .text(`${followIndex + 1}. Status: ${status} | Date: ${followDate} | Note: ${note}`);
+        });
+      }
+
+      doc.moveDown(0.5);
+      doc.strokeColor("#d1d5db").lineWidth(1).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown(0.6);
+    });
+
+    // Add footer
+    if (doc.y > 730) {
+      doc.addPage();
+    }
+    doc.moveDown(1);
+    doc.fontSize(9).font('Helvetica').text('This is an auto-generated report from Sales CRM', { align: 'center' });
+
+    // Finalize PDF
+    doc.end();
+  } catch (error) {
+    console.error("PDF Export Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating PDF",
+      error: error.message
+    });
   }
 };

@@ -17,13 +17,13 @@ import AdminCRMDashboard from "./pages/admin/crm/Dashboard";
 import CustomerDetails from "./pages/admin/crm/CustomerDetails";
 import ServiceRequests from "./pages/admin/crm/ServiceRequests";
 import CRMNotifications from "./pages/admin/crm/Notifications";
+import AdminSettings from "./pages/admin/Settings";
 
 // ADMIN SALES PAGES
 import AdminSalesDashboard from "./pages/admin/sales/Dashboard";
 // Leads
 import Leads from "./pages/admin/sales/Leads/Leads";
 import LeadDetails from "./pages/admin/sales/Leads/LeadDetails";
-import DownloadLead from "./pages/admin/sales/Leads/DownloadLead";
 // Stock
 import StockEntry from "./pages/admin/sales/Stock/StockEntry";
 import StockSummary from "./pages/admin/sales/Stock/StockSummary";
@@ -103,6 +103,14 @@ function App() {
             </MainLayout>
           }
         />
+        <Route
+          path="/admin/settings"
+          element={
+            <MainLayout>
+              <AdminSettings />
+            </MainLayout>
+          }
+        />
 
         {/* ADMIN SALES ROUTES (WITH SIDEBAR + NAVBAR) */}
         <Route
@@ -128,14 +136,6 @@ function App() {
           element={
             <MainLayout>
               <LeadDetails />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/admin/sales/leads/download-lead"
-          element={
-            <MainLayout>
-              <DownloadLead />
             </MainLayout>
           }
         />

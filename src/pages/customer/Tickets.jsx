@@ -1,5 +1,5 @@
-import { MessageCircle, Ticket } from "lucide-react";
-import { useEffect, useState } from "react";
+import { MessageCircle, Paperclip, Ticket, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { syncCustomerTicketNotifications } from "../../utils/customerNotifications";
 
@@ -16,6 +16,35 @@ function resolveAttachmentSrc(uploadedImage) {
   return "";
 }
 
+function resolveChatAttachmentSrc(attachment) {
+  const raw =
+    typeof attachment === "string"
+      ? attachment
+      : String(attachment?.dataUrl || "").trim();
+  if (!raw) return "";
+
+  if (/^data:/i.test(raw)) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/uploads/")) return `${BACKEND_BASE}${raw}`;
+
+  return "";
+}
+
+function isImageAttachment(src, mimeType) {
+  if (/^data:image\//i.test(src)) return true;
+  if (String(mimeType || "").toLowerCase().startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(src);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,14 +52,18 @@ function Tickets() {
   const [activeChat, setActiveChat] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatAttachment, setChatAttachment] = useState(null);
+  const [chatSending, setChatSending] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
+  const chatFileInputRef = useRef(null);
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (options = {}) => {
+    const { silent = false } = options;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = getToken();
       if (!token) {
         setTickets([]);
@@ -77,7 +110,7 @@ function Tickets() {
       console.error("Fetch tickets error:", error);
       setTickets([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -88,22 +121,31 @@ function Tickets() {
   const openChat = async (ticket) => {
     if (!ticket?.enableChat) return;
 
+    setActiveChat(ticket);
+    await fetchChatMessages(ticket._id);
+  };
+
+  const fetchChatMessages = async (requestId, options = {}) => {
+    if (!requestId) return;
+    const { silent = false } = options;
+
     try {
-      setActiveChat(ticket);
+      if (!silent) setChatLoading(true);
       setChatError("");
-      setChatLoading(true);
       const token = getToken();
 
-      const res = await axios.get(`http://localhost:5000/api/services/${ticket._id}/chat`, {
+      const res = await axios.get(`http://localhost:5000/api/services/${requestId}/chat`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setChatMessages(res.data?.data || []);
     } catch (error) {
-      setChatMessages([]);
+      if (!silent) {
+        setChatMessages([]);
+      }
       setChatError(error?.response?.data?.message || "Failed to load chat");
     } finally {
-      setChatLoading(false);
+      if (!silent) setChatLoading(false);
     }
   };
 
@@ -111,30 +153,60 @@ function Tickets() {
     if (!activeChat?._id) return;
 
     const message = chatInput.trim();
-    if (!message) return;
+    if (!message && !chatAttachment) return;
 
     try {
+      setChatSending(true);
       setChatError("");
       const token = getToken();
+      const payload = { message };
+      payload.senderContext = "customer";
+      if (chatAttachment) {
+        payload.attachment = chatAttachment;
+      }
 
-      const res = await axios.post(
+      await axios.post(
         `http://localhost:5000/api/services/${activeChat._id}/chat`,
-        { message },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (res.data?.data) {
-        setChatMessages((prev) => [...prev, res.data.data]);
-      }
       setChatInput("");
+      setChatAttachment(null);
+      await fetchChatMessages(activeChat._id, { silent: true });
     } catch (error) {
       setChatError(error?.response?.data?.message || "Failed to send message");
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  const handleChatAttachmentSelect = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+
+    try {
+      if (file.size > 6 * 1024 * 1024) {
+        setChatError("Attachment must be smaller than 6MB");
+        return;
+      }
+
+      setChatError("");
+      const dataUrl = await readFileAsDataUrl(file);
+      setChatAttachment({
+        name: file.name,
+        mimeType: file.type || "",
+        dataUrl,
+      });
+    } catch {
+      setChatError("Failed to read selected file");
     }
   };
 
   useEffect(() => {
-    const intervalId = setInterval(fetchTickets, 10000);
-    const onFocus = () => fetchTickets();
+    const intervalId = setInterval(() => fetchTickets({ silent: true }), 10000);
+    const onFocus = () => fetchTickets({ silent: true });
 
     window.addEventListener("focus", onFocus);
 
@@ -143,6 +215,22 @@ function Tickets() {
       window.removeEventListener("focus", onFocus);
     };
   }, []);
+
+  useEffect(() => {
+    if (!activeChat?._id) return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchChatMessages(activeChat._id, { silent: true });
+    }, 3000);
+
+    const onFocus = () => fetchChatMessages(activeChat._id, { silent: true });
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [activeChat?._id]);
 
   return (
     <div className="p-6 space-y-6">
@@ -258,7 +346,7 @@ function Tickets() {
 
       {previewImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10000] p-4"
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10010] p-4"
           onClick={() => setPreviewImage(null)}
         >
           <div
@@ -289,7 +377,12 @@ function Tickets() {
               <button
                 type="button"
                 className="border px-3 py-1 rounded"
-                onClick={() => setActiveChat(null)}
+                onClick={() => {
+                  setActiveChat(null);
+                  setChatInput("");
+                  setChatAttachment(null);
+                  setChatError("");
+                }}
               >
                 Close
               </button>
@@ -302,15 +395,55 @@ function Tickets() {
                 <p className="text-sm text-gray-500">No messages yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {chatMessages.map((msg) => (
-                    <div
-                      key={msg._id}
-                      className={`p-2 rounded text-sm ${msg.senderRole === "customer" ? "bg-blue-100 ml-8" : "bg-gray-100 mr-8"}`}
-                    >
-                      <div className="font-semibold">{msg.senderName}</div>
-                      <div>{msg.message}</div>
-                    </div>
-                  ))}
+                  {chatMessages.map((msg) => {
+                    const senderRole = String(msg?.senderRole || "").trim().toLowerCase();
+                    const isAdminMessage =
+                      senderRole === "admin" ||
+                      String(msg?.senderName || "").trim().toLowerCase() === "admin";
+                    return (
+                      <div
+                        key={msg._id}
+                        className={`p-2 rounded text-sm ${
+                          isAdminMessage ? "bg-gray-100 ml-0 mr-10" : "bg-blue-100 ml-8 mr-0"
+                        }`}
+                      >
+                        {msg.message ? <div>{msg.message}</div> : null}
+                        {resolveChatAttachmentSrc(msg.attachment) ? (
+                          <div className="mt-2">
+                            {isImageAttachment(
+                              resolveChatAttachmentSrc(msg.attachment),
+                              msg.attachment?.mimeType
+                            ) ? (
+                              <button
+                                type="button"
+                                className="h-16 w-16 rounded border overflow-hidden bg-white"
+                                title={msg.attachment?.name || "Attachment"}
+                                onClick={() =>
+                                  setPreviewImage(resolveChatAttachmentSrc(msg.attachment))
+                                }
+                              >
+                                <img
+                                  src={resolveChatAttachmentSrc(msg.attachment)}
+                                  alt={msg.attachment?.name || "chat attachment"}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <a
+                                className="text-blue-700 underline text-xs"
+                                href={resolveChatAttachmentSrc(msg.attachment)}
+                                download={msg.attachment?.name || "attachment"}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {msg.attachment?.name || "View attachment"}
+                              </a>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -318,6 +451,21 @@ function Tickets() {
             </div>
 
             <div className="p-3 border-t flex gap-2">
+              <input
+                ref={chatFileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleChatAttachmentSelect}
+              />
+              <button
+                type="button"
+                className="border rounded px-2 py-2"
+                title="Attach file"
+                onClick={() => chatFileInputRef.current?.click()}
+                disabled={chatSending}
+              >
+                <Paperclip size={16} />
+              </button>
               <input
                 type="text"
                 className="border rounded px-3 py-2 w-full"
@@ -330,13 +478,28 @@ function Tickets() {
                     sendChatMessage();
                   }
                 }}
+                disabled={chatSending}
               />
+              {chatAttachment ? (
+                <div className="flex items-center gap-1 text-xs bg-gray-100 border rounded px-2">
+                  <span className="max-w-28 truncate">{chatAttachment.name}</span>
+                  <button
+                    type="button"
+                    className="text-gray-600"
+                    onClick={() => setChatAttachment(null)}
+                    title="Remove attachment"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
                 onClick={sendChatMessage}
+                disabled={chatSending}
               >
-                Send
+                {chatSending ? "Sending..." : "Send"}
               </button>
             </div>
           </div>

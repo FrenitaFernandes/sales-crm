@@ -86,3 +86,22 @@ export const updateLeadStatus = async (leadId, status) => {
   );
   return response.data;
 };
+
+// ======================
+// EXPORT LEADS TO PDF
+// ======================
+export const exportLeadsToPDF = async (leadsData) => {
+  const token = localStorage.getItem("token");
+  const response = await axios.post(
+    `${API_URL}/export/pdf`,
+    { leads: leadsData },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      responseType: "blob", // Important: get response as blob for file download
+    }
+  );
+  return response.data;
+};

@@ -1,6 +1,17 @@
 const NOTIFICATIONS_PREFIX = "customer_notifications_v1";
 const SEEN_TICKETS_PREFIX = "customer_seen_tickets_v1";
 
+function buildTicketId() {
+  return `TKT-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
+}
+
+function normalizeTicketId(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length >= 5) return `TKT-${digits.slice(-5)}`;
+  if (digits.length > 0) return `TKT-${digits.padStart(5, "0")}`;
+  return buildTicketId();
+}
+
 function getCurrentCustomerKey() {
   try {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -95,7 +106,7 @@ export function syncCustomerTicketNotifications(ticketItems) {
     const eventId = `ticket-received:${id}`;
     if (notificationEventIds.has(eventId)) return;
 
-    const ticketId = String(ticket?.ticketId || "").trim() || `TKT-${id.slice(-6).toUpperCase()}`;
+    const ticketId = normalizeTicketId(ticket?.ticketId || id);
     const subject = String(ticket?.subject || ticket?.title || "Support Request").trim();
 
     newNotifications.push({
