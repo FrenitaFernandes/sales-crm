@@ -11,6 +11,7 @@ const serviceRequestSchema = new mongoose.Schema(
     ticketId: {
       type: String,
       trim: true,
+      default: () => `TKT-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`,
       unique: true
     },
 

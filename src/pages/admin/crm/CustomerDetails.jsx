@@ -35,7 +35,7 @@ const CustomerDetails = () => {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-        `http://localhost:5000/api/leads/customer/${customer.email}`,
+        "http://localhost:5000/api/projects",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -44,7 +44,28 @@ const CustomerDetails = () => {
       );
 
       const data = await res.json();
-      setProjects(data.data || []);
+      const projectList = Array.isArray(data.data) ? data.data : [];
+
+      const customerProjects = projectList.filter((p) => {
+        const projectCustomerId =
+          typeof p.customerId === "object" ? p.customerId?._id : p.customerId;
+        const projectCustomerEmail = String(
+          typeof p.customerId === "object" ? p.customerId?.email : p.email || ""
+        ).toLowerCase();
+        const projectCustomerName = String(
+          typeof p.customerId === "object"
+            ? p.customerId?.name
+            : p.customerName || ""
+        ).toLowerCase();
+
+        return (
+          String(projectCustomerId || "") === String(customer._id || "") ||
+          projectCustomerEmail === String(customer.email || "").toLowerCase() ||
+          projectCustomerName === String(customer.name || "").toLowerCase()
+        );
+      });
+
+      setProjects(customerProjects);
     } catch (error) {
       console.log("Project fetch error:", error);
       setProjects([]);
@@ -138,20 +159,13 @@ const CustomerDetails = () => {
       {selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-[90%] max-w-lg shadow-lg">
-            <h3 className="text-xl font-bold mb-3">Customer Info</h3>
-
-            <p><b>Name:</b> {selectedCustomer.name}</p>
-            <p><b>Email:</b> {selectedCustomer.email}</p>
-            <p><b>Phone:</b> {selectedCustomer.phone}</p>
-            <p><b>Status:</b> {selectedCustomer.status}</p>
-
-            <h4 className="mt-4 font-semibold">Projects</h4>
+            <h3 className="text-xl font-bold mb-3">Projects</h3>
 
             {projects.length > 0 ? (
               projects.map((p) => (
                 <div key={p._id} className="border p-2 rounded mt-2">
-                  <p><b>Project:</b> {p.project || "N/A"}</p>
-                  <p><b>Status:</b> {p.status}</p>
+                  <p><b>Project:</b> {p.projectName || "-"}</p>
+                  <p><b>Status:</b> {p.status || "-"}</p>
                 </div>
               ))
             ) : (

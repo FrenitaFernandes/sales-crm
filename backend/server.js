@@ -17,6 +17,7 @@ const stockRoutes = require("./routes/stockRoutes");
 const advertisementRoutes = require("./routes/advertisementRoutes");
 const activityLogRoutes = require("./routes/activityLogRoutes");
 const leadRoutes = require("./routes/leadRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 
 // Initialize App
 const app = express();
@@ -44,6 +45,7 @@ app.use("/api/ads", advertisementRoutes);
 app.use("/api/activity", activityLogRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/customer", notificationRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Health Check Route
 app.get("/", (req, res) => {

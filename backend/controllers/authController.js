@@ -2,7 +2,8 @@
 const Customer = require("../models/Customer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { sendWelcomeEmail } = require("../services/emailService");
+const transporter = require("../config/mail");
+const { sendWelcomeEmail, sendPasswordChangedEmail } = require("../services/emailService");
 
 // ===============================
 // Generate JWT Token
@@ -122,7 +123,130 @@ const loginUser = async (req, res) => {
   }
 };
 
+// ===============================
+// FORGOT PASSWORD (SEND OTP)
+// ===============================
+const forgotPassword = async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Your OTP for Password Reset",
+        html: `
+          <h2>Password Reset Request</h2>
+          <p>Your OTP is: <b>${otp}</b></p>
+          <p>This OTP will expire in 10 minutes.</p>
+        `,
+      });
+    } catch (mailError) {
+      console.error("Forgot Password Email Error:", mailError);
+      return res.status(500).json({ message: "Failed to send OTP email" });
+    }
+
+    return res.status(200).json({ message: "OTP sent to your email" });
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ===============================
+// VERIFY OTP
+// ===============================
+const verifyOTP = async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const otp = String(req.body?.otp || "").trim();
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not requested" });
+    }
+
+    if (new Date(user.otpExpiry).getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (String(user.otp) !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    return res.status(200).json({ message: "OTP verified" });
+  } catch (error) {
+    console.error("Verify OTP Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ===============================
+// RESET PASSWORD
+// ===============================
+const resetPassword = async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry || new Date(user.otpExpiry).getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP verification required" });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    sendPasswordChangedEmail(email).catch((mailError) => {
+      console.error("Password Changed Email Error:", mailError);
+    });
+
+    return res.status(200).json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  forgotPassword,
+  verifyOTP,
+  resetPassword,
 };

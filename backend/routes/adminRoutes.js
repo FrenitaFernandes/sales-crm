@@ -12,6 +12,17 @@ const {
   deleteAdvertisement,
 } = require("../controllers/advertisementController");
 
+function buildTicketId() {
+  return `TKT-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
+}
+
+function normalizeTicketId(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length >= 5) return `TKT-${digits.slice(-5)}`;
+  if (digits.length > 0) return `TKT-${digits.padStart(5, "0")}`;
+  return buildTicketId();
+}
+
 // GET: Dashboard stats
 router.get("/dashboard", async (req, res) => {
   try {
@@ -228,7 +239,7 @@ router.post("/service-requests", upload.single("attachment"), async (req, res) =
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
-    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+    const resolvedTicketId = normalizeTicketId(ticketId);
 
     let uploadedImageUrl = null;
     if (req.file) {
@@ -272,7 +283,7 @@ router.post("/service-requests-json", async (req, res) => {
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
-    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+    const resolvedTicketId = normalizeTicketId(ticketId);
 
     const newRequest = await ServiceRequest.create({
       customerId,
@@ -310,7 +321,7 @@ router.post("/service-requests-simple", async (req, res) => {
     if (status === "Open") storeStatus = "Pending";
     if (status === "Closed") storeStatus = "Completed";
 
-    const resolvedTicketId = String(ticketId || "").trim() || `TKT-${Date.now()}`;
+    const resolvedTicketId = normalizeTicketId(ticketId);
 
     const newRequest = await ServiceRequest.create({
       customerId,
