@@ -31,6 +31,19 @@ export default function AddAdvertisement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const normalizeDate = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+
+      const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (ddmmyyyy) {
+        const [, dd, mm, yyyy] = ddmmyyyy;
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
+      return raw;
+    };
+
     const fallbackProductName =
       String(form.targetAudience || "").trim() ||
       String(form.description || "").trim() ||
@@ -38,6 +51,7 @@ export default function AddAdvertisement() {
 
     const payload = {
       ...form,
+      date: normalizeDate(form.date),
       productName: fallbackProductName,
       thumbnail: PREFERENCE_IMAGE_MAP[form.targetAudience] || ""
     };

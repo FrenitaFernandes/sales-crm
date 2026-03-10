@@ -154,6 +154,7 @@ const Sidebar = ({ role = "admin" }) => {
       { name: "Support", path: "/customer/support", icon: "support" },
       { name: "Notifications", path: "/customer/notifications", icon: "notifications" },
       { name: "Customize Project", path: "/customer/customize-project", icon: "build" },
+      { name: "My Projects", path: "/customer/my-projects", icon: "tasks" },
 
     ],
   };

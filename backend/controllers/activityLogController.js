@@ -5,6 +5,61 @@ const ActivityLog = require("../models/ActivityLog");
 // =============================
 exports.getActivityLogs = async (req, res) => {
   try {
+    if (req.query.groupBy === "date") {
+      const groupedLogs = await ActivityLog.aggregate([
+        {
+          $addFields: {
+            activityAt: { $ifNull: ["$timestamp", "$createdAt"] }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$activityAt"
+              }
+            },
+            totalActivities: { $sum: 1 },
+            createCount: {
+              $sum: {
+                $cond: [{ $eq: [{ $toUpper: { $ifNull: ["$action", ""] } }, "CREATE"] }, 1, 0]
+              }
+            },
+            updateCount: {
+              $sum: {
+                $cond: [{ $eq: [{ $toUpper: { $ifNull: ["$action", ""] } }, "UPDATE"] }, 1, 0]
+              }
+            },
+            deleteCount: {
+              $sum: {
+                $cond: [{ $eq: [{ $toUpper: { $ifNull: ["$action", ""] } }, "DELETE"] }, 1, 0]
+              }
+            },
+            uniqueUsers: { $addToSet: "$userName" },
+            latestActivityAt: { $max: "$activityAt" }
+          }
+        },
+        { $sort: { _id: -1 } }
+      ]);
+
+      const data = groupedLogs.map((row) => ({
+        date: row._id,
+        totalActivities: row.totalActivities,
+        createCount: row.createCount,
+        updateCount: row.updateCount,
+        deleteCount: row.deleteCount,
+        usersCount: (row.uniqueUsers || []).filter(Boolean).length,
+        latestActivityAt: row.latestActivityAt,
+      }));
+
+      return res.status(200).json({
+        success: true,
+        count: data.length,
+        data,
+      });
+    }
+
     const logs = await ActivityLog.find()
       .populate("userId", "name email role")
       .sort({ createdAt: -1 });

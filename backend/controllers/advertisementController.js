@@ -2,6 +2,21 @@ const Customer = require("../models/Customer");
 const Notification = require("../models/Notification");
 const Advertisement = require("../models/Advertisement");
 
+const parseFlexibleDate = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+
+  const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddmmyyyy) {
+    const [, dd, mm, yyyy] = ddmmyyyy;
+    const parsed = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const PREFERENCE_IMAGE_MAP = {
   "Data Logger IIoT 4.0": "/DataLogger.png",
   "Cloud PLC 4.0": "/CloudPLC.png",
@@ -47,10 +62,18 @@ exports.createAdvertisement = async (req, res) => {
       });
     }
 
+    const normalizedDate = parseFlexibleDate(date);
+    if (!normalizedDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Use yyyy-mm-dd."
+      });
+    }
+
     // Create Advertisement
     const ad = await Advertisement.create({
-      date,
-      productName,
+      date: normalizedDate,
+      productName: adTitle,
       tagline,
       description,
       type,
@@ -120,7 +143,7 @@ exports.createAdvertisement = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: error?.message || "Server error"
     });
 
   }

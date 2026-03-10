@@ -15,6 +15,11 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  projectName: {
+    type: String,
+    trim: true,
+    default: ""
+  },
   customerEmail: {
     type: String
   },

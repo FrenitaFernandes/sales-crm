@@ -1,4 +1,8 @@
 const Invoice = require("../models/Invoice");
+const Customer = require("../models/Customer");
+const Notification = require("../models/Notification");
+const Project = require("../models/Project");
+const Lead = require("../models/Lead");
 
 const normalizeStatus = (status) => {
   if (!status) return "pending";
@@ -14,6 +18,66 @@ const parseNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : NaN;
 };
 
+const resolveFallbackProjectName = async (invoice) => {
+  const existingProjectName = String(invoice?.projectName || "").trim();
+  if (existingProjectName) return existingProjectName;
+
+  const customerEmail = String(invoice?.customerEmail || "").trim();
+  const customerId = invoice?.customerId;
+
+  if (customerEmail) {
+    const latestProjectByEmail = await Project.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromEmail = String(latestProjectByEmail?.projectName || "").trim();
+    if (projectFromEmail) return projectFromEmail;
+
+    const customerByEmail = await Customer.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .select("_id");
+
+    if (customerByEmail?._id) {
+      const latestProjectByCustomer = await Project.findOne({ customerId: customerByEmail._id })
+        .sort({ createdAt: -1 })
+        .select("projectName");
+      const projectFromCustomer = String(latestProjectByCustomer?.projectName || "").trim();
+      if (projectFromCustomer) return projectFromCustomer;
+    }
+
+    const latestLead = await Lead.findOne({ email: customerEmail })
+      .collation({ locale: "en", strength: 2 })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromLead = String(latestLead?.projectName || "").trim();
+    if (projectFromLead) return projectFromLead;
+  }
+
+  if (customerId) {
+    const latestProjectByCustomerId = await Project.findOne({ customerId })
+      .sort({ createdAt: -1 })
+      .select("projectName");
+    const projectFromCustomerId = String(latestProjectByCustomerId?.projectName || "").trim();
+    if (projectFromCustomerId) return projectFromCustomerId;
+  }
+
+  return "";
+};
+
+const hydrateInvoiceProjectNames = async (invoices = []) => {
+  return Promise.all(
+    invoices.map(async (invoiceDoc) => {
+      const fallbackProjectName = await resolveFallbackProjectName(invoiceDoc);
+      const invoice = invoiceDoc.toObject ? invoiceDoc.toObject() : { ...invoiceDoc };
+
+      return {
+        ...invoice,
+        projectName: fallbackProjectName || invoice.projectName || "",
+      };
+    })
+  );
+};
+
 // =============================
 // CREATE INVOICE
 // =============================
@@ -23,6 +87,7 @@ exports.createInvoice = async (req, res) => {
       customerId,
       invoiceNumber,
       customerName,
+      projectName,
       customerEmail,
       customerPhone,
       items,
@@ -69,12 +134,43 @@ exports.createInvoice = async (req, res) => {
       return res.status(400).json({ message: "Invoice number already exists" });
     }
 
+    let resolvedCustomerId = customerId || null;
+    let resolvedCustomerName = trimmedCustomerName;
+    let resolvedCustomerEmail = customerEmail || "";
+    let resolvedCustomerPhone = customerPhone || "";
+
+    if (!resolvedCustomerId && resolvedCustomerEmail) {
+      const matchedCustomer = await Customer.findOne({ email: resolvedCustomerEmail, isDeleted: false });
+      if (matchedCustomer) {
+        resolvedCustomerId = matchedCustomer._id;
+        resolvedCustomerName = matchedCustomer.name || resolvedCustomerName;
+        resolvedCustomerPhone = matchedCustomer.phone || resolvedCustomerPhone;
+      }
+    }
+
+    let resolvedProjectName = String(projectName || "").trim();
+
+    if (!resolvedProjectName) {
+      const projectQuery = {};
+      if (resolvedCustomerEmail) {
+        projectQuery.email = resolvedCustomerEmail;
+      } else if (resolvedCustomerId) {
+        projectQuery.customerId = resolvedCustomerId;
+      }
+
+      if (Object.keys(projectQuery).length > 0) {
+        const latestProject = await Project.findOne(projectQuery).sort({ createdAt: -1 });
+        resolvedProjectName = latestProject?.projectName || "";
+      }
+    }
+
     const invoice = await Invoice.create({
-      customerId: customerId || null,
+      customerId: resolvedCustomerId,
       invoiceNumber: trimmedInvoiceNumber,
-      customerName: trimmedCustomerName,
-      customerEmail,
-      customerPhone,
+      customerName: resolvedCustomerName,
+      projectName: resolvedProjectName,
+      customerEmail: resolvedCustomerEmail,
+      customerPhone: resolvedCustomerPhone,
       description: description || "",
       items,
       amount: numericAmount,
@@ -86,6 +182,16 @@ exports.createInvoice = async (req, res) => {
       invoiceDate: invoiceDate || date,
       dueDate
     });
+
+    if (resolvedCustomerId) {
+      await Notification.create({
+        customerId: resolvedCustomerId,
+        title: `Invoice ${trimmedInvoiceNumber}`,
+        message: `A new invoice has been generated for Rs.${numericAmount}.`,
+        type: "order",
+        read: false,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -104,7 +210,8 @@ exports.createInvoice = async (req, res) => {
 // =============================
 exports.getInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    const invoiceDocs = await Invoice.find().sort({ createdAt: -1 });
+    const invoices = await hydrateInvoiceProjectNames(invoiceDocs);
 
     res.status(200).json({
       success: true,
@@ -123,11 +230,13 @@ exports.getInvoices = async (req, res) => {
 // =============================
 exports.getInvoiceById = async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const invoiceDoc = await Invoice.findById(req.params.id);
 
-    if (!invoice) {
+    if (!invoiceDoc) {
       return res.status(404).json({ message: "Invoice not found" });
     }
+
+    const [invoice] = await hydrateInvoiceProjectNames([invoiceDoc]);
 
     res.status(200).json({
       success: true,
@@ -228,7 +337,8 @@ exports.getInvoicesByCustomer = async (req, res) => {
       return res.status(400).json({ message: "Customer ID is required" });
     }
 
-    const invoices = await Invoice.find({ customerId }).sort({ createdAt: -1 });
+    const invoiceDocs = await Invoice.find({ customerId }).sort({ createdAt: -1 });
+    const invoices = await hydrateInvoiceProjectNames(invoiceDocs);
 
     res.status(200).json({
       success: true,

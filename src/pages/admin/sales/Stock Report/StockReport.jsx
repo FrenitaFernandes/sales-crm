@@ -32,11 +32,11 @@ export default function StockReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [supplier, setSupplier] = useState("All Suppliers");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState("Iot products");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [appliedSupplier, setAppliedSupplier] = useState("All Suppliers");
-  const [appliedCategory, setAppliedCategory] = useState("");
+  const [appliedCategory, setAppliedCategory] = useState("Iot products");
   const [appliedFromDate, setAppliedFromDate] = useState("");
   const [appliedToDate, setAppliedToDate] = useState("");
   const [reportReady, setReportReady] = useState(false);

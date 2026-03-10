@@ -2,6 +2,68 @@ const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const Customer = require("../models/Customer");
 
+const parseFlexibleDate = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+
+  // Support dd-mm-yyyy.
+  const ddmmyyyy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (ddmmyyyy) {
+    const [, dd, mm, yyyy] = ddmmyyyy;
+    const parsed = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+
+// =============================
+// GET MY PROJECTS (CUSTOMER)
+// =============================
+exports.getMyProjects = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const userEmail = String(req.user?.email || "").trim();
+
+    // Strictly bind projects to the logged-in user's customer profile.
+    // Prefer userId linkage, fallback to exact email only to locate that profile.
+    const customer = await Customer.findOne({
+      $or: [
+        ...(userId ? [{ userId }] : []),
+        ...(userEmail ? [{ email: userEmail }] : []),
+      ],
+      isDeleted: false,
+    }).select("_id");
+
+    if (!customer?._id) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+
+    const projects = await Project.find({ customerId: customer._id })
+      .populate("customerId", "name email phone")
+      .sort({ createdAt: -1 });
+
+    const payload = projects.map((project) => {
+      const obj = project.toObject();
+      return {
+        ...obj,
+        phone: obj.phone || obj.customerId?.phone || "",
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: payload.length,
+      data: payload,
+    });
+  } catch (error) {
+    console.error("Get My Projects Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 // =============================
 // CREATE PROJECT
 // =============================
@@ -34,9 +96,21 @@ exports.createProject = async (req, res) => {
       endDate = dueDate;
     }
 
+    const authUserId = req.user?._id || null;
+    const tokenUserEmail = String(req.user?.email || "").trim().toLowerCase();
+
+    if (!authUserId) {
+      return res.status(401).json({ message: "Unauthorized user context" });
+    }
+
     // map customizationDetails → description
     if (customizationDetails && !description) {
       description = customizationDetails;
+    }
+
+    const normalizedEndDate = parseFlexibleDate(endDate || dueDate);
+    if ((endDate || dueDate) && !normalizedEndDate) {
+      return res.status(400).json({ message: "Invalid due date format. Use yyyy-mm-dd." });
     }
 
     if (!projectName) {
@@ -46,54 +120,84 @@ exports.createProject = async (req, res) => {
     // =============================
     // FIND OR CREATE CUSTOMER
     // =============================
+    // For customer users, always bind project to their own profile.
+    if (req.user?.role === "customer") {
+      const userEmail = String(req.user?.email || "").trim().toLowerCase();
+
+      let customer = await Customer.findOne({
+        $or: [
+          ...(req.user?._id ? [{ userId: req.user._id }] : []),
+          ...(userEmail ? [{ email: userEmail }] : []),
+        ],
+      }).sort({ createdAt: -1 });
+
+      if (!customer) {
+        customer = await Customer.create({
+          userId: authUserId,
+          name: customerName || req.user?.name || "Customer",
+          email: userEmail,
+          phone: phone || req.user?.phone,
+          status: "Active",
+        });
+      }
+
+      customerId = customer._id;
+      email = customer.email || userEmail;
+      customerName = customer.name || customerName;
+
+      if (!customer.userId) {
+        customer.userId = authUserId;
+      }
+
+      if (phone && customer.phone !== phone) {
+        customer.phone = phone;
+        if (customer.userId) {
+          await customer.save();
+        }
+      }
+    }
+
     if (!customerId) {
       const role = String(req.user?.role || "").toLowerCase();
       const userEmail = String(req.user?.email || "").trim().toLowerCase();
 
-      // For customer login, always resolve by authenticated identity first.
-      if (role === "customer" && userEmail) {
-        let customer = await Customer.findOne({ email: userEmail });
+      let customer = null;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      const generatedEmail = customerName
+        ? `${String(customerName).toLowerCase().replace(/\s+/g, ".")}@placeholder.com`
+        : "customer@placeholder.com";
 
-        if (!customer) {
-          customer = await Customer.create({
-            userId: req.user?._id || new mongoose.Types.ObjectId(),
-            name: req.user?.name || customerName || "Customer",
-            email: userEmail,
-            phone: phone || req.user?.phone || undefined,
-            status: "Active",
-          });
-        } else if (phone && customer.phone !== phone) {
-          customer.phone = phone;
-          await customer.save();
-        }
-
-        customerId = customer._id;
-        customerName = customerName || customer.name;
-        email = email || customer.email;
-      } else if (customerName) {
-        let customer = await Customer.findOne({ name: customerName });
-
-        if (!customer && email) {
-          customer = await Customer.findOne({ email: String(email).trim().toLowerCase() });
-        }
-
-        if (customer) {
-          if (phone && customer.phone !== phone) {
-            customer.phone = phone;
-            await customer.save();
-          }
-        } else {
-          const userId = req.user?._id || new mongoose.Types.ObjectId();
-          customer = await Customer.create({
-            userId,
-            name: customerName,
-            email: email || `${customerName.toLowerCase().replace(/\s+/g, ".")}@placeholder.com`,
-            phone: phone || undefined,
-          });
-        }
-
-        customerId = customer._id;
+      // Try finding by email first.
+      if (normalizedEmail) {
+        customer = await Customer.findOne({ email: normalizedEmail }).sort({ createdAt: -1 });
       }
+
+      // Fallback to name match when email is not provided.
+      if (!customer && customerName) {
+        customer = await Customer.findOne({ name: customerName }).sort({ createdAt: -1 });
+      }
+
+      // If not found, create new customer.
+      if (!customer) {
+        customer = await Customer.create({
+          userId: authUserId,
+          name: customerName || req.user?.name || "Customer",
+          email: normalizedEmail || userEmail || tokenUserEmail || generatedEmail,
+          phone: phone || req.user?.phone,
+          status: "Active",
+        });
+      }
+
+      // Update phone if changed.
+      if (phone && customer.phone !== phone) {
+        customer.phone = phone;
+        if (!customer.userId) {
+          customer.userId = authUserId;
+        }
+        await customer.save();
+      }
+
+      customerId = customer._id;
     }
 
     if (!customerId) {
@@ -133,7 +237,7 @@ exports.createProject = async (req, res) => {
       phone,
       status: status || "ongoing",
       startDate: startDate || Date.now(),
-      endDate,
+      endDate: normalizedEndDate || undefined,
       budget,
       assignedTo,
       progress: progress || 0
@@ -175,21 +279,21 @@ exports.createProject = async (req, res) => {
   } catch (error) {
     console.error("[projectController] Create Project Error:", error.message);
     console.error("[projectController] Full Error:", error);
-    
-    // Check if it's a validation error
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
+
+    // Check if it's a validation error.
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
         success: false,
         message: "Validation Error",
-        error: messages.join(', ') 
+        error: messages.join(", ")
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message 
+      error: error.message
     });
   }
 };

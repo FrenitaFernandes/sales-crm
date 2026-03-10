@@ -4,6 +4,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
   createProject,
   getProjects,
+  getMyProjects,
   getProjectById,
   updateProject,
   updateProjectStatus,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post("/", protect, createProject);
 router.post("/create", protect, createProject);
 router.get("/", protect, getProjects);
+router.get("/my-projects", protect, getMyProjects);
 router.get("/:id", protect, getProjectById);
 router.put("/:id", protect, updateProject);
 router.put("/:id/status", protect, updateProjectStatus);

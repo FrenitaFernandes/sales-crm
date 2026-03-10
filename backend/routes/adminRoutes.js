@@ -451,6 +451,7 @@ const StockUsage = require("../models/StockUsage");
 const Invoice = require("../models/Invoice");
 const Project = require("../models/Project");
 const ActivityLog = require("../models/ActivityLog");
+const { createInvoice } = require("../controllers/invoiceController");
 
 
 // -----------------------------------------------------
@@ -556,12 +557,7 @@ router.get("/stock/summary", async (req, res) => {
 // INVOICE
 // -----------------------------------------------------
 router.post("/invoice/new", async (req, res) => {
-  try {
-    const invoice = await Invoice.create(req.body);
-    res.json({ message: "Invoice created", invoice });
-  } catch (err) {
-    res.status(500).json({ message: "Failed", error: err });
-  }
+  return createInvoice(req, res);
 });
 
 router.get("/invoice/history", async (req, res) => {
