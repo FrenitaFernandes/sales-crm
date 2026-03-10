@@ -6,7 +6,7 @@ const StockEntry = () => {
   const [supplierName, setSupplierName] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [date, setDate] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState("Iot products");
 
   const [items, setItems] = useState([
     { itemName: "", qty: "", unitPrice: "", total: 0 },
@@ -66,7 +66,7 @@ const StockEntry = () => {
       setSupplierName("");
       setBillNumber("");
       setDate("");
-      setCategory("");
+      setCategory("Iot products");
       setItems([{ itemName: "", qty: "", unitPrice: "", total: 0 }]);
     } catch (submitError) {
       const backendMessage = submitError.response?.data?.message || "";
@@ -90,7 +90,7 @@ const StockEntry = () => {
           setSupplierName("");
           setBillNumber("");
           setDate("");
-          setCategory("");
+          setCategory("Iot products");
           setItems([{ itemName: "", qty: "", unitPrice: "", total: 0 }]);
         } catch (fallbackError) {
           setError(fallbackError.response?.data?.message || "Failed to save stock entry");

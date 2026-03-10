@@ -11,7 +11,7 @@ const StockSummary = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const [editForm, setEditForm] = useState({ itemName: "", category: "", quantity: "", unitPrice: "" });
+  const [editForm, setEditForm] = useState({ itemName: "", category: "Iot products", quantity: "", unitPrice: "" });
 
   useEffect(() => {
     const loadSummary = async () => {
@@ -75,7 +75,7 @@ const StockSummary = () => {
     setEditingId(item._id || item.itemName);
     setEditForm({
       itemName: item.itemName,
-      category: item.category || "None",
+      category: item.category || "Iot products",
       quantity: String(item.availableQty ?? ""),
       unitPrice: String(item.unitPrice ?? ""),
     });
@@ -83,7 +83,7 @@ const StockSummary = () => {
 
   const cancelEdit = () => {
     setEditingId("");
-    setEditForm({ itemName: "", category: "", quantity: "", unitPrice: "" });
+    setEditForm({ itemName: "", category: "Iot products", quantity: "", unitPrice: "" });
   };
 
   const resolveEntryId = async (row) => {
@@ -132,7 +132,7 @@ const StockSummary = () => {
       setSuccessMessage("");
       await updateStockEntry(rowId, {
         itemName: editForm.itemName.trim(),
-        category: editForm.category || "None",
+        category: editForm.category || "Iot products",
         quantity,
         price: unitPrice,
       });
@@ -143,7 +143,7 @@ const StockSummary = () => {
             ? {
                 ...item,
                 itemName: editForm.itemName.trim(),
-                category: editForm.category || "None",
+                category: editForm.category || "Iot products",
                 availableQty: quantity,
                 unitPrice,
               }
