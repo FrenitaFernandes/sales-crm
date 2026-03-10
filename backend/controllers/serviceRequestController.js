@@ -1,6 +1,7 @@
 const ServiceRequest = require("../models/ServiceRequest");
 const Customer = require("../models/Customer");
 const ChatMessage = require("../models/ChatMessage");
+const MAX_CHAT_ATTACHMENT_SIZE = 8 * 1024 * 1024; // Keep below express 10mb payload limit.
 
 const getUserRole = (user) => String(user?.role || "").trim().toLowerCase();
 
@@ -30,7 +31,49 @@ const hasRequestAccess = async (request, user) => {
   const customer = await resolveCustomerByUser(user);
   if (!customer?._id) return false;
 
-  return String(request.customerId) === String(customer._id);
+  const requestCustomerId =
+    request?.customerId && typeof request.customerId === "object"
+      ? request.customerId._id
+      : request?.customerId;
+
+  return String(requestCustomerId || "") === String(customer._id);
+};
+
+const parseChatAttachment = (rawAttachment) => {
+  if (!rawAttachment || typeof rawAttachment !== "object") return null;
+
+  const name = String(rawAttachment.name || "").trim();
+  const mimeType = String(rawAttachment.mimeType || "").trim();
+  const dataUrl = String(rawAttachment.dataUrl || "").trim();
+  if (!dataUrl) return null;
+
+  if (!/^data:/i.test(dataUrl)) {
+    throw new Error("Invalid attachment format");
+  }
+
+  if (Buffer.byteLength(dataUrl, "utf8") > MAX_CHAT_ATTACHMENT_SIZE) {
+    throw new Error("Attachment is too large. Please upload a smaller file.");
+  }
+
+  return { name, mimeType, dataUrl };
+};
+
+const resolveChatSenderName = ({ message, customerName }) => {
+  if (String(message?.senderRole || "").toLowerCase() === "admin") {
+    return "Admin";
+  }
+
+  const fromMessage = String(message?.senderName || "").trim();
+  return customerName || fromMessage || "Customer";
+};
+
+const resolveChatSenderRole = (message) => {
+  const role = String(message?.senderRole || "").trim().toLowerCase();
+  if (role === "admin" || role === "customer") return role;
+
+  const name = String(message?.senderName || "").trim().toLowerCase();
+  if (name === "admin") return "admin";
+  return "customer";
 };
 
 // =============================
@@ -272,7 +315,7 @@ exports.allowServiceRequestChat = async (req, res) => {
 // =============================
 exports.getServiceRequestChat = async (req, res) => {
   try {
-    const request = await ServiceRequest.findById(req.params.id);
+    const request = await ServiceRequest.findById(req.params.id).populate("customerId", "name");
     if (!request) {
       return res.status(404).json({ message: "Service request not found" });
     }
@@ -283,11 +326,30 @@ exports.getServiceRequestChat = async (req, res) => {
     }
 
     const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({ createdAt: 1 });
+    const customerName = String(request?.customerId?.name || "").trim();
+    const viewerRole = getUserRole(req.user) === "admin" ? "admin" : "customer";
+    const data = messages.map((item) => {
+      const message = item.toObject();
+      const resolvedRole = resolveChatSenderRole(message);
+      const isOwnMessage = resolvedRole === viewerRole;
+      const displayName =
+        viewerRole === "admin"
+          ? (isOwnMessage ? "You" : (customerName || resolveChatSenderName({ message, customerName })))
+          : (resolvedRole === "admin" ? "Admin" : "You");
+
+      return {
+        ...message,
+        senderRole: resolvedRole,
+        senderName: resolveChatSenderName({ message, customerName }),
+        isOwnMessage,
+        displayName,
+      };
+    });
 
     return res.status(200).json({
       success: true,
       chatEnabled: !!request.enableChat,
-      data: messages,
+      data,
     });
   } catch (error) {
     console.error("Get Chat Error:", error);
@@ -301,8 +363,15 @@ exports.getServiceRequestChat = async (req, res) => {
 exports.sendServiceRequestChatMessage = async (req, res) => {
   try {
     const messageText = String(req.body?.message || "").trim();
-    if (!messageText) {
-      return res.status(400).json({ message: "Message is required" });
+    let attachment = null;
+    try {
+      attachment = parseChatAttachment(req.body?.attachment);
+    } catch (attachmentError) {
+      return res.status(400).json({ message: attachmentError.message || "Invalid attachment" });
+    }
+
+    if (!messageText && !attachment) {
+      return res.status(400).json({ message: "Message or attachment is required" });
     }
 
     const request = await ServiceRequest.findById(req.params.id);
@@ -320,11 +389,13 @@ exports.sendServiceRequestChatMessage = async (req, res) => {
     }
 
     const isAdmin = getUserRole(req.user) === "admin";
+    const customer = isAdmin ? null : await resolveCustomerByUser(req.user);
     const message = await ChatMessage.create({
       serviceRequestId: request._id,
       senderRole: isAdmin ? "admin" : "customer",
-      senderName: isAdmin ? "Admin" : (req.user.name || "Customer"),
+      senderName: isAdmin ? "Admin" : (customer?.name || req.user.name || "Customer"),
       message: messageText,
+      attachment: attachment || undefined,
     });
 
     return res.status(201).json({
@@ -374,6 +445,7 @@ exports.getAdminChatNotifications = async (req, res) => {
         msg.serviceRequestId?.title ||
         "Support Request",
       message: msg.message,
+      attachmentName: msg.attachment?.name || "",
       createdAt: msg.createdAt,
     }));
 
@@ -384,6 +456,68 @@ exports.getAdminChatNotifications = async (req, res) => {
     });
   } catch (error) {
     console.error("Admin Chat Notifications Error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================
+// CUSTOMER CHAT NOTIFICATIONS
+// =============================
+exports.getCustomerChatNotifications = async (req, res) => {
+  try {
+    if (getUserRole(req.user) !== "customer") {
+      return res.status(403).json({ message: "Only customer can access chat notifications" });
+    }
+
+    const customer = await resolveCustomerByUser(req.user);
+    if (!customer?._id) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+
+    const sinceRaw = String(req.query?.since || "").trim();
+    const sinceDate = sinceRaw ? new Date(sinceRaw) : new Date(0);
+    const validSince = Number.isNaN(sinceDate.getTime()) ? new Date(0) : sinceDate;
+
+    const requestIds = await ServiceRequest.find({ customerId: customer._id }).distinct("_id");
+    if (!requestIds.length) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+
+    const messages = await ChatMessage.find({
+      serviceRequestId: { $in: requestIds },
+      senderRole: "admin",
+      createdAt: { $gt: validSince },
+    })
+      .sort({ createdAt: 1 })
+      .limit(30)
+      .populate({
+        path: "serviceRequestId",
+        select: "subject title",
+      });
+
+    const data = messages.map((msg) => ({
+      _id: msg._id,
+      serviceRequestId: msg.serviceRequestId?._id || null,
+      subject:
+        msg.serviceRequestId?.subject ||
+        msg.serviceRequestId?.title ||
+        "Support Request",
+      message:
+        String(msg.message || "").trim() ||
+        (msg.attachment?.name
+          ? `Admin sent an attachment: ${msg.attachment.name}`
+          : "Admin sent an attachment"),
+      attachmentName: msg.attachment?.name || "",
+      createdAt: msg.createdAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("Customer Chat Notifications Error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };

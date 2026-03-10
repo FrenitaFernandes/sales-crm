@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle, Paperclip, Trash2, X } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api/admin";
 
@@ -70,6 +70,35 @@ function formatDate(iso) {
   return d.toLocaleString();
 }
 
+function resolveChatAttachmentSrc(attachment) {
+  const raw =
+    typeof attachment === "string"
+      ? attachment
+      : String(attachment?.dataUrl || "").trim();
+  if (!raw) return "";
+
+  if (/^data:/i.test(raw)) return raw;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/uploads/")) return `${API_BASE.replace("/api/admin", "")}${raw}`;
+
+  return "";
+}
+
+function isImageAttachment(src, mimeType) {
+  if (/^data:image\//i.test(src)) return true;
+  if (String(mimeType || "").toLowerCase().startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(src);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 const ServiceRequests = () => {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -91,8 +120,11 @@ const ServiceRequests = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
+  const [chatAttachment, setChatAttachment] = useState(null);
+  const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const [allowingChatId, setAllowingChatId] = useState("");
+  const chatFileInputRef = useRef(null);
 
   // toast
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
@@ -418,22 +450,53 @@ const ServiceRequests = () => {
     if (!activeChat?._id) return;
 
     const message = chatInput.trim();
-    if (!message) return;
+    if (!message && !chatAttachment) return;
 
     try {
+      setChatSending(true);
       setChatError("");
       const token = getToken();
+      const payload = { message };
+      if (chatAttachment) {
+        payload.attachment = chatAttachment;
+      }
 
       await axios.post(
         `http://localhost:5000/api/services/${activeChat._id}/chat`,
-        { message },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setChatInput("");
+      setChatAttachment(null);
       await fetchChatMessages(activeChat._id, { silent: true });
     } catch (err) {
       setChatError(err?.response?.data?.message || "Failed to send message");
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  const handleChatAttachmentSelect = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+
+    try {
+      if (file.size > 6 * 1024 * 1024) {
+        setChatError("Attachment must be smaller than 6MB");
+        return;
+      }
+
+      setChatError("");
+      const dataUrl = await readFileAsDataUrl(file);
+      setChatAttachment({
+        name: file.name,
+        mimeType: file.type || "",
+        dataUrl,
+      });
+    } catch {
+      setChatError("Failed to read selected file");
     }
   };
 
@@ -948,7 +1011,7 @@ const ServiceRequests = () => {
       {/* Attachment Preview Modal */}
       {previewImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10000] p-4"
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10010] p-4"
           onClick={() => setPreviewImage(null)}
         >
           <div
@@ -982,7 +1045,12 @@ const ServiceRequests = () => {
               <button
                 type="button"
                 className="border px-3 py-1 rounded"
-                onClick={() => setActiveChat(null)}
+                onClick={() => {
+                  setActiveChat(null);
+                  setChatInput("");
+                  setChatAttachment(null);
+                  setChatError("");
+                }}
               >
                 Close
               </button>
@@ -995,15 +1063,55 @@ const ServiceRequests = () => {
                 <p className="text-sm text-gray-500">No messages yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {chatMessages.map((msg) => (
-                    <div
-                      key={msg._id}
-                      className={`p-2 rounded text-sm ${msg.senderRole === "admin" ? "bg-blue-100 ml-8" : "bg-gray-100 mr-8"}`}
-                    >
-                      <div className="font-semibold">{msg.senderName}</div>
-                      <div>{msg.message}</div>
-                    </div>
-                  ))}
+                  {chatMessages.map((msg) => {
+                    const senderRole = String(msg?.senderRole || "").trim().toLowerCase();
+                    const isAdminMessage =
+                      senderRole === "admin" ||
+                      String(msg?.senderName || "").trim().toLowerCase() === "admin";
+                    return (
+                      <div
+                        key={msg._id}
+                        className={`p-2 rounded text-sm ${
+                          isAdminMessage ? "bg-gray-100 ml-0 mr-10" : "bg-blue-100 ml-8 mr-0"
+                        }`}
+                      >
+                        {msg.message ? <div>{msg.message}</div> : null}
+                        {resolveChatAttachmentSrc(msg.attachment) ? (
+                          <div className="mt-2">
+                            {isImageAttachment(
+                              resolveChatAttachmentSrc(msg.attachment),
+                              msg.attachment?.mimeType
+                            ) ? (
+                              <button
+                                type="button"
+                                className="h-16 w-16 rounded border overflow-hidden bg-white"
+                                title={msg.attachment?.name || "Attachment"}
+                                onClick={() =>
+                                  setPreviewImage(resolveChatAttachmentSrc(msg.attachment))
+                                }
+                              >
+                                <img
+                                  src={resolveChatAttachmentSrc(msg.attachment)}
+                                  alt={msg.attachment?.name || "chat attachment"}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <a
+                                className="text-blue-700 underline text-xs"
+                                href={resolveChatAttachmentSrc(msg.attachment)}
+                                download={msg.attachment?.name || "attachment"}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {msg.attachment?.name || "View attachment"}
+                              </a>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1011,6 +1119,21 @@ const ServiceRequests = () => {
             </div>
 
             <div className="p-3 border-t flex gap-2">
+              <input
+                ref={chatFileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleChatAttachmentSelect}
+              />
+              <button
+                type="button"
+                className="border rounded px-2 py-2"
+                title="Attach file"
+                onClick={() => chatFileInputRef.current?.click()}
+                disabled={chatSending}
+              >
+                <Paperclip size={16} />
+              </button>
               <input
                 type="text"
                 className="border rounded px-3 py-2 w-full"
@@ -1023,13 +1146,28 @@ const ServiceRequests = () => {
                     sendChatMessage();
                   }
                 }}
+                disabled={chatSending}
               />
+              {chatAttachment ? (
+                <div className="flex items-center gap-1 text-xs bg-gray-100 border rounded px-2">
+                  <span className="max-w-28 truncate">{chatAttachment.name}</span>
+                  <button
+                    type="button"
+                    className="text-gray-600"
+                    onClick={() => setChatAttachment(null)}
+                    title="Remove attachment"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
                 onClick={sendChatMessage}
+                disabled={chatSending}
               >
-                Send
+                {chatSending ? "Sending..." : "Send"}
               </button>
             </div>
           </div>
