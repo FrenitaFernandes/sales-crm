@@ -217,9 +217,12 @@ export default function Leads() {
             source: lead.source,
             status: lead.status,
             assignedTo: lead.assignedTo,
+            rawDate: lead.date,
             date: formatDateToIST(lead.date),
-            lastFollowUp: "Follow Up",
-            category: "today",
+            lastFollowUp:
+              lead.followUps && lead.followUps.length > 0
+                ? lead.followUps[lead.followUps.length - 1].status || "Follow Up"
+                : "Follow Up",
             // Map backend followUps to followUpHistory
             followUps: lead.followUps || [],
             followUpHistory: (lead.followUps || []).map((followUp, index) => ({
@@ -250,16 +253,17 @@ export default function Leads() {
     "Services": ["Hardware Design", "Software Development", "Consulting"],
   };
 
-  const statuses = ["New", "Interested", "Not Interested", "Converted", "Dropout"];
+  const statuses = ["New", "Interested", "Qualified", "Not Interested", "Converted", "Dropout"];
   const sources = ["Website", "Cold Call", "Referral", "LinkedIn", "Email"];
   const assignees = ["John Doe", "Jane Smith", "Mike Johnson", "Lisa Anderson"];
 
   const tabs = [
     { id: "all", label: "All Leads" },
     { id: "today", label: "Today's Lead" },
-    { id: "converted", label: "Converted" },
+    { id: "new", label: "New" },
     { id: "interested", label: "Interested" },
     { id: "not-interested", label: "Not Interested" },
+    { id: "converted", label: "Converted" },
     { id: "dropout", label: "Dropout" },
   ];
 
@@ -492,9 +496,9 @@ export default function Leads() {
           source: response.data.source,
           status: response.data.status,
           assignedTo: response.data.assignedTo,
+          rawDate: response.data.date,
           date: formatDateToIST(response.data.date),
           lastFollowUp: "Follow Up",
-          category: "today",
           followUpHistory: [],
         };
         
@@ -545,6 +549,7 @@ export default function Leads() {
                   source: response.data.source,
                   status: response.data.status,
                   assignedTo: response.data.assignedTo,
+                  rawDate: response.data.date,
                   date: formatDateToIST(response.data.date),
                 }
               : lead
@@ -673,7 +678,10 @@ export default function Leads() {
           status: lead.status,
           assignedTo: lead.assignedTo,
           date: formatDateToIST(lead.date),
-          lastFollowUp: "Follow Up",
+          lastFollowUp:
+            lead.followUps && lead.followUps.length > 0
+              ? lead.followUps[lead.followUps.length - 1].status || "Follow Up"
+              : "Follow Up",
           followUps: lead.followUps || [],
           followUpHistory: (lead.followUps || []).map((followUp, index) => ({
             id: index,
@@ -843,7 +851,14 @@ Generated on: ${new Date().toLocaleString()}
     // Tab filtering
     let matchesTab = true;
     if (activeTab === "today") {
-      matchesTab = lead.category === "today" || lead.status === "New";
+      const leadDate = new Date(lead.rawDate || lead.date);
+      const today = new Date();
+      matchesTab =
+        leadDate.getFullYear() === today.getFullYear() &&
+        leadDate.getMonth() === today.getMonth() &&
+        leadDate.getDate() === today.getDate();
+    } else if (activeTab === "new") {
+      matchesTab = lead.status === "New";
     } else if (activeTab === "interested") {
       matchesTab = lead.status === "Interested" || lead.category === "interested";
     } else if (activeTab === "converted") {
@@ -989,38 +1004,30 @@ Generated on: ${new Date().toLocaleString()}
       </div>
 
       {/* Action Buttons */}
-      {selectedLeads.length > 0 && (
-        <div className="mb-4 flex gap-2">
-          <button
-            onClick={handleDeleteSelected}
-            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-semibold text-sm"
-          >
-            <MdDelete size={16} />
-            Delete
-          </button>
-          <button
-            onClick={handleDownloadCSV}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-semibold text-sm"
-          >
-            <MdFileDownload size={16} /> Download CSV
-          </button>
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm"
-          >
-            <MdFileDownload size={16} /> Download PDF
-          </button>
-          <span className="text-sm text-gray-600 self-center ml-2">
-            {selectedLeads.length} selected
-          </span>
-        </div>
-      )}
-
-      {/* Main Action Buttons */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4 flex gap-2 relative">
-        <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">
-          <span>⚙️</span> Assign
+      <div className="mb-4 flex gap-2">
+        <button
+          onClick={handleDeleteSelected}
+          disabled={selectedLeads.length === 0}
+          className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-semibold text-sm disabled:bg-red-300 disabled:cursor-not-allowed"
+        >
+          <MdDelete size={16} />
+          Delete
         </button>
+        <button
+          onClick={handleDownloadCSV}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-semibold text-sm"
+        >
+          <MdFileDownload size={16} /> Download CSV
+        </button>
+        <button
+          onClick={handleDownloadPDF}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm"
+        >
+          <MdFileDownload size={16} /> Download PDF
+        </button>
+        <span className="text-sm text-gray-600 self-center ml-2">
+          {selectedLeads.length} selected
+        </span>
       </div>
 
       {/* Table */}

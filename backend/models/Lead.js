@@ -23,6 +23,7 @@ const LeadSchema = new mongoose.Schema(
     "New",
     "Contacted",
     "Interested",
+    "Qualified",
     "In Progress",
     "Follow-Up",
     "Converted",

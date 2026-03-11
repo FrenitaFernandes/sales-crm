@@ -133,6 +133,31 @@ exports.createLead = async (req, res) => {
 };
 
 // ============================
+// GET TODAY'S LEADS
+// ============================
+exports.getTodayLeads = async (req, res) => {
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    const leads = await Lead.find({
+      date: { $gte: start, $lte: end },
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: leads.length,
+      data: leads,
+    });
+  } catch (error) {
+    console.error("Get Today Leads Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ============================
 // GET ALL LEADS
 // ============================
 exports.getLeads = async (req, res) => {
@@ -238,7 +263,10 @@ exports.addFollowUp = async (req, res) => {
 
   } catch (error) {
     console.error("Follow-up Error:", error);
-    res.status(500).json({ message: "Server error" });
+    const statusCode = error.name === "ValidationError" ? 400 : 500;
+    res.status(statusCode).json({
+      message: error.message || "Server error"
+    });
   }
 };
 

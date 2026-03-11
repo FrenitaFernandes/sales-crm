@@ -40,6 +40,14 @@ export const getAllLeads = async () => {
 };
 
 // ======================
+// GET TODAY'S LEADS
+// ======================
+export const getTodayLeads = async () => {
+  const response = await axios.get(`${API_URL}/today`, getAuthConfig());
+  return response.data;
+};
+
+// ======================
 // GET LEAD BY ID
 // ======================
 export const getLeadById = async (leadId) => {
