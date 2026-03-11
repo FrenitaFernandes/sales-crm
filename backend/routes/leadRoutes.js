@@ -4,6 +4,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
   createLead,
   getLeads,
+  getTodayLeads,
   getCustomerLeads,
   getLeadById,
   updateLead,
@@ -20,6 +21,7 @@ const router = express.Router();
 router.get("/check-customer", protect, checkCustomerByEmail);
 router.post("/", protect, createLead);
 router.get("/", protect, getLeads);
+router.get("/today", protect, getTodayLeads);
 
 // customer-specific lookup must come before parameterized :id route
 router.get("/customer/:email", protect, getCustomerLeads);
