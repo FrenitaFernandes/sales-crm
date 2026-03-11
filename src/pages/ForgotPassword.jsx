@@ -152,6 +152,8 @@ export default ForgotPassword;
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FaArrowLeft } from "react-icons/fa";
+import "../styles/auth-pages.css";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -179,17 +181,25 @@ function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="auth-page auth-page--forgot">
       <form
         onSubmit={handleForgot}
-        className="bg-white p-8 rounded-lg shadow-md w-96"
+        className="auth-card"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Forgot Password
-        </h2>
+        <Link to="/login" className="auth-back-link">
+          <FaArrowLeft size={12} /> Login
+        </Link>
+
+        <span className="auth-kicker">Account Recovery</span>
+
+        <h2 className="auth-title">Forgot Password</h2>
+
+        <p className="auth-subtitle">
+          Enter your email address and we will send you a one-time password to continue.
+        </p>
 
         {message && (
-          <p className="text-green-600 text-sm text-center mb-3">
+          <p className={`auth-message ${message.toLowerCase().includes("wrong") || message.toLowerCase().includes("not") ? "auth-message--error" : "auth-message--success"}`}>
             {message}
           </p>
         )}
@@ -197,7 +207,7 @@ function ForgotPassword() {
         <input
           type="email"
           placeholder="Enter your email"
-          className="w-full p-2 mb-4 border rounded"
+          className="auth-input auth-field"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -205,19 +215,19 @@ function ForgotPassword() {
 
         <button
           type="submit"
-          className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700"
+          className="auth-submit auth-submit--forgot"
         >
           Request OTP
         </button>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="auth-helper-text">
           You will receive an email with instructions.
         </p>
 
-        <div className="text-center mt-4">
+        <div className="auth-links">
           <Link
             to="/login"
-            className="text-blue-600 hover:underline text-sm"
+            className="auth-inline-link"
           >
             ← Back to Login
           </Link>

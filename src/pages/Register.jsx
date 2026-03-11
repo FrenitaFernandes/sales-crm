@@ -2,14 +2,24 @@
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
+import "../styles/auth-pages.css";
 
 const phoneLength = {
   "+91": 10,
   "+1": 10,
   "+44": 10,
   "+971": 9,
+  "+61": 9,
+  "+49": 11,
+  "+33": 9,
+  "+39": 10,
+  "+34": 9,
+  "+81": 10,
+  "+65": 8,
+  "+60": 9,
+  "+27": 9,
+  "+966": 9,
 };
-
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,24 +82,28 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-100 to-blue-100">
+    <div className="auth-page auth-page--register">
       <form
         onSubmit={handleRegister}
-        className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
+        className="auth-card"
       >
         <Link
           to="/"
-          className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-green-600 hover:bg-green-600 hover:text-white transition flex items-center gap-2"
+          className="auth-back-link"
         >
           <FaArrowLeft size={12} /> Home
         </Link>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Customer Registration
-        </h2>
+        <span className="auth-kicker">Create Account</span>
+
+        <h2 className="auth-title">Customer Registration</h2>
+
+        <p className="auth-subtitle">
+          Set up your account to track projects, invoices, and support updates in one place.
+        </p>
 
         {message && (
-          <p className={`text-center text-sm mb-3 ${isSuccess ? "text-green-600" : "text-red-600"}`}>
+          <p className={`auth-message ${isSuccess ? "auth-message--success" : "auth-message--error"}`}>
             {message}
           </p>
         )}
@@ -97,7 +111,7 @@ function Register() {
         <input
           type="text"
           placeholder="Full Name"
-          className="w-full p-2 mb-4 border rounded"
+          className="auth-input auth-field"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -106,29 +120,39 @@ function Register() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-2 mb-4 border rounded"
+          className="auth-input auth-field"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
 
         {/* Phone */}
-        <div className="flex mb-4 gap-2">
+        <div className="auth-row">
           <select
-            className="border rounded p-2"
+            className="auth-select"
             value={countryCode}
             onChange={(e) => setCountryCode(e.target.value)}
           >
-            <option value="+91">ðŸ‡®ðŸ‡³ +91</option>
-            <option value="+1">ðŸ‡ºðŸ‡¸ +1</option>
-            <option value="+44">ðŸ‡¬ðŸ‡§ +44</option>
-            <option value="+971">ðŸ‡¦ðŸ‡ª +971</option>
+            <option value="+91">India +91</option>
+            <option value="+1">United States +1</option>
+            <option value="+44">United Kingdom +44</option>
+            <option value="+971">United Arab Emirates +971</option>
+            <option value="+61">Australia +61</option>
+            <option value="+49">Germany +49</option>
+            <option value="+33">France +33</option>
+            <option value="+39">Italy +39</option>
+            <option value="+34">Spain +34</option>
+            <option value="+81">Japan +81</option>
+            <option value="+65">Singapore +65</option>
+            <option value="+60">Malaysia +60</option>
+            <option value="+27">South Africa +27</option>
+            <option value="+966">Saudi Arabia +966</option>
           </select>
 
           <input
             type="tel"
             placeholder="Contact Number"
-            className="flex-1 p-2 border rounded"
+            className="auth-input"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
@@ -136,11 +160,11 @@ function Register() {
         </div>
 
         {/* Password */}
-        <div className="relative mb-4">
+        <div className="auth-input-wrap">
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
-            className="w-full p-2 pr-12 border rounded"
+            className="auth-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -148,7 +172,7 @@ function Register() {
 
           <button
             type="button"
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            className="auth-visibility-toggle"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? <FaEye size={18} /> : <FaEyeSlash size={18} />}
@@ -156,11 +180,11 @@ function Register() {
         </div>
 
         {/* Confirm Password */}
-        <div className="relative mb-4">
+        <div className="auth-input-wrap">
           <input
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm Password"
-            className="w-full p-2 pr-12 border rounded"
+            className="auth-input"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -168,7 +192,7 @@ function Register() {
 
           <button
             type="button"
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            className="auth-visibility-toggle"
             onClick={() =>
               setShowConfirmPassword(!showConfirmPassword)
             }
@@ -180,14 +204,14 @@ function Register() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="auth-submit auth-submit--register disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Registering..." : "Register"}
         </button>
 
-        <p className="text-center text-sm text-gray-600 mt-2">
+        <p className="auth-footer">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-600 hover:underline">
+          <Link to="/login" className="auth-footer-link">
             Login
           </Link>
         </p>

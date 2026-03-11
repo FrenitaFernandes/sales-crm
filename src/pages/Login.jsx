@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
+import "../styles/auth-pages.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -43,32 +44,36 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+    <div className="auth-page auth-page--login">
       
       <form
         onSubmit={handleLogin}
-        className="bg-white p-8 rounded-xl shadow-lg w-96 relative"
+        className="auth-card"
       >
 
         {/* BACK BUTTON */}
         <Link
           to="/"
-          className="absolute -top-4 left-4 bg-white px-3 py-1 rounded-full shadow text-sm text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center gap-2"
+          className="auth-back-link"
         >
           <FaArrowLeft size={12} /> Home
         </Link>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Login
-        </h2>
+        <span className="auth-kicker">Welcome Back</span>
+
+        <h2 className="auth-title">Login</h2>
+
+        <p className="auth-subtitle">
+          Access your sales and CRM workspace with your registered account.
+        </p>
 
         {/* MESSAGE */}
         {message && (
           <p
-            className={`text-center text-sm mb-3 ${
+            className={`auth-message ${
               message.includes("failed")
-                ? "text-red-600"
-                : "text-green-600"
+                ? "auth-message--error"
+                : "auth-message--success"
             }`}
           >
             {message}
@@ -79,19 +84,19 @@ function Login() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-2 mb-4 border rounded"
+          className="auth-input auth-field"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
 
         {/* PASSWORD */}
-        <div className="relative mb-4">
+        <div className="auth-input-wrap">
 
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
-            className="w-full p-2 pr-12 border rounded"
+            className="auth-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -99,7 +104,7 @@ function Login() {
 
           <button
             type="button"
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+            className="auth-visibility-toggle"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
@@ -114,27 +119,27 @@ function Login() {
         {/* LOGIN BUTTON */}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          className="auth-submit auth-submit--login"
         >
           Login
         </button>
 
         {/* FORGOT PASSWORD */}
-        <div className="text-center mt-3">
+        <div className="auth-links">
           <Link
             to="/forgot-password"
-            className="text-blue-600 hover:underline"
+            className="auth-inline-link"
           >
             Forgot Password?
           </Link>
         </div>
 
         {/* REGISTER */}
-        <p className="text-center text-sm text-gray-600 mt-4">
+        <p className="auth-footer">
           Don’t have an account?{" "}
           <Link
             to="/register"
-            className="text-green-600 hover:underline"
+            className="auth-footer-link"
           >
             Register
           </Link>

@@ -122,43 +122,43 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white shadow rounded-xl p-4 flex gap-4 items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-700 text-xl">
+            <div className="bg-blue-100 shadow rounded-xl p-4 flex gap-4 items-center border border-blue-300">
+              <div className="p-3 rounded-full bg-blue-200 text-blue-700 text-xl">
                 <FaUsers />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Total Customers</p>
-                <h3 className="text-2xl font-bold">{data.totalCustomers}</h3>
+                <p className="text-gray-600 text-sm">Total Customers</p>
+                <h3 className="text-2xl font-bold text-gray-800">{data.totalCustomers}</h3>
               </div>
             </div>
 
-            <div className="bg-white shadow rounded-xl p-4 flex gap-4 items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-700 text-xl">
+            <div className="bg-purple-100 shadow rounded-xl p-4 flex gap-4 items-center border border-purple-300">
+              <div className="p-3 rounded-full bg-purple-200 text-purple-700 text-xl">
                 <FaClipboardList />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Total Requests</p>
-                <h3 className="text-2xl font-bold">{data.totalServiceRequests}</h3>
+                <p className="text-gray-600 text-sm">Total Requests</p>
+                <h3 className="text-2xl font-bold text-gray-800">{data.totalServiceRequests}</h3>
               </div>
             </div>
 
-            <div className="bg-white shadow rounded-xl p-4 flex gap-4 items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-700 text-xl">
+            <div className="bg-amber-100 shadow rounded-xl p-4 flex gap-4 items-center border border-amber-300">
+              <div className="p-3 rounded-full bg-yellow-200 text-yellow-700 text-xl">
                 <FaSpinner />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Pending</p>
-                <h3 className="text-2xl font-bold">{data.pendingRequests}</h3>
+                <p className="text-gray-600 text-sm">Pending</p>
+                <h3 className="text-2xl font-bold text-gray-800">{data.pendingRequests}</h3>
               </div>
             </div>
 
-            <div className="bg-white shadow rounded-xl p-4 flex gap-4 items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-700 text-xl">
+            <div className="bg-green-100 shadow rounded-xl p-4 flex gap-4 items-center border border-green-300">
+              <div className="p-3 rounded-full bg-green-200 text-green-700 text-xl">
                 <FaCheckCircle />
               </div>
               <div>
-                <p className="text-gray-500 text-sm">Completed</p>
-                <h3 className="text-2xl font-bold">{data.completedRequests}</h3>
+                <p className="text-gray-600 text-sm">Completed</p>
+                <h3 className="text-2xl font-bold text-gray-800">{data.completedRequests}</h3>
               </div>
             </div>
           </div>
@@ -217,23 +217,23 @@ export default function Dashboard() {
           <div className="bg-white shadow rounded-xl p-5 mt-2">
             <h3 className="font-bold text-lg mb-2">Quick Summary</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div className="p-3 rounded bg-gray-50">
-                <p className="text-gray-500">In Progress</p>
-                <p className="text-xl font-bold">{data.inProgressRequests}</p>
+              <div className="p-3 rounded bg-blue-100 border border-blue-200">
+                <p className="text-gray-600">In Progress</p>
+                <p className="text-xl font-bold text-gray-800">{data.inProgressRequests}</p>
               </div>
 
-              <div className="p-3 rounded bg-gray-50">
-                <p className="text-gray-500">Completion Rate</p>
-                <p className="text-xl font-bold">
+              <div className="p-3 rounded bg-purple-100 border border-purple-200">
+                <p className="text-gray-600">Completion Rate</p>
+                <p className="text-xl font-bold text-gray-800">
                   {data.totalServiceRequests === 0
                     ? "0%"
                     : Math.round((data.completedRequests / data.totalServiceRequests) * 100) + "%"}
                 </p>
               </div>
 
-              <div className="p-3 rounded bg-gray-50">
-                <p className="text-gray-500">Pending Ratio</p>
-                <p className="text-xl font-bold">
+              <div className="p-3 rounded bg-amber-100 border border-amber-200">
+                <p className="text-gray-600">Pending Ratio</p>
+                <p className="text-xl font-bold text-gray-800">
                   {data.totalServiceRequests === 0
                     ? "0%"
                     : Math.round((data.pendingRequests / data.totalServiceRequests) * 100) + "%"}
