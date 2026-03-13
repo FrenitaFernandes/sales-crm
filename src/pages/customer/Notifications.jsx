@@ -13,6 +13,35 @@ function Notifications() {
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
+  const dismissedAdsKey = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const email = String(user?.email || "").trim().toLowerCase() || "guest";
+      return `customer_dismissed_ads_v1:${email}`;
+    } catch {
+      return "customer_dismissed_ads_v1:guest";
+    }
+  };
+
+  const getDismissedAds = () => {
+    try {
+      const raw = localStorage.getItem(dismissedAdsKey());
+      const parsed = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(parsed) ? parsed.map((id) => String(id)) : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const saveDismissedAds = (ids) => {
+    localStorage.setItem(dismissedAdsKey(), JSON.stringify(Array.from(ids)));
+  };
+
+  const isAdvertisementNotification = (item) => {
+    const type = String(item?.type || "").trim().toLowerCase();
+    return type === "advertisement" || !!resolveNotificationImage(item?.image);
+  };
+
   const loadNotifications = async () => {
     const localItems = getCustomerNotifications().map((item) => ({
       ...item,
@@ -39,7 +68,12 @@ function Notifications() {
       console.error("Error loading backend notifications:", error);
     }
 
-    const merged = [...backendItems, ...localItems].sort(
+    const dismissedAds = getDismissedAds();
+    const filteredBackendItems = backendItems.filter(
+      (item) => !(isAdvertisementNotification(item) && dismissedAds.has(String(item?._id || "")))
+    );
+
+    const merged = [...filteredBackendItems, ...localItems].sort(
       (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
     );
 
@@ -87,6 +121,17 @@ function Notifications() {
     const backendItems = notifs.filter((item) => item?.source === "backend");
     const localItems = updated.map((item) => ({ ...item, source: "local" }));
     setNotifs([...backendItems, ...localItems]);
+    window.dispatchEvent(new Event("notifications-updated"));
+  };
+
+  const handleRemoveAdvertisement = (id) => {
+    const adId = String(id || "").trim();
+    if (!adId) return;
+
+    const dismissedAds = getDismissedAds();
+    dismissedAds.add(adId);
+    saveDismissedAds(dismissedAds);
+    setNotifs((prev) => prev.filter((item) => String(item?._id || "") !== adId));
     window.dispatchEvent(new Event("notifications-updated"));
   };
 
@@ -144,11 +189,15 @@ function Notifications() {
               </div>
 
               <div>
-                {n.source === "local" && (
+                {(n.source === "local" || isAdvertisementNotification(n)) && (
                   <button
                     type="button"
                     className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded"
-                    onClick={() => handleRemove(n._id)}
+                    onClick={() =>
+                      isAdvertisementNotification(n)
+                        ? handleRemoveAdvertisement(n._id)
+                        : handleRemove(n._id)
+                    }
                   >
                     Remove
                   </button>
