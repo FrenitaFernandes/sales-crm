@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { createInvoice, getInvoiceById, updateInvoice, updateInvoiceStatus } from "../../../../services/invoiceService";
+import { createInvoice, getInvoiceById, getInvoices, updateInvoice, updateInvoiceStatus } from "../../../../services/invoiceService";
 import axios from "axios";
+
+const INVOICE_NUMBER_PATTERN = /^INV(\d{4,})$/i;
+
+const formatInvoiceNumber = (sequenceNumber) => `INV${String(sequenceNumber).padStart(4, "0")}`;
+
+const getNextInvoiceNumber = (invoices = []) => {
+	const highestSequence = invoices.reduce((max, item) => {
+		const match = String(item?.invoiceNumber || "").trim().match(INVOICE_NUMBER_PATTERN);
+		if (!match) return max;
+
+		const parsed = Number(match[1]);
+		if (!Number.isInteger(parsed)) return max;
+
+		return Math.max(max, parsed);
+	}, 0);
+
+	return formatInvoiceNumber(highestSequence + 1);
+};
 
 export default function NewInvoice() {
 	const navigate = useNavigate();
@@ -66,10 +84,11 @@ export default function NewInvoice() {
 				setIsLoadingProjects(true);
 				const token = localStorage.getItem("authToken") || localStorage.getItem("token");
 
-				const [projectRes] = await Promise.all([
+				const [projectRes, invoiceRes] = await Promise.all([
 					axios.get("http://localhost:5000/api/projects", {
 						headers: { Authorization: `Bearer ${token}` },
 					}),
+					getInvoices(),
 				]);
 
 				const requests = (projectRes.data?.data || []).map(normalizeProjectRequest);
@@ -78,8 +97,10 @@ export default function NewInvoice() {
 
 				if (!isEditMode) {
 					const today = getTodayInputDate();
+					const nextInvoiceNumber = getNextInvoiceNumber(invoiceRes?.data || []);
 					setForm((prev) => ({
 						...prev,
+						invoiceNumber: prev.invoiceNumber || nextInvoiceNumber,
 						date: prev.date || today,
 						dueDate: prev.dueDate || addDaysToInputDate(today, 14),
 					}));
@@ -230,7 +251,7 @@ export default function NewInvoice() {
 				setMessage("Invoice saved successfully");
 
 				setForm({
-					invoiceNumber: "",
+					invoiceNumber: form.invoiceNumber,
 					customerId: "",
 					customerEmail: "",
 					customerName: "",
@@ -275,8 +296,8 @@ export default function NewInvoice() {
 							name="invoiceNumber"
 							className="form-control"
 							value={form.invoiceNumber}
-							onChange={handleChange}
 							required
+							readOnly
 						/>
 					</div>
 

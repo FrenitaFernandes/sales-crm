@@ -328,7 +328,10 @@ exports.getServiceRequestChat = async (req, res) => {
       return res.status(403).json({ message: "Not allowed to access this chat" });
     }
 
-    const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({ createdAt: 1 });
+    const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({
+      createdAt: 1,
+      _id: 1,
+    });
     const customerName = String(request?.customerId?.name || "").trim();
     const viewerRole = getUserRole(req.user) === "admin" ? "admin" : "customer";
     const data = messages.map((item) => {

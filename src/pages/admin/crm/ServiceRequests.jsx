@@ -4,6 +4,18 @@ import { MessageCircle, Paperclip, Trash2, X } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api/admin";
 
+const sortChatMessagesChronologically = (messages = []) =>
+  [...messages].sort((a, b) => {
+    const timeA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+    if (timeA !== timeB) return timeA - timeB;
+
+    const idA = String(a?._id || "");
+    const idB = String(b?._id || "");
+    return idA.localeCompare(idB);
+  });
+
 const statuses = ["All", "Pending", "In Progress", "Completed"];
 const priorities = ["Low", "Medium", "High"];
 
@@ -428,7 +440,7 @@ const ServiceRequests = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setChatMessages(res.data?.data || []);
+      setChatMessages(sortChatMessagesChronologically(res.data?.data || []));
     } catch (err) {
       if (!silent) {
         setChatMessages([]);

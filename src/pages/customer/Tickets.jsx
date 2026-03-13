@@ -5,6 +5,18 @@ import { syncCustomerTicketNotifications } from "../../utils/customerNotificatio
 
 const BACKEND_BASE = "http://localhost:5000";
 
+const sortChatMessagesChronologically = (messages = []) =>
+  [...messages].sort((a, b) => {
+    const timeA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+    if (timeA !== timeB) return timeA - timeB;
+
+    const idA = String(a?._id || "");
+    const idB = String(b?._id || "");
+    return idA.localeCompare(idB);
+  });
+
 function resolveAttachmentSrc(uploadedImage) {
   const raw = String(uploadedImage || "").trim();
   if (!raw) return "";
@@ -138,7 +150,7 @@ function Tickets() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setChatMessages(res.data?.data || []);
+      setChatMessages(sortChatMessagesChronologically(res.data?.data || []));
     } catch (error) {
       if (!silent) {
         setChatMessages([]);

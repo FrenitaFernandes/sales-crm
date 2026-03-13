@@ -18,6 +18,29 @@ const parseNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : NaN;
 };
 
+const INVOICE_NUMBER_PATTERN = /^INV(\d{4,})$/i;
+
+const formatInvoiceNumber = (sequenceNumber) => `INV${String(sequenceNumber).padStart(4, "0")}`;
+
+const getHighestInvoiceSequence = async () => {
+  const invoiceNumbers = await Invoice.find({}, { invoiceNumber: 1, _id: 0 }).lean();
+
+  return invoiceNumbers.reduce((max, item) => {
+    const match = String(item?.invoiceNumber || "").trim().match(INVOICE_NUMBER_PATTERN);
+    if (!match) return max;
+
+    const parsed = Number(match[1]);
+    if (!Number.isInteger(parsed)) return max;
+
+    return Math.max(max, parsed);
+  }, 0);
+};
+
+const generateNextInvoiceNumber = async () => {
+  const highestSequence = await getHighestInvoiceSequence();
+  return formatInvoiceNumber(highestSequence + 1);
+};
+
 const resolveFallbackProjectName = async (invoice) => {
   const existingProjectName = String(invoice?.projectName || "").trim();
   if (existingProjectName) return existingProjectName;
@@ -113,9 +136,9 @@ exports.createInvoice = async (req, res) => {
     const totalValue = Number.isNaN(parseNumber(total))
       ? numericAmount + taxValue - discountValue
       : parseNumber(total);
+    const resolvedInvoiceNumber = trimmedInvoiceNumber || await generateNextInvoiceNumber();
 
     const missingFields = [];
-    if (!trimmedInvoiceNumber) missingFields.push("invoiceNumber");
     if (!trimmedCustomerName) missingFields.push("customerName");
     if (Number.isNaN(numericAmount)) missingFields.push("amount");
 
@@ -129,7 +152,7 @@ exports.createInvoice = async (req, res) => {
       return res.status(400).json({ message: "Amount values cannot be negative" });
     }
 
-    const exists = await Invoice.findOne({ invoiceNumber: trimmedInvoiceNumber });
+    const exists = await Invoice.findOne({ invoiceNumber: resolvedInvoiceNumber });
     if (exists) {
       return res.status(400).json({ message: "Invoice number already exists" });
     }
@@ -166,7 +189,7 @@ exports.createInvoice = async (req, res) => {
 
     const invoice = await Invoice.create({
       customerId: resolvedCustomerId,
-      invoiceNumber: trimmedInvoiceNumber,
+      invoiceNumber: resolvedInvoiceNumber,
       customerName: resolvedCustomerName,
       projectName: resolvedProjectName,
       customerEmail: resolvedCustomerEmail,
@@ -186,7 +209,7 @@ exports.createInvoice = async (req, res) => {
     if (resolvedCustomerId) {
       await Notification.create({
         customerId: resolvedCustomerId,
-        title: `Invoice ${trimmedInvoiceNumber}`,
+        title: `Invoice ${resolvedInvoiceNumber}`,
         message: `A new invoice has been generated for Rs.${numericAmount}.`,
         type: "order",
         read: false,
