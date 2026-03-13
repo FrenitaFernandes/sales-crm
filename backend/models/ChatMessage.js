@@ -23,6 +23,10 @@ const chatMessageSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    sentAt: {
+      type: Date,
+      default: Date.now,
+    },
     attachment: {
       name: { type: String, trim: true, default: "" },
       mimeType: { type: String, trim: true, default: "" },

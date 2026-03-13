@@ -76,6 +76,21 @@ const resolveChatSenderRole = (message) => {
   return "customer";
 };
 
+const resolveChatMessageTime = (message) => {
+  const sentAt = new Date(message?.sentAt || message?.createdAt || 0).getTime();
+  return Number.isNaN(sentAt) ? 0 : sentAt;
+};
+
+const parseClientSentAt = (rawValue) => {
+  const value = String(rawValue || "").trim();
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed;
+};
+
 // =============================
 // CREATE SERVICE REQUEST
 // =============================
@@ -328,10 +343,11 @@ exports.getServiceRequestChat = async (req, res) => {
       return res.status(403).json({ message: "Not allowed to access this chat" });
     }
 
-    const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({ createdAt: 1 });
+    const messages = await ChatMessage.find({ serviceRequestId: request._id }).sort({ createdAt: 1, _id: 1 });
     const customerName = String(request?.customerId?.name || "").trim();
     const viewerRole = getUserRole(req.user) === "admin" ? "admin" : "customer";
-    const data = messages.map((item) => {
+    const data = messages
+      .map((item) => {
       const message = item.toObject();
       const resolvedRole = resolveChatSenderRole(message);
       const isOwnMessage = resolvedRole === viewerRole;
@@ -347,7 +363,17 @@ exports.getServiceRequestChat = async (req, res) => {
         isOwnMessage,
         displayName,
       };
-    });
+      })
+      .sort((a, b) => {
+        const timeDiff = resolveChatMessageTime(a) - resolveChatMessageTime(b);
+        if (timeDiff !== 0) return timeDiff;
+
+        const createdDiff =
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        if (createdDiff !== 0) return createdDiff;
+
+        return String(a._id || "").localeCompare(String(b._id || ""));
+      });
 
     return res.status(200).json({
       success: true,
@@ -399,11 +425,13 @@ exports.sendServiceRequestChatMessage = async (req, res) => {
 
     const isAdmin = authenticatedRole === "admin";
     const customer = isAdmin ? null : await resolveCustomerByUser(req.user);
+    const clientSentAt = parseClientSentAt(req.body?.clientSentAt);
     const message = await ChatMessage.create({
       serviceRequestId: request._id,
       senderRole: authenticatedRole,
       senderName: isAdmin ? "Admin" : (customer?.name || req.user.name || "Customer"),
       message: messageText,
+      sentAt: clientSentAt || new Date(),
       attachment: attachment || undefined,
     });
 

@@ -99,6 +99,11 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function resolveChatMessageTime(message) {
+  const time = new Date(message?.sentAt || message?.createdAt || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 const ServiceRequests = () => {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -125,6 +130,7 @@ const ServiceRequests = () => {
   const [chatError, setChatError] = useState("");
   const [allowingChatId, setAllowingChatId] = useState("");
   const chatFileInputRef = useRef(null);
+  const chatFetchCounterRef = useRef(0);
 
   // toast
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
@@ -418,6 +424,7 @@ const ServiceRequests = () => {
   const fetchChatMessages = async (requestId, options = {}) => {
     if (!requestId) return;
     const { silent = false } = options;
+    const fetchId = ++chatFetchCounterRef.current;
 
     try {
       if (!silent) setChatLoading(true);
@@ -428,14 +435,21 @@ const ServiceRequests = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setChatMessages(res.data?.data || []);
-    } catch (err) {
-      if (!silent) {
-        setChatMessages([]);
+      if (fetchId === chatFetchCounterRef.current) {
+        const sorted = (res.data?.data || []).slice().sort((a, b) => {
+          const timeDiff = resolveChatMessageTime(a) - resolveChatMessageTime(b);
+          if (timeDiff !== 0) return timeDiff;
+          return String(a._id || "").localeCompare(String(b._id || ""));
+        });
+        setChatMessages(sorted);
       }
-      setChatError(err?.response?.data?.message || "Failed to load chat");
+    } catch (err) {
+      if (fetchId === chatFetchCounterRef.current) {
+        if (!silent) setChatMessages([]);
+        setChatError(err?.response?.data?.message || "Failed to load chat");
+      }
     } finally {
-      if (!silent) setChatLoading(false);
+      if (fetchId === chatFetchCounterRef.current && !silent) setChatLoading(false);
     }
   };
 
@@ -456,7 +470,7 @@ const ServiceRequests = () => {
       setChatSending(true);
       setChatError("");
       const token = getToken();
-      const payload = { message };
+      const payload = { message, clientSentAt: new Date().toISOString() };
       payload.senderContext = "admin";
       if (chatAttachment) {
         payload.attachment = chatAttachment;

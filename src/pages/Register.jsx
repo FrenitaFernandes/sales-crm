@@ -20,6 +20,24 @@ const phoneLength = {
   "+27": 9,
   "+966": 9,
 };
+
+const phoneExample = {
+  "+91": "7365727988",
+  "+1": "4155552671",
+  "+44": "7700900123",
+  "+971": "501234567",
+  "+61": "412345678",
+  "+49": "15123456789",
+  "+33": "612345678",
+  "+39": "3123456789",
+  "+34": "612345678",
+  "+81": "9012345678",
+  "+65": "81234567",
+  "+60": "123456789",
+  "+27": "821234567",
+  "+966": "512345678",
+};
+
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +52,16 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const navigate = useNavigate();
+  const requiredLength = phoneLength[countryCode];
+  const formattedPhoneValue = `${countryCode} ${phone}`;
+
+  const handlePhoneChange = (e) => {
+    const raw = String(e.target.value || "");
+    const escapedCode = countryCode.replace("+", "\\+");
+    const withoutCode = raw.replace(new RegExp(`^\\s*${escapedCode}\\s*`), "");
+    const digitsOnly = withoutCode.replace(/\D/g, "").slice(0, requiredLength);
+    setPhone(digitsOnly);
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -45,8 +73,6 @@ function Register() {
       setMessage("Passwords do not match!");
       return;
     }
-    const requiredLength = phoneLength[countryCode];
-
     if (phone.length !== requiredLength) {
       setIsSuccess(false);
       setMessage(
@@ -150,11 +176,12 @@ function Register() {
           </select>
 
           <input
-            type="tel"
-            placeholder="Contact Number"
+            type="text"
+            placeholder={`${countryCode} ${phoneExample[countryCode]}`}
             className="auth-input"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            value={formattedPhoneValue}
+            onChange={handlePhoneChange}
+            maxLength={countryCode.length + 1 + requiredLength}
             required
           />
         </div>

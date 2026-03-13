@@ -45,6 +45,11 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function resolveChatMessageTime(message) {
+  const time = new Date(message?.sentAt || message?.createdAt || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +62,7 @@ function Tickets() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
   const chatFileInputRef = useRef(null);
+  const chatFetchCounterRef = useRef(0);
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
@@ -128,6 +134,7 @@ function Tickets() {
   const fetchChatMessages = async (requestId, options = {}) => {
     if (!requestId) return;
     const { silent = false } = options;
+    const fetchId = ++chatFetchCounterRef.current;
 
     try {
       if (!silent) setChatLoading(true);
@@ -138,14 +145,21 @@ function Tickets() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setChatMessages(res.data?.data || []);
-    } catch (error) {
-      if (!silent) {
-        setChatMessages([]);
+      if (fetchId === chatFetchCounterRef.current) {
+        const sorted = (res.data?.data || []).slice().sort((a, b) => {
+          const timeDiff = resolveChatMessageTime(a) - resolveChatMessageTime(b);
+          if (timeDiff !== 0) return timeDiff;
+          return String(a._id || "").localeCompare(String(b._id || ""));
+        });
+        setChatMessages(sorted);
       }
-      setChatError(error?.response?.data?.message || "Failed to load chat");
+    } catch (error) {
+      if (fetchId === chatFetchCounterRef.current) {
+        if (!silent) setChatMessages([]);
+        setChatError(error?.response?.data?.message || "Failed to load chat");
+      }
     } finally {
-      if (!silent) setChatLoading(false);
+      if (fetchId === chatFetchCounterRef.current && !silent) setChatLoading(false);
     }
   };
 
@@ -159,7 +173,7 @@ function Tickets() {
       setChatSending(true);
       setChatError("");
       const token = getToken();
-      const payload = { message };
+      const payload = { message, clientSentAt: new Date().toISOString() };
       payload.senderContext = "customer";
       if (chatAttachment) {
         payload.attachment = chatAttachment;
