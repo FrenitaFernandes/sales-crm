@@ -90,7 +90,8 @@ const registerUser = async (req, res) => {
 // ===============================
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
 
     if (!email || !password) {
       return res.status(400).json({ message: "Please enter email and password" });
@@ -99,6 +100,10 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is deleted or inactive" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -136,6 +141,10 @@ const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is deleted or inactive" });
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -183,6 +192,10 @@ const verifyOTP = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is deleted or inactive" });
+    }
+
     if (!user.otp || !user.otpExpiry) {
       return res.status(400).json({ message: "OTP not requested" });
     }
@@ -221,6 +234,10 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is deleted or inactive" });
     }
 
     if (!user.otp || !user.otpExpiry || new Date(user.otpExpiry).getTime() < Date.now()) {
