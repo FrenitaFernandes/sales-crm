@@ -17,7 +17,7 @@ const protect = async (req, res, next) => {
 
     req.user = await User.findById(decoded.id).select("-password");
 
-    if (!req.user) {
+    if (!req.user || !req.user.isActive) {
       return res.status(401).json({ message: "User not found or inactive" });
     }
 

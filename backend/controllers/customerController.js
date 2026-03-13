@@ -233,6 +233,8 @@ exports.updateCustomer = async (req, res) => {
 exports.deleteCustomer = async (req, res) => {
   try {
 
+    const User = require("../models/user");
+
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
       {
@@ -247,6 +249,13 @@ exports.deleteCustomer = async (req, res) => {
         message: "Customer not found"
       });
     }
+
+    // Keep customer/projects for admin history, but block future user logins.
+    const userFilter = customer.userId
+      ? { _id: customer.userId }
+      : { email: String(customer.email || "").trim().toLowerCase() };
+
+    await User.findOneAndUpdate(userFilter, { isActive: false });
 
     await logActivity(
       req.user._id,
