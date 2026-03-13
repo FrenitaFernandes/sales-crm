@@ -64,7 +64,6 @@ export default function AdvertisementList() {
               <th>S.No</th>
               <th>Date</th>
               <th>Description</th>
-              <th>Target Area</th>
               <th>Target Audience</th>
               <th>Action</th>
             </tr>
@@ -73,7 +72,7 @@ export default function AdvertisementList() {
           <tbody>
             {ads.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center py-3">
+                <td colSpan="5" className="text-center py-3">
                   No advertisements found
                 </td>
               </tr>
@@ -87,7 +86,6 @@ export default function AdvertisementList() {
                       : "-"}
                   </td>
                   <td>{ad.description}</td>
-                  <td>{ad.targetArea}</td>
                   <td>{ad.targetAudience}</td>
                   <td className="text-center">
                     <button

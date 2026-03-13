@@ -29,6 +29,38 @@ const PREFERENCE_IMAGE_MAP = {
   "DAS Datalogger": "/DAS_Datalogger.png"
 };
 
+const normalizeAudienceValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+const AUDIENCE_ALIASES = {
+  "Data Logger IIoT 4.0": ["datalogger", "dataloggeriiot40", "dataloggeriiot", "datalogger40", "datalogger4", "dataloggeriiot4"],
+  "Cloud PLC 4.0": ["cloudplc", "cloudplc40", "plc40"],
+  "Biometric Authentication": ["biometric", "biometricauth", "biometricauthentication"],
+  "HMI & Display Board": ["hmi", "hmidisplayboard", "displayboard"],
+  "RFID Reader": ["rfid", "rfidreader"],
+  "R-LiFi": ["rlifi", "rlfi", "r-lifi", "lifi"],
+  "Vibration Sensor": ["vibrationsensor", "vibration"],
+  "Data Acquisition System": ["dataacquisitionsystem", "das"],
+  "DAS Datalogger": ["dasdatalogger", "daslogger"]
+};
+
+const resolveCanonicalAudience = (audience) => {
+  const normalizedTarget = normalizeAudienceValue(audience);
+  if (!normalizedTarget) return "";
+
+  for (const [canonical, aliases] of Object.entries(AUDIENCE_ALIASES)) {
+    const normalizedCanonical = normalizeAudienceValue(canonical);
+    if (normalizedTarget === normalizedCanonical || aliases.includes(normalizedTarget)) {
+      return canonical;
+    }
+  }
+
+  return String(audience || "").trim();
+};
+
 
 // ===========================
 // CREATE ADVERTISEMENT
@@ -47,12 +79,14 @@ exports.createAdvertisement = async (req, res) => {
       thumbnail
     } = req.body;
 
+    const canonicalAudience = resolveCanonicalAudience(targetAudience);
+
     const derivedThumbnail =
       thumbnail ||
-      PREFERENCE_IMAGE_MAP[String(targetAudience || "").trim()] ||
+      PREFERENCE_IMAGE_MAP[String(canonicalAudience || "").trim()] ||
       "";
 
-    const adTitle = String(productName || "").trim() || String(targetAudience || "").trim() || "Advertisement";
+    const adTitle = String(productName || "").trim() || String(canonicalAudience || "").trim() || "Advertisement";
 
     // Validation
     if (!date) {
@@ -78,7 +112,7 @@ exports.createAdvertisement = async (req, res) => {
       description,
       type,
       targetArea,
-      targetAudience,
+      targetAudience: canonicalAudience,
       thumbnail: derivedThumbnail
     });
 
@@ -88,20 +122,34 @@ exports.createAdvertisement = async (req, res) => {
     // Find Target Customers
     // ===========================
 
-    let customerQuery = {};
+    const baseCustomerQuery = { isDeleted: false };
+    let customers = [];
 
-    if (targetArea && targetArea !== "All") {
-      customerQuery.country = { $regex: `^${targetArea}$`, $options: "i" };
+    // Preference targeting takes priority over geography.
+    // If targetAudience is selected, notify all matching preference customers regardless of targetArea.
+    if (canonicalAudience && canonicalAudience !== "All") {
+      const audienceKey = normalizeAudienceValue(canonicalAudience);
+      customers = (await Customer.find(baseCustomerQuery)).filter((customer) => {
+        const preferences = Array.isArray(customer.preferences) ? customer.preferences : [];
+
+        const hasMatchingPreference = preferences.some(
+          (pref) => normalizeAudienceValue(resolveCanonicalAudience(pref)) === audienceKey
+        );
+
+        const hasMatchingIndustry =
+          normalizeAudienceValue(customer.industryType) === audienceKey;
+
+        return hasMatchingPreference || hasMatchingIndustry;
+      });
+    } else {
+      const customerQuery = { ...baseCustomerQuery };
+
+      if (targetArea && targetArea !== "All") {
+        customerQuery.country = { $regex: `^${targetArea}$`, $options: "i" };
+      }
+
+      customers = await Customer.find(customerQuery);
     }
-
-    if (targetAudience && targetAudience !== "All") {
-      customerQuery.$or = [
-        { preferences: { $in: [targetAudience] } },
-        { industryType: { $regex: `^${targetAudience}$`, $options: "i" } }
-      ];
-    }
-
-    const customers = await Customer.find(customerQuery);
 
     console.log("Matching Customers Found:", customers.length);
 

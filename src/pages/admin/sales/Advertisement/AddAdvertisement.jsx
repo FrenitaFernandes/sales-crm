@@ -15,11 +15,12 @@ const PREFERENCE_IMAGE_MAP = {
 
 export default function AddAdvertisement() {
 
+  const getTodayDateString = () => new Date().toISOString().split("T")[0];
+
   const [form, setForm] = useState({
     description: "",
-    targetArea: "",
     targetAudience: "",
-    date: "",
+    date: getTodayDateString(),
   });
 
   const [message, setMessage] = useState("");
@@ -67,9 +68,8 @@ export default function AddAdvertisement() {
 
       setForm({
         description: "",
-        targetArea: "",
         targetAudience: "",
-        date: "",
+        date: getTodayDateString(),
       });
 
     } catch (err) {
@@ -108,7 +108,7 @@ export default function AddAdvertisement() {
               name="date"
               className="form-control"
               value={form.date}
-              onChange={handleChange}
+              readOnly
               required
             />
           </div>
@@ -134,38 +134,9 @@ export default function AddAdvertisement() {
 
         </div>
 
-        {/* TARGET AREA / TARGET AUDIENCE */}
+        {/* TARGET AUDIENCE */}
 
         <div className="row">
-
-          {/* TARGET AREA */}
-
-          <div className="col-md-4 mb-3">
-
-            <label className="form-label">
-              Target Area
-            </label>
-
-            <select
-              name="targetArea"
-              className="form-control"
-              value={form.targetArea}
-              onChange={handleChange}
-            >
-
-              <option value="">Select Country</option>
-              <option value="India">India</option>
-              <option value="USA">USA</option>
-              <option value="Europe">Europe</option>
-              <option value="Middle East">Middle East</option>
-              <option value="Asia">Asia</option>
-              <option value="Global">Global</option>
-
-            </select>
-
-          </div>
-
-
           {/* TARGET AUDIENCE */}
 
           <div className="col-md-4 mb-3">
