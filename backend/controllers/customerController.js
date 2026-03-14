@@ -3,6 +3,7 @@ const Invoice = require("../models/Invoice");
 const Notification = require("../models/Notification");
 const ServiceRequest = require("../models/ServiceRequest");
 const Project = require("../models/Project");
+const User = require("../models/user");
 const { logActivity } = require("../utils/activityLogger");
 
 const formatTimeAgo = (dateValue) => {
@@ -125,15 +126,180 @@ exports.createCustomer = async (req, res) => {
 // ===========================
 exports.getCustomers = async (req, res) => {
   try {
-
     const customers = await Customer
       .find({ isDeleted: false })
       .sort({ createdAt: -1 });
 
+    const projects = await Project
+      .find()
+      .populate("customerId", "userId name email phone status isDeleted createdAt updatedAt")
+      .sort({ createdAt: -1 });
+
+    const projectCustomerIds = new Set();
+    const projectUserIds = new Set();
+    const projectEmails = new Set();
+    const projectNames = new Set();
+
+    for (const project of projects) {
+      const linkedCustomer = project.customerId && !project.customerId.isDeleted
+        ? project.customerId
+        : null;
+
+      const customerIdKey = linkedCustomer?._id ? String(linkedCustomer._id) : "";
+      const userIdKey = linkedCustomer?.userId ? String(linkedCustomer.userId) : "";
+      const emailKey = String(linkedCustomer?.email || project.email || "").trim().toLowerCase();
+      const nameKey = String(linkedCustomer?.name || project.clientName || "").trim().toLowerCase();
+
+      if (customerIdKey) projectCustomerIds.add(customerIdKey);
+      if (userIdKey) projectUserIds.add(userIdKey);
+      if (emailKey) projectEmails.add(emailKey);
+      if (nameKey) projectNames.add(nameKey);
+    }
+
+    const resolveDisplayStatus = ({ customerId, userId, email, name, fallbackStatus = "Inactive" }) => {
+      const customerIdKey = String(customerId || "").trim();
+      const userIdKey = String(userId || "").trim();
+      const emailKey = String(email || "").trim().toLowerCase();
+      const nameKey = String(name || "").trim().toLowerCase();
+
+      if (
+        (customerIdKey && projectCustomerIds.has(customerIdKey)) ||
+        (userIdKey && projectUserIds.has(userIdKey)) ||
+        (emailKey && projectEmails.has(emailKey)) ||
+        (nameKey && projectNames.has(nameKey))
+      ) {
+        return "Active";
+      }
+
+      return fallbackStatus;
+    };
+
+    const customerUsers = await User
+      .find({ role: "customer", isActive: true })
+      .sort({ createdAt: -1 })
+      .select("_id name email phone createdAt updatedAt");
+
+    const seenKeys = new Set();
+    const mergedCustomers = [];
+
+    for (const customer of customers) {
+      const emailKey = String(customer.email || "").trim().toLowerCase();
+      const userKey = customer.userId ? String(customer.userId) : "";
+
+      if (emailKey) seenKeys.add(`email:${emailKey}`);
+      if (userKey) seenKeys.add(`user:${userKey}`);
+
+      mergedCustomers.push({
+        ...customer.toObject(),
+        status: resolveDisplayStatus({
+          customerId: customer._id,
+          userId: customer.userId,
+          email: customer.email,
+          name: customer.name,
+          fallbackStatus: customer.status,
+        }),
+        hasCustomerRecord: true,
+        canDelete: true,
+        source: "customer",
+      });
+    }
+
+    for (const user of customerUsers) {
+      const emailKey = String(user.email || "").trim().toLowerCase();
+      const userKey = String(user._id);
+
+      if (
+        (emailKey && seenKeys.has(`email:${emailKey}`)) ||
+        seenKeys.has(`user:${userKey}`)
+      ) {
+        continue;
+      }
+
+      mergedCustomers.push({
+        _id: user._id,
+        userId: user._id,
+        name: user.name,
+        email: emailKey,
+        phone: user.phone || "",
+        status: resolveDisplayStatus({
+          userId: user._id,
+          email: emailKey,
+          name: user.name,
+          fallbackStatus: "Inactive",
+        }),
+        isDeleted: false,
+        hasCustomerRecord: false,
+        canDelete: true,
+        source: "registered-user",
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      });
+    }
+
+    for (const project of projects) {
+      const linkedCustomer = project.customerId && !project.customerId.isDeleted
+        ? project.customerId
+        : null;
+
+      const derivedName = String(
+        linkedCustomer?.name || project.clientName || ""
+      ).trim();
+      const derivedEmail = String(
+        linkedCustomer?.email || project.email || ""
+      ).trim().toLowerCase();
+      const derivedPhone = String(
+        linkedCustomer?.phone || project.phone || ""
+      ).trim();
+      const derivedUserId = linkedCustomer?.userId ? String(linkedCustomer.userId) : "";
+
+      if (!derivedName && !derivedEmail && !derivedPhone) {
+        continue;
+      }
+
+      if (
+        (derivedEmail && seenKeys.has(`email:${derivedEmail}`)) ||
+        (derivedUserId && seenKeys.has(`user:${derivedUserId}`))
+      ) {
+        continue;
+      }
+
+      const syntheticId = linkedCustomer?._id
+        ? String(linkedCustomer._id)
+        : `project-customer-${project._id}`;
+
+      if (derivedEmail) seenKeys.add(`email:${derivedEmail}`);
+      if (derivedUserId) seenKeys.add(`user:${derivedUserId}`);
+
+      mergedCustomers.push({
+        _id: syntheticId,
+        userId: linkedCustomer?.userId || null,
+        name: derivedName || "Customer",
+        email: derivedEmail,
+        phone: derivedPhone,
+        status: resolveDisplayStatus({
+          customerId: linkedCustomer?._id,
+          userId: linkedCustomer?.userId,
+          email: derivedEmail,
+          name: derivedName,
+          fallbackStatus: linkedCustomer?.status || "Active",
+        }),
+        isDeleted: false,
+        hasCustomerRecord: false,
+        canDelete: false,
+        source: "project",
+        createdAt: linkedCustomer?.createdAt || project.createdAt,
+        updatedAt: linkedCustomer?.updatedAt || project.updatedAt,
+      });
+    }
+
+    mergedCustomers.sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+
     res.status(200).json({
       success: true,
-      count: customers.length,
-      data: customers
+      count: mergedCustomers.length,
+      data: mergedCustomers
     });
 
   } catch (error) {
@@ -235,7 +401,7 @@ exports.deleteCustomer = async (req, res) => {
 
     const User = require("../models/user");
 
-    const customer = await Customer.findByIdAndUpdate(
+    let customer = await Customer.findByIdAndUpdate(
       req.params.id,
       {
         isDeleted: true,
@@ -244,16 +410,40 @@ exports.deleteCustomer = async (req, res) => {
       { new: true }
     );
 
+    let matchedUser = null;
+
     if (!customer) {
+      matchedUser = await User.findById(req.params.id);
+
+      if (matchedUser) {
+        customer = await Customer.findOneAndUpdate(
+          {
+            $or: [
+              { userId: matchedUser._id },
+              { email: String(matchedUser.email || "").trim().toLowerCase() }
+            ]
+          },
+          {
+            isDeleted: true,
+            deletedAt: new Date()
+          },
+          { new: true }
+        );
+      }
+    }
+
+    if (!customer && !matchedUser) {
       return res.status(404).json({
         message: "Customer not found"
       });
     }
 
     // Keep customer/projects for admin history, but block future user logins.
-    const userFilter = customer.userId
-      ? { _id: customer.userId }
-      : { email: String(customer.email || "").trim().toLowerCase() };
+    const userFilter = matchedUser?._id
+      ? { _id: matchedUser._id }
+      : customer?.userId
+        ? { _id: customer.userId }
+        : { email: String(customer?.email || "").trim().toLowerCase() };
 
     await User.findOneAndUpdate(userFilter, { isActive: false });
 
@@ -262,7 +452,7 @@ exports.deleteCustomer = async (req, res) => {
       req.user.name,
       "DELETE",
       "Customer",
-      `Customer ${customer.name} deleted`,
+      `Customer ${(customer?.name || matchedUser?.name || req.params.id)} deleted`,
       req.ip
     );
 

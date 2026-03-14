@@ -8,6 +8,8 @@ export default function Projects() {
   const navigate = useNavigate();
 
   const [projects, setProjects] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dueDateSort, setDueDateSort] = useState("none");
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -233,6 +235,33 @@ const handleDeleteProject = async () => {
   }
 };
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredProjects = projects.filter((project) => {
+    if (!normalizedSearch) return true;
+
+    return [
+      project.projectName,
+      project.customerName,
+      project.email,
+      project.phone,
+      project.customizationDetails,
+      project.status,
+    ].some((value) =>
+      String(value || "").toLowerCase().includes(normalizedSearch)
+    );
+  });
+
+  const visibleProjects = [...filteredProjects].sort((a, b) => {
+    if (dueDateSort === "none") return 0;
+
+    const aTime = a?.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    const bTime = b?.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+
+    if (aTime === bTime) return 0;
+
+    return dueDateSort === "asc" ? aTime - bTime : bTime - aTime;
+  });
+
   return (
 
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -274,6 +303,26 @@ const handleDeleteProject = async () => {
         <div className="alert alert-danger py-2 mb-3">{deleteError}</div>
       )}
 
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <input
+          type="text"
+          placeholder="Search by project, customer, email, phone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full max-w-md border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <select
+          value={dueDateSort}
+          onChange={(e) => setDueDateSort(e.target.value)}
+          className="w-full md:w-56 border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="none">Sort by Due Date</option>
+          <option value="asc">Due Date: Earliest First</option>
+          <option value="desc">Due Date: Latest First</option>
+        </select>
+      </div>
+
 
       {/* LOADING */}
 
@@ -292,10 +341,16 @@ const handleDeleteProject = async () => {
         </div>
       )}
 
+      {!loading && projects.length > 0 && filteredProjects.length === 0 && (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
+          No matching projects found.
+        </div>
+      )}
+
 
       {/* TABLE */}
 
-      {!loading && projects.length > 0 && (
+      {!loading && visibleProjects.length > 0 && (
 
         <div className="bg-white rounded-lg shadow-md overflow-x-auto">
 
@@ -320,7 +375,7 @@ const handleDeleteProject = async () => {
 
             <tbody>
 
-              {projects.map((project, index) => (
+              {visibleProjects.map((project, index) => (
 
                 <tr key={project._id} className="border-b hover:bg-blue-50">
 

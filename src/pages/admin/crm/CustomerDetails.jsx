@@ -81,6 +81,14 @@ const CustomerDetails = () => {
       (c.phone || "").includes(search)
   );
 
+  const canDeleteCustomer = (customer) => {
+    if (typeof customer?.canDelete === "boolean") {
+      return customer.canDelete;
+    }
+
+    return customer?.source !== "project";
+  };
+
   const handleDeleteCustomer = async (id) => {
   try {
     const token = localStorage.getItem("token");
@@ -131,17 +139,19 @@ const CustomerDetails = () => {
                   <td className="p-3 border">{c.phone}</td>
                   <td className="p-3 border">{c.status}</td>
                   <td className="p-3 border flex gap-3 items-center">
-    <button
-      className="bg-blue-600 text-white px-3 py-1 rounded"
-      onClick={() => handleViewCustomer(c)}>
-      View
-    </button>
+                    <button
+                      className="bg-blue-600 text-white px-3 py-1 rounded"
+                      onClick={() => handleViewCustomer(c)}>
+                      View
+                    </button>
 
-    <button
-      className="text-red-600 hover:text-red-800"
-      onClick={() => handleDeleteCustomer(c._id)}>
-      <FaTrash />
-    </button>
+                    {canDeleteCustomer(c) ? (
+                      <button
+                        className="text-red-600 hover:text-red-800"
+                        onClick={() => handleDeleteCustomer(c._id)}>
+                        <FaTrash />
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))

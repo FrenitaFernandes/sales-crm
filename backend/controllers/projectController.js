@@ -243,6 +243,31 @@ exports.createProject = async (req, res) => {
       progress: progress || 0
     });
 
+    // A customer with at least one assigned project should be active.
+    await Customer.findByIdAndUpdate(customerId, { status: "Active" });
+
+    // Customer-created projects may have legacy duplicate profiles linked by user/email.
+    // Keep all matching customer records in sync so admin lists don't show stale inactive entries.
+    if (req.user?.role === "customer") {
+      const userEmail = String(req.user?.email || email || "").trim().toLowerCase();
+      const activeFilters = [];
+
+      if (authUserId) {
+        activeFilters.push({ userId: authUserId });
+      }
+
+      if (userEmail) {
+        activeFilters.push({ email: userEmail });
+      }
+
+      if (activeFilters.length > 0) {
+        await Customer.updateMany(
+          { $or: activeFilters },
+          { $set: { status: "Active", isDeleted: false } }
+        );
+      }
+    }
+
     // populate customer info
     const populatedProject = await project.populate(
       "customerId",
