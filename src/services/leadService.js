@@ -2,6 +2,20 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/leads";
 
+const getFilenameFromDisposition = (dispositionHeader) => {
+  if (!dispositionHeader) {
+    return null;
+  }
+
+  const utf8Match = dispositionHeader.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const filenameMatch = dispositionHeader.match(/filename="?([^";]+)"?/i);
+  return filenameMatch?.[1] || null;
+};
+
 // Helper function to get auth token
 const getAuthConfig = () => {
   const token = localStorage.getItem("token");
@@ -100,16 +114,43 @@ export const updateLeadStatus = async (leadId, status) => {
 // ======================
 export const exportLeadsToPDF = async (leadsData) => {
   const token = localStorage.getItem("token");
-  const response = await axios.post(
-    `${API_URL}/export/pdf`,
-    { leads: leadsData },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      responseType: "blob", // Important: get response as blob for file download
+  try {
+    const response = await axios.post(
+      `${API_URL}/export/pdf`,
+      { leads: leadsData },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        responseType: "blob",
+      }
+    );
+
+    const contentType = response.headers["content-type"] || response.data?.type || "";
+    if (!contentType.toLowerCase().includes("pdf")) {
+      throw new Error("Invalid PDF response from server");
     }
-  );
-  return response.data;
+
+    return {
+      blob: response.data,
+      filename:
+        getFilenameFromDisposition(response.headers["content-disposition"]) ||
+        `leads_${Date.now()}.pdf`,
+    };
+  } catch (error) {
+    const errorBlob = error.response?.data;
+
+    if (errorBlob instanceof Blob) {
+      try {
+        const errorText = await errorBlob.text();
+        const parsed = JSON.parse(errorText);
+        throw new Error(parsed.message || "Failed to generate PDF");
+      } catch (_parseError) {
+        throw new Error("Failed to generate PDF");
+      }
+    }
+
+    throw error;
+  }
 };

@@ -1,6 +1,10 @@
 const Lead = require("../models/Lead");
 const Customer = require("../models/Customer");
 const Project = require("../models/Project");
+const { LEAD_INDUSTRY_TYPES } = require("../constants/leadIndustryTypes");
+
+const isValidIndustryType = (industryType) =>
+  typeof industryType === "string" && LEAD_INDUSTRY_TYPES.includes(industryType);
 
 // ============================
 // CHECK IF EMAIL EXISTS IN CUSTOMERS
@@ -96,6 +100,13 @@ exports.createLead = async (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: "All fields are required: leadName, email, phone, projectName, industryType" 
+      });
+    }
+
+    if (!isValidIndustryType(industryType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid industry type",
       });
     }
 
@@ -203,10 +214,26 @@ exports.getLeadById = async (req, res) => {
 // ============================
 exports.updateLead = async (req, res) => {
   try {
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, "industryType") &&
+      !isValidIndustryType(req.body.industryType)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid industry type",
+      });
+    }
+
+    const updatePayload = { ...req.body };
+
+    if (typeof updatePayload.email === "string") {
+      updatePayload.email = updatePayload.email.toLowerCase();
+    }
+
     const lead = await Lead.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true }
+      updatePayload,
+      { new: true, runValidators: true }
     );
 
     if (!lead) {
@@ -221,7 +248,7 @@ exports.updateLead = async (req, res) => {
 
   } catch (error) {
     console.error("Update Lead Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 

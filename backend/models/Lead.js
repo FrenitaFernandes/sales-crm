@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { LEAD_INDUSTRY_TYPES } = require("../constants/leadIndustryTypes");
 
 const LeadSchema = new mongoose.Schema(
   {
@@ -6,7 +7,11 @@ const LeadSchema = new mongoose.Schema(
     email: { type: String, required: true },
     phone: { type: String, required: true },
     projectName: { type: String, required: true },
-    industryType: { type: String, required: true },
+    industryType: {
+      type: String,
+      required: true,
+      enum: LEAD_INDUSTRY_TYPES,
+    },
     
     // Legacy fields (keeping for backward compatibility)
     name: { type: String },

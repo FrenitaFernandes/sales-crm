@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MdAdd, MdEdit, MdDelete, MdPhone, MdEmail, MdClose, MdFileDownload, MdEdit as MdEditIcon, MdPerson, MdBusiness, MdLanguage, MdArrowBack } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
 import { checkCustomerByEmail, createLead, getAllLeads, getLeadById, addFollowUp, deleteLead, updateLead, exportLeadsToPDF } from "../../../../services/leadService";
 
 // Helper function to convert UTC to IST
@@ -25,6 +26,126 @@ const formatDateToIST = (date) => {
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 };
 
+const industryTypes = [
+  "Manufacturing Companies",
+  "Industrial Businesses",
+  "Smart Buildings",
+  "Educational Institutions",
+  "Technology Startups",
+  "Automotive Companies",
+  "Energy & Utility Companies",
+  "Agriculture Technology Companies",
+  "Logistics & Supply Chain Companies",
+  "Retail Businesses",
+  "Healthcare Organizations",
+  "Government Organizations",
+  "Other",
+];
+
+const normalizeIndustryType = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  return industryTypes.includes(value) ? value : "Other";
+};
+
+const downloadBlobFile = (blob, filename) => {
+  if (window.navigator?.msSaveOrOpenBlob) {
+    window.navigator.msSaveOrOpenBlob(blob, filename);
+    return;
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+  }, 1000);
+};
+
+const buildLeadsPdfBlob = (leadsData) => {
+  const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const lineHeight = 6;
+  const leftMargin = 14;
+  const rightMargin = 14;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+  let y = 18;
+
+  const ensureSpace = (requiredHeight = lineHeight) => {
+    if (y + requiredHeight > pageHeight - 15) {
+      doc.addPage();
+      y = 18;
+    }
+  };
+
+  const writeWrappedText = (label, value) => {
+    const safeValue = value ? String(value) : "N/A";
+    const lines = doc.splitTextToSize(`${label}: ${safeValue}`, contentWidth);
+    ensureSpace(lines.length * lineHeight + 2);
+    doc.text(lines, leftMargin, y);
+    y += lines.length * lineHeight;
+  };
+
+  doc.setFontSize(18);
+  doc.text("Leads Report", leftMargin, y);
+  y += 8;
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, leftMargin, y);
+  y += 10;
+
+  leadsData.forEach((lead, index) => {
+    ensureSpace(20);
+    doc.setFontSize(12);
+    doc.text(`Lead ${index + 1}`, leftMargin, y);
+    y += 7;
+    doc.setFontSize(10);
+
+    writeWrappedText("Date", lead.date);
+    writeWrappedText("Lead Name", lead.leadName);
+    writeWrappedText("Project Name", lead.projectName);
+    writeWrappedText("Industry Type", lead.industryType);
+    writeWrappedText("Phone", lead.phone);
+    writeWrappedText("Email", lead.email);
+    writeWrappedText("Source", lead.source);
+    writeWrappedText("Status", lead.status);
+    writeWrappedText("Assigned To", lead.assignedTo);
+    writeWrappedText("Last Follow Up", lead.lastFollowUp || "Follow Up");
+
+    const followUps = Array.isArray(lead.followUps)
+      ? lead.followUps
+      : Array.isArray(lead.followUpHistory)
+      ? lead.followUpHistory
+      : [];
+
+    if (followUps.length > 0) {
+      ensureSpace(8);
+      doc.text("Follow-Up History:", leftMargin, y);
+      y += 6;
+
+      followUps.forEach((item, followUpIndex) => {
+        writeWrappedText(
+          `${followUpIndex + 1}`,
+          `Status: ${item.status || "N/A"}, Date: ${item.followUpDate || item.date || item.createdAt || "N/A"}, Note: ${item.note || item.secondNote || "No notes"}`
+        );
+      });
+    }
+
+    ensureSpace(8);
+    doc.line(leftMargin, y, pageWidth - rightMargin, y);
+    y += 8;
+  });
+
+  return doc.output("blob");
+};
+
 export default function Leads() {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -35,6 +156,7 @@ export default function Leads() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isCheckingCustomer, setIsCheckingCustomer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedLeadForDetail, setSelectedLeadForDetail] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,6 +169,8 @@ export default function Leads() {
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [followUpToDelete, setFollowUpToDelete] = useState(null);
+  const [leadIdsToDelete, setLeadIdsToDelete] = useState([]);
+  const [deleteConfirmMessage, setDeleteConfirmMessage] = useState("");
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const [leads, setLeads] = useState([
@@ -259,9 +383,10 @@ export default function Leads() {
 
   const tabs = [
     { id: "all", label: "All Leads" },
-    { id: "today", label: "Today's Lead" },
+    { id: "today", label: "Todays leads" },
     { id: "new", label: "New" },
-    { id: "interested", label: "Interested" },
+    { id: "interested", label: "Intrested" },
+    { id: "qualified", label: "Qualified" },
     { id: "not-interested", label: "Not Interested" },
     { id: "converted", label: "Converted" },
     { id: "dropout", label: "Dropout" },
@@ -302,7 +427,7 @@ export default function Leads() {
       email: lead.email,
       leadName: lead.leadName,
       projectName: lead.projectName,
-      industryType: lead.industryType,
+      industryType: normalizeIndustryType(lead.industryType),
       phone: lead.phone,
       date: dateValue,
       source: lead.source,
@@ -448,7 +573,7 @@ export default function Leads() {
           ...prev,
           leadName: response.data.leadName || "",
           projectName: response.data.projectName || "",
-          industryType: response.data.industryType || "",
+          industryType: normalizeIndustryType(response.data.industryType),
           phone: response.data.phone || "",
         }));
         
@@ -596,9 +721,52 @@ export default function Leads() {
     }
   };
 
-  const handleDeleteSelected = () => {
-    setLeads(leads.filter((lead) => !selectedLeads.includes(lead.id)));
-    setSelectedLeads([]);
+  const handleDeleteSelected = async () => {
+    if (selectedLeads.length === 0 || isDeleting) {
+      return;
+    }
+
+    setLeadIdsToDelete([...selectedLeads]);
+    setDeleteConfirmMessage(
+      `Are you sure you want to delete ${selectedLeads.length} selected lead${selectedLeads.length > 1 ? "s" : ""}? This cannot be undone.`
+    );
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteSelected = async () => {
+    if (leadIdsToDelete.length === 0) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await Promise.all(leadIdsToDelete.map((leadId) => deleteLead(leadId)));
+
+      setLeads((prevLeads) => prevLeads.filter((lead) => !leadIdsToDelete.includes(lead.id)));
+      setSelectedLeads([]);
+
+      const remainingFilteredLeads = filteredLeads.filter(
+        (lead) => !leadIdsToDelete.includes(lead.id)
+      ).length;
+      const nextTotalPages = Math.max(1, Math.ceil(remainingFilteredLeads / itemsPerPage));
+      setCurrentPage((prevPage) => Math.min(prevPage, nextTotalPages));
+
+      showNotification(
+        `${leadIdsToDelete.length} lead${leadIdsToDelete.length > 1 ? "s" : ""} deleted successfully.`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Error deleting leads:", error);
+      showNotification(
+        error.response?.data?.message || "Failed to delete selected leads. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setLeadIdsToDelete([]);
+      setDeleteConfirmMessage("");
+    }
   };
 
   const handleDownloadCSV = () => {
@@ -641,14 +809,22 @@ export default function Leads() {
         ? leads.filter((lead) => selectedLeads.includes(lead.id))
         : filteredLeads;
 
-      // Call backend to generate PDF
-      const blob = await exportLeadsToPDF(dataToExport);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `leads_${new Date().getTime()}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      if (dataToExport.length === 0) {
+        showNotification("No leads available to export.", "error");
+        return;
+      }
+
+      try {
+        const { blob, filename } = await exportLeadsToPDF(dataToExport);
+        downloadBlobFile(blob, filename);
+        showNotification("PDF downloaded successfully!", "success");
+      } catch (serverError) {
+        console.error("Server PDF export failed, using fallback:", serverError);
+        const fallbackBlob = buildLeadsPdfBlob(dataToExport);
+        downloadBlobFile(fallbackBlob, `leads_${new Date().getTime()}.pdf`);
+        showNotification("PDF downloaded successfully!", "success");
+      }
+
       setShowDownloadMenu(false);
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -714,6 +890,7 @@ export default function Leads() {
     if (!selectedLeadForDetail) return;
 
     setFollowUpToDelete(followUpIndex);
+    setDeleteConfirmMessage("Are you sure you want to delete this follow-up entry?");
     setShowDeleteConfirm(true);
   };
 
@@ -723,6 +900,7 @@ export default function Leads() {
     setShowDeleteConfirm(false);
     const followUpIndex = followUpToDelete;
     setFollowUpToDelete(null);
+    setDeleteConfirmMessage("");
 
     try {
       // Get the lead data from backend to ensure we have the latest followUps array
@@ -760,6 +938,17 @@ export default function Leads() {
   const cancelDeleteFollowUp = () => {
     setShowDeleteConfirm(false);
     setFollowUpToDelete(null);
+    setLeadIdsToDelete([]);
+    setDeleteConfirmMessage("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (leadIdsToDelete.length > 0) {
+      await confirmDeleteSelected();
+      return;
+    }
+
+    await confirmDeleteFollowUp();
   };
 
   // Export lead as PDF
@@ -836,43 +1025,87 @@ Generated on: ${new Date().toLocaleString()}
     }
   };
 
+  const parseLeadDate = (value) => {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+
+    const directParsed = new Date(value);
+    if (!Number.isNaN(directParsed.getTime())) {
+      return directParsed;
+    }
+
+    if (typeof value === "string") {
+      const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (match) {
+        const day = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const year = Number(match[3]);
+        const parsed = new Date(year, month, day);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const isSameDate = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
   // Filter leads based on search and filters
   const filteredLeads = leads.filter((lead) => {
+    const searchValue = searchTerm.trim().toLowerCase();
+    const leadName = (lead.leadName || "").toLowerCase();
+    const projectName = (lead.projectName || "").toLowerCase();
+    const email = (lead.email || "").toLowerCase();
+    const phone = String(lead.phone || "");
+    const industryType = (lead.industryType || "").toLowerCase();
+    const assignedTo = (lead.assignedTo || "").toLowerCase();
+
     const matchesSearch =
-      lead.leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.phone.includes(searchTerm) ||
-      lead.industryType.toLowerCase().includes(searchTerm.toLowerCase());
+      !searchValue ||
+      leadName.includes(searchValue) ||
+      projectName.includes(searchValue) ||
+      email.includes(searchValue) ||
+      phone.includes(searchTerm.trim()) ||
+      industryType.includes(searchValue);
+
     const matchesStatus = !statusFilter || lead.status === statusFilter;
     const matchesSource = !sourceFilter || lead.source === sourceFilter;
-    const matchesAssignee = !assignToFilter || lead.assignedTo.toLowerCase().includes(assignToFilter.toLowerCase());
+    const matchesAssignee = !assignToFilter || assignedTo.includes(assignToFilter.toLowerCase());
     
     // Tab filtering
     let matchesTab = true;
     if (activeTab === "today") {
-      const leadDate = new Date(lead.rawDate || lead.date);
+      const leadDate = parseLeadDate(lead.rawDate || lead.date);
       const today = new Date();
-      matchesTab =
-        leadDate.getFullYear() === today.getFullYear() &&
-        leadDate.getMonth() === today.getMonth() &&
-        leadDate.getDate() === today.getDate();
+      matchesTab = leadDate ? isSameDate(leadDate, today) : false;
     } else if (activeTab === "new") {
       matchesTab = lead.status === "New";
     } else if (activeTab === "interested") {
-      matchesTab = lead.status === "Interested" || lead.category === "interested";
+      matchesTab = lead.status === "Interested";
+    } else if (activeTab === "qualified") {
+      matchesTab = lead.status === "Qualified";
     } else if (activeTab === "converted") {
-      matchesTab = lead.status === "Converted" || lead.category === "converted";
+      matchesTab = lead.status === "Converted";
     } else if (activeTab === "not-interested") {
-      matchesTab = lead.status === "Not Interested" || lead.category === "not-interested";
+      matchesTab = lead.status === "Not Interested";
     } else if (activeTab === "dropout") {
-      matchesTab = lead.status === "Dropout" || lead.category === "dropout";
+      matchesTab = lead.status === "Dropout";
     }
 
     return matchesSearch && matchesStatus && matchesSource && matchesAssignee && matchesTab;
   });
 
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / itemsPerPage));
   const paginatedLeads = filteredLeads.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -1007,11 +1240,11 @@ Generated on: ${new Date().toLocaleString()}
       <div className="mb-4 flex gap-2">
         <button
           onClick={handleDeleteSelected}
-          disabled={selectedLeads.length === 0}
+          disabled={selectedLeads.length === 0 || isDeleting}
           className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-semibold text-sm disabled:bg-red-300 disabled:cursor-not-allowed"
         >
           <MdDelete size={16} />
-          Delete
+          {isDeleting ? "Deleting..." : "Delete"}
         </button>
         <button
           onClick={handleDownloadCSV}
@@ -1256,15 +1489,20 @@ Generated on: ${new Date().toLocaleString()}
                 {/* Industry Type */}
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Industry Type</label>
-                  <input
-                    type="text"
+                  <select
                     name="industryType"
                     value={formData.industryType}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter industry type"
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Choose industry type</option>
+                    {industryTypes.map((industry) => (
+                      <option key={industry} value={industry}>
+                        {industry}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Phone */}
@@ -1429,15 +1667,20 @@ Generated on: ${new Date().toLocaleString()}
                 {/* Industry Type */}
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Industry Type</label>
-                  <input
-                    type="text"
+                  <select
                     name="industryType"
                     value={formData.industryType}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Enter industry type"
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  >
+                    <option value="">Choose industry type</option>
+                    {industryTypes.map((industry) => (
+                      <option key={industry} value={industry}>
+                        {industry}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Phone */}
@@ -1880,7 +2123,7 @@ Generated on: ${new Date().toLocaleString()}
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete this follow-up entry?</p>
+            <p className="text-gray-600 mb-6">{deleteConfirmMessage || "Are you sure you want to delete this item?"}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={cancelDeleteFollowUp}
@@ -1889,10 +2132,11 @@ Generated on: ${new Date().toLocaleString()}
                 Cancel
               </button>
               <button
-                onClick={confirmDeleteFollowUp}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:bg-red-300 disabled:cursor-not-allowed"
               >
-                Delete
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
