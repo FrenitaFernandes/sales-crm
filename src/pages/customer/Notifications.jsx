@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import axios from "axios";
 import {
+  dismissCustomerNotification,
+  getDismissedCustomerNotificationIds,
   getCustomerNotifications,
   markAllCustomerNotificationsRead,
   removeCustomerNotification,
@@ -13,33 +15,15 @@ function Notifications() {
 
   const getToken = () => localStorage.getItem("authToken") || localStorage.getItem("token") || "";
 
-  const dismissedAdsKey = () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const email = String(user?.email || "").trim().toLowerCase() || "guest";
-      return `customer_dismissed_ads_v1:${email}`;
-    } catch {
-      return "customer_dismissed_ads_v1:guest";
-    }
-  };
-
-  const getDismissedAds = () => {
-    try {
-      const raw = localStorage.getItem(dismissedAdsKey());
-      const parsed = raw ? JSON.parse(raw) : [];
-      return new Set(Array.isArray(parsed) ? parsed.map((id) => String(id)) : []);
-    } catch {
-      return new Set();
-    }
-  };
-
-  const saveDismissedAds = (ids) => {
-    localStorage.setItem(dismissedAdsKey(), JSON.stringify(Array.from(ids)));
-  };
-
   const isAdvertisementNotification = (item) => {
     const type = String(item?.type || "").trim().toLowerCase();
     return type === "advertisement" || !!resolveNotificationImage(item?.image);
+  };
+
+  const isInvoiceNotification = (item) => {
+    const type = String(item?.type || "").trim().toLowerCase();
+    const title = String(item?.title || "").trim();
+    return type === "order" || /^invoice\b/i.test(title);
   };
 
   const loadNotifications = async () => {
@@ -68,9 +52,9 @@ function Notifications() {
       console.error("Error loading backend notifications:", error);
     }
 
-    const dismissedAds = getDismissedAds();
+    const dismissedIds = getDismissedCustomerNotificationIds();
     const filteredBackendItems = backendItems.filter(
-      (item) => !(isAdvertisementNotification(item) && dismissedAds.has(String(item?._id || "")))
+      (item) => !dismissedIds.has(String(item?._id || ""))
     );
 
     const merged = [...filteredBackendItems, ...localItems].sort(
@@ -124,14 +108,12 @@ function Notifications() {
     window.dispatchEvent(new Event("notifications-updated"));
   };
 
-  const handleRemoveAdvertisement = (id) => {
-    const adId = String(id || "").trim();
-    if (!adId) return;
+  const handleDismissBackendNotification = (id) => {
+    const notificationId = String(id || "").trim();
+    if (!notificationId) return;
 
-    const dismissedAds = getDismissedAds();
-    dismissedAds.add(adId);
-    saveDismissedAds(dismissedAds);
-    setNotifs((prev) => prev.filter((item) => String(item?._id || "") !== adId));
+    dismissCustomerNotification(notificationId);
+    setNotifs((prev) => prev.filter((item) => String(item?._id || "") !== notificationId));
     window.dispatchEvent(new Event("notifications-updated"));
   };
 
@@ -189,14 +171,14 @@ function Notifications() {
               </div>
 
               <div>
-                {(n.source === "local" || isAdvertisementNotification(n)) && (
+                {(n.source === "local" || isAdvertisementNotification(n) || isInvoiceNotification(n)) && (
                   <button
                     type="button"
                     className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded"
                     onClick={() =>
-                      isAdvertisementNotification(n)
-                        ? handleRemoveAdvertisement(n._id)
-                        : handleRemove(n._id)
+                      n.source === "local"
+                        ? handleRemove(n._id)
+                        : handleDismissBackendNotification(n._id)
                     }
                   >
                     Remove

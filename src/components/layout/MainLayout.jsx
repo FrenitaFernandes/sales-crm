@@ -49,6 +49,7 @@ const MainLayout = ({
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar
           title={title}
+          role={role}
           onLogout={onLogout}
           onToggleSidebar={handleToggleSidebar}
           sidebarOpen={sidebarOpen}

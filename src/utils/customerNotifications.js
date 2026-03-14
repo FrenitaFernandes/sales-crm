@@ -1,5 +1,6 @@
 const NOTIFICATIONS_PREFIX = "customer_notifications_v1";
 const SEEN_TICKETS_PREFIX = "customer_seen_tickets_v1";
+const DISMISSED_BACKEND_NOTIFICATIONS_PREFIX = "customer_dismissed_backend_notifications_v1";
 
 function buildTicketId() {
   return `TKT-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
@@ -32,6 +33,10 @@ function seenTicketsKey() {
   return `${SEEN_TICKETS_PREFIX}:${getCurrentCustomerKey()}`;
 }
 
+function dismissedBackendNotificationsKey() {
+  return `${DISMISSED_BACKEND_NOTIFICATIONS_PREFIX}:${getCurrentCustomerKey()}`;
+}
+
 export function getCustomerNotifications() {
   try {
     const raw = localStorage.getItem(notificationsKey());
@@ -44,6 +49,29 @@ export function getCustomerNotifications() {
 
 export function saveCustomerNotifications(items) {
   localStorage.setItem(notificationsKey(), JSON.stringify(items));
+}
+
+export function getDismissedCustomerNotificationIds() {
+  try {
+    const raw = localStorage.getItem(dismissedBackendNotificationsKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.map((id) => String(id)) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function dismissCustomerNotification(notificationId) {
+  const id = String(notificationId || "").trim();
+  if (!id) return getDismissedCustomerNotificationIds();
+
+  const dismissedIds = getDismissedCustomerNotificationIds();
+  dismissedIds.add(id);
+  localStorage.setItem(
+    dismissedBackendNotificationsKey(),
+    JSON.stringify(Array.from(dismissedIds))
+  );
+  return dismissedIds;
 }
 
 export function getCustomerUnreadCount() {
