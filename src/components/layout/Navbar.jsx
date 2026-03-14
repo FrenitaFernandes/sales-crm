@@ -14,12 +14,15 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { getCustomerUnreadCount } from "../../utils/customerNotifications";
+import {
+  getCustomerUnreadCount,
+  getDismissedCustomerNotificationIds,
+} from "../../utils/customerNotifications";
 
 const ADMIN_CHAT_LAST_SEEN_KEY = "admin_chat_last_seen_v1";
 const CUSTOMER_CHAT_LAST_SEEN_KEY = "customer_chat_last_seen_v1";
 
-const Navbar = ({ title, onLogout, onToggleSidebar }) => {
+const Navbar = ({ title, role: layoutRole, onLogout, onToggleSidebar }) => {
 
   const [notificationCount, setNotificationCount] = useState(0);
   const [modalInfo, setModalInfo] = useState({ show: false, title: '', message: '' });
@@ -30,7 +33,7 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const role = localStorage.getItem("userRole"); // admin or customer
+  const role = layoutRole || localStorage.getItem("userRole") || "admin";
 
   const loadNotificationCount = async () => {
     try {
@@ -49,7 +52,10 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
           }),
         ]);
 
-        const backendUnread = (backendRes.data?.data || []).filter((item) => item?.read !== true).length;
+        const dismissedIds = getDismissedCustomerNotificationIds();
+        const backendUnread = (backendRes.data?.data || []).filter(
+          (item) => item?.read !== true && !dismissedIds.has(String(item?._id || ""))
+        ).length;
         setNotificationCount(localUnread + backendUnread);
         return;
       }
@@ -83,10 +89,24 @@ const Navbar = ({ title, onLogout, onToggleSidebar }) => {
       loadNotificationCount();
     };
 
+    const handleWindowFocus = () => {
+      loadNotificationCount();
+    };
+
+    const pollIntervalMs = role === "customer" ? 5000 : 10000;
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadNotificationCount();
+      }
+    }, pollIntervalMs);
+
     window.addEventListener("notifications-updated", handleNotificationsUpdated);
+    window.addEventListener("focus", handleWindowFocus);
 
     return () => {
+      clearInterval(intervalId);
       window.removeEventListener("notifications-updated", handleNotificationsUpdated);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   }, [role]);
 

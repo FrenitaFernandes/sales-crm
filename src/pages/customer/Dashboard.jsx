@@ -1,6 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Activity, Bell, FileText, GaugeCircle, MessageSquare, Megaphone } from "lucide-react";
+import {
+  getCustomerNotifications,
+  getDismissedCustomerNotificationIds,
+} from "../../utils/customerNotifications";
+
+const withLocalNotificationCounts = (payload = {}) => {
+  const localNotifications = getCustomerNotifications();
+  const localTotal = localNotifications.length;
+  const localUnread = localNotifications.filter((item) => item?.read !== true).length;
+  const dismissedBackendCount = getDismissedCustomerNotificationIds().size;
+
+  return {
+    ...payload,
+    notificationCount: Math.max(0, Number(payload.notificationCount || 0) - dismissedBackendCount) + localTotal,
+    unreadNotifications: Math.max(0, Number(payload.unreadNotifications || 0) - dismissedBackendCount) + localUnread,
+  };
+};
 
 function Dashboard() {
 
@@ -21,12 +38,13 @@ function Dashboard() {
       .get("http://localhost:5000/api/customer/dashboard", {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setStats(res.data || {}))
+      .then((res) => setStats(withLocalNotificationCounts(res.data || {})))
       .catch((err) => {
         console.error("Customer dashboard load error:", err);
-        setStats({
+        setStats(withLocalNotificationCounts({
           invoiceCount: 0,
           activeTickets: 0,
+          notificationCount: 0,
           unreadNotifications: 0,
           profileCompletion: 0,
           totalInvoiced: 0,
@@ -34,7 +52,7 @@ function Dashboard() {
           salesOverview: [],
           recentActivity: [],
           recommendedMessage: "Check back later for relevant offers.",
-        });
+        }));
       });
 
   }, []);
