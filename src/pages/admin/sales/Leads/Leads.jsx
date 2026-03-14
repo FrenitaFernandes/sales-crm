@@ -26,6 +26,14 @@ const formatDateToIST = (date) => {
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 };
 
+const getLocalTodayISO = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const industryTypes = [
   "Manufacturing Companies",
   "Industrial Businesses",
@@ -148,6 +156,7 @@ const buildLeadsPdfBlob = (leadsData) => {
 
 export default function Leads() {
   const navigate = useNavigate();
+  const todayISO = getLocalTodayISO();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
@@ -483,6 +492,11 @@ export default function Leads() {
     e.preventDefault();
     if (!selectedLeadForFollowUp) return;
 
+    if (followUpFormData.followUpDate < todayISO) {
+      showNotification("Follow-up date cannot be in the past.", "error");
+      return;
+    }
+
     try {
       const userEmail = localStorage.getItem("userEmail") || "admin@example.com";
       
@@ -590,6 +604,12 @@ export default function Leads() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.date > todayISO) {
+      showNotification("Lead date cannot be a future date.", "error");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -640,6 +660,12 @@ export default function Leads() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.date > todayISO) {
+      showNotification("Lead date cannot be a future date.", "error");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -1106,6 +1132,13 @@ Generated on: ${new Date().toLocaleString()}
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const paginatedLeads = filteredLeads.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -1378,18 +1411,25 @@ Generated on: ${new Date().toLocaleString()}
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-600">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, filteredLeads.length)} of{" "}
+                Showing {filteredLeads.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to{" "}
+                {filteredLeads.length === 0 ? 0 : Math.min(currentPage * itemsPerPage, filteredLeads.length)} of{" "}
                 {filteredLeads.length} leads
               </div>
               <div className="flex gap-2 items-center">
                 <span className="text-sm text-gray-600">{filteredLeads.length}</span>
                 <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 text-sm"
+                >
+                  {"<<"}
+                </button>
+                <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 text-sm"
                 >
-                  ‹
+                  {"<"}
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((page) => page >= currentPage - 1 && page <= currentPage + 1)
@@ -1411,7 +1451,14 @@ Generated on: ${new Date().toLocaleString()}
                   disabled={currentPage === totalPages}
                   className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 text-sm"
                 >
-                  ›
+                  {">"}
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 text-sm"
+                >
+                  {">>"}
                 </button>
               </div>
             </div>
@@ -1527,6 +1574,7 @@ Generated on: ${new Date().toLocaleString()}
                     name="date"
                     value={formData.date}
                     onChange={handleInputChange}
+                    max={todayISO}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -1705,6 +1753,7 @@ Generated on: ${new Date().toLocaleString()}
                     name="date"
                     value={formData.date}
                     onChange={handleInputChange}
+                    max={todayISO}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
@@ -1824,6 +1873,7 @@ Generated on: ${new Date().toLocaleString()}
                     name="followUpDate"
                     value={followUpFormData.followUpDate}
                     onChange={handleFollowUpInputChange}
+                    min={todayISO}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
