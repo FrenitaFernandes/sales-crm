@@ -156,7 +156,7 @@ exports.getCustomers = async (req, res) => {
       if (nameKey) projectNames.add(nameKey);
     }
 
-    const resolveDisplayStatus = ({ customerId, userId, email, name, fallbackStatus = "Inactive" }) => {
+    const resolveDisplayStatus = ({ customerId, userId, email, name }) => {
       const customerIdKey = String(customerId || "").trim();
       const userIdKey = String(userId || "").trim();
       const emailKey = String(email || "").trim().toLowerCase();
@@ -171,7 +171,7 @@ exports.getCustomers = async (req, res) => {
         return "Active";
       }
 
-      return fallbackStatus;
+      return "Inactive";
     };
 
     const customerUsers = await User
@@ -196,7 +196,6 @@ exports.getCustomers = async (req, res) => {
           userId: customer.userId,
           email: customer.email,
           name: customer.name,
-          fallbackStatus: customer.status,
         }),
         hasCustomerRecord: true,
         canDelete: true,
@@ -225,7 +224,6 @@ exports.getCustomers = async (req, res) => {
           userId: user._id,
           email: emailKey,
           name: user.name,
-          fallbackStatus: "Inactive",
         }),
         isDeleted: false,
         hasCustomerRecord: false,
@@ -281,7 +279,6 @@ exports.getCustomers = async (req, res) => {
           userId: linkedCustomer?.userId,
           email: derivedEmail,
           name: derivedName,
-          fallbackStatus: linkedCustomer?.status || "Active",
         }),
         isDeleted: false,
         hasCustomerRecord: false,
