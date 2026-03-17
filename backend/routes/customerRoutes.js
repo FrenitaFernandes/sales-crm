@@ -9,6 +9,7 @@ const {
   getCustomerById,
   updateCustomer,
   deleteCustomer,
+  permanentlyDeleteCustomer,
   updateCustomerProfile,
   deleteOwnAccount,
   getCustomerDashboard
@@ -132,6 +133,9 @@ router.put("/:id", protect, updateCustomer);
 
 // Delete customer
 router.delete("/:id", protect, deleteCustomer);
+
+// Permanently delete customer (admin only)
+router.delete("/:id/permanent", protect, permanentlyDeleteCustomer);
 
 
 module.exports = router;

@@ -6,6 +6,8 @@ const CustomerDetails = () => {
   const [search, setSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({ open: false, customer: null });
+  const [alertModal, setAlertModal] = useState({ open: false, message: "", isError: false });
 
   useEffect(() => {
     fetchCustomers();
@@ -81,30 +83,117 @@ const CustomerDetails = () => {
       (c.phone || "").includes(search)
   );
 
-  const canDeleteCustomer = (customer) => {
-    if (typeof customer?.canDelete === "boolean") {
-      return customer.canDelete;
-    }
-
-    return customer?.source !== "project";
+  const isDeletedCustomer = (customer) => {
+    const status = String(customer?.status || "").trim().toLowerCase();
+    return Boolean(customer?.isDeleted) || status === "deleted";
   };
 
-  const handleDeleteCustomer = async (id) => {
-  try {
-    const token = localStorage.getItem("token");
+  const activeInactiveCustomers = filteredCustomers.filter(
+    (customer) => !isDeletedCustomer(customer)
+  );
 
-    await fetch(`http://localhost:5000/api/customers/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const deletedCustomers = filteredCustomers.filter((customer) =>
+    isDeletedCustomer(customer)
+  );
 
-    fetchCustomers(); // refresh table
-  } catch (error) {
-    console.log("Delete error:", error);
-  }
-};
+  const handlePermanentDeleteCustomer = (customer) => {
+    setConfirmModal({ open: true, customer });
+  };
+
+  const confirmPermanentDelete = async () => {
+    const customer = confirmModal.customer;
+    setConfirmModal({ open: false, customer: null });
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/customers/${customer._id}/permanent`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to permanently delete account");
+      }
+
+      setAlertModal({ open: true, message: "Account has been permanently deleted.", isError: false });
+      fetchCustomers();
+    } catch (error) {
+      console.log("Permanent delete error:", error);
+      setAlertModal({ open: true, message: error.message || "Unable to delete account.", isError: true });
+    }
+  };
+
+  const renderTable = (rows, emptyMessage, allowPermanentDelete = false) => (
+    <div className="overflow-x-auto bg-white shadow rounded-lg">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-gray-100 text-left">
+            <th className="p-3 border">Name</th>
+            <th className="p-3 border">Email</th>
+            <th className="p-3 border">Phone</th>
+            <th className="p-3 border">Status</th>
+            {allowPermanentDelete && <th className="p-3 border">Deleted On</th>}
+            <th className="p-3 border">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.length > 0 ? (
+            rows.map((c) => (
+              <tr key={c._id}>
+                <td className="p-3 border">{c.name}</td>
+                <td className="p-3 border">{c.email}</td>
+                <td className="p-3 border">{c.phone}</td>
+                <td className="p-3 border">{c.status}</td>
+                {allowPermanentDelete && (
+                  <td className="p-3 border text-sm text-gray-600">
+                    {c.deletedAt
+                      ? new Date(c.deletedAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : c.updatedAt
+                      ? new Date(c.updatedAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "-"}
+                  </td>
+                )}
+                <td className="p-3 border flex gap-3 items-center">
+                  <button
+                    className="bg-blue-600 text-white px-3 py-1 rounded"
+                    onClick={() => handleViewCustomer(c)}>
+                    View
+                  </button>
+
+                  {allowPermanentDelete && c?.canPermanentDelete ? (
+                    <button
+                      className="text-red-600 hover:text-red-800"
+                      onClick={() => handlePermanentDeleteCustomer(c)}>
+                      <FaTrash />
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={allowPermanentDelete ? 6 : 5} className="p-4 text-center">
+                {emptyMessage}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className="p-6">
@@ -118,57 +207,60 @@ const CustomerDetails = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <div className="overflow-x-auto bg-white shadow rounded-lg">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100 text-left">
-              <th className="p-3 border">Name</th>
-              <th className="p-3 border">Email</th>
-              <th className="p-3 border">Phone</th>
-              <th className="p-3 border">Status</th>
-              <th className="p-3 border">Action</th>
-            </tr>
-          </thead>
+      <h3 className="text-lg font-semibold mb-2">Active / Inactive Accounts</h3>
+      {renderTable(activeInactiveCustomers, "No active or inactive accounts found.")}
 
-          <tbody>
-            {filteredCustomers.length > 0 ? (
-              filteredCustomers.map((c) => (
-                <tr key={c._id}>
-                  <td className="p-3 border">{c.name}</td>
-                  <td className="p-3 border">{c.email}</td>
-                  <td className="p-3 border">{c.phone}</td>
-                  <td className="p-3 border">{c.status}</td>
-                  <td className="p-3 border flex gap-3 items-center">
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                      onClick={() => handleViewCustomer(c)}>
-                      View
-                    </button>
+      <h3 className="text-lg font-semibold mt-6 mb-2">Deleted Accounts</h3>
+      {renderTable(deletedCustomers, "No deleted accounts found.", true)}
 
-                    {canDeleteCustomer(c) ? (
-                      <button
-                        className="text-red-600 hover:text-red-800"
-                        onClick={() => handleDeleteCustomer(c._id)}>
-                        <FaTrash />
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="p-4 text-center">
-                  No customers found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Confirm Delete Modal */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-white bg-opacity-10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-lg">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to permanently delete{" "}
+              <span className="font-semibold text-red-600">{confirmModal.customer?.name || "this account"}</span>?{" "}
+              This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                onClick={() => setConfirmModal({ open: false, customer: null })}>
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                onClick={confirmPermanentDelete}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {alertModal.open && (
+        <div className="fixed inset-0 bg-white bg-opacity-10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-lg">
+            <h3 className={`text-lg font-semibold mb-2 ${alertModal.isError ? "text-red-600" : "text-green-600"}`}>
+              {alertModal.isError ? "Error" : "Success"}
+            </h3>
+            <p className="text-gray-700 mb-6">{alertModal.message}</p>
+            <div className="flex justify-end">
+              <button
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => setAlertModal({ open: false, message: "", isError: false })}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-[90%] max-w-lg shadow-lg">
+        <div className="fixed inset-0 bg-white bg-opacity-10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-[90%] max-w-2xl shadow-2xl">
             <h3 className="text-xl font-bold mb-3">Projects</h3>
 
             {projects.length > 0 ? (

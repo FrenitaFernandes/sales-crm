@@ -127,8 +127,13 @@ exports.createCustomer = async (req, res) => {
 exports.getCustomers = async (req, res) => {
   try {
     const customers = await Customer
-      .find({ isDeleted: false })
+      .find({})
       .sort({ createdAt: -1 });
+
+    const customerUsers = await User
+      .find({ role: "customer" })
+      .sort({ createdAt: -1 })
+      .select("_id name email phone isActive createdAt updatedAt");
 
     const projects = await Project
       .find()
@@ -139,45 +144,158 @@ exports.getCustomers = async (req, res) => {
     const projectUserIds = new Set();
     const projectEmails = new Set();
     const projectNames = new Set();
+    const projectPhonesByCustomerId = new Map();
+    const projectPhonesByUserId = new Map();
+    const projectPhonesByEmail = new Map();
+    const projectPhonesByName = new Map();
 
-    for (const project of projects) {
-      const linkedCustomer = project.customerId && !project.customerId.isDeleted
-        ? project.customerId
-        : null;
+    const storeProjectPhone = ({ customerId, userId, email, name, phone }) => {
+      const phoneValue = String(phone || "").trim();
+      if (!phoneValue) {
+        return;
+      }
 
-      const customerIdKey = linkedCustomer?._id ? String(linkedCustomer._id) : "";
-      const userIdKey = linkedCustomer?.userId ? String(linkedCustomer.userId) : "";
-      const emailKey = String(linkedCustomer?.email || project.email || "").trim().toLowerCase();
-      const nameKey = String(linkedCustomer?.name || project.clientName || "").trim().toLowerCase();
-
-      if (customerIdKey) projectCustomerIds.add(customerIdKey);
-      if (userIdKey) projectUserIds.add(userIdKey);
-      if (emailKey) projectEmails.add(emailKey);
-      if (nameKey) projectNames.add(nameKey);
-    }
-
-    const resolveDisplayStatus = ({ customerId, userId, email, name }) => {
       const customerIdKey = String(customerId || "").trim();
       const userIdKey = String(userId || "").trim();
       const emailKey = String(email || "").trim().toLowerCase();
       const nameKey = String(name || "").trim().toLowerCase();
 
-      if (
+      if (customerIdKey && !projectPhonesByCustomerId.has(customerIdKey)) {
+        projectPhonesByCustomerId.set(customerIdKey, phoneValue);
+      }
+
+      if (userIdKey && !projectPhonesByUserId.has(userIdKey)) {
+        projectPhonesByUserId.set(userIdKey, phoneValue);
+      }
+
+      if (emailKey && !projectPhonesByEmail.has(emailKey)) {
+        projectPhonesByEmail.set(emailKey, phoneValue);
+      }
+
+      if (nameKey && !projectPhonesByName.has(nameKey)) {
+        projectPhonesByName.set(nameKey, phoneValue);
+      }
+    };
+
+    for (const project of projects) {
+      const projectCustomer = project.customerId || null;
+      const linkedCustomer = projectCustomer && !projectCustomer.isDeleted
+        ? projectCustomer
+        : null;
+
+      const customerIdKey = linkedCustomer?._id ? String(linkedCustomer._id) : "";
+      const userIdKey = projectCustomer?.userId ? String(projectCustomer.userId) : "";
+      const emailKey = String(projectCustomer?.email || project.email || "").trim().toLowerCase();
+      const nameKey = String(projectCustomer?.name || project.clientName || "").trim().toLowerCase();
+      const phoneValue = String(projectCustomer?.phone || project.phone || "").trim();
+
+      if (customerIdKey) projectCustomerIds.add(customerIdKey);
+      if (userIdKey) projectUserIds.add(userIdKey);
+      if (emailKey) projectEmails.add(emailKey);
+      if (nameKey) projectNames.add(nameKey);
+
+      storeProjectPhone({
+        customerId: projectCustomer?._id,
+        userId: projectCustomer?.userId,
+        email: projectCustomer?.email || project.email,
+        name: projectCustomer?.name || project.clientName,
+        phone: phoneValue,
+      });
+    }
+
+    const userPhonesById = new Map();
+    const userPhonesByEmail = new Map();
+    const userActiveById = new Map();
+    const userActiveByEmail = new Map();
+
+    for (const user of customerUsers) {
+      const userIdKey = String(user._id || "").trim();
+      const emailKey = String(user.email || "").trim().toLowerCase();
+      const phoneValue = String(user.phone || "").trim();
+
+      if (userIdKey && !userActiveById.has(userIdKey)) {
+        userActiveById.set(userIdKey, Boolean(user.isActive));
+      }
+
+      if (emailKey && !userActiveByEmail.has(emailKey)) {
+        userActiveByEmail.set(emailKey, Boolean(user.isActive));
+      }
+
+      if (!phoneValue) {
+        continue;
+      }
+
+      if (userIdKey && !userPhonesById.has(userIdKey)) {
+        userPhonesById.set(userIdKey, phoneValue);
+      }
+
+      if (emailKey && !userPhonesByEmail.has(emailKey)) {
+        userPhonesByEmail.set(emailKey, phoneValue);
+      }
+    }
+
+    const hasLinkedProject = ({ customerId, userId, email, name }) => {
+      const customerIdKey = String(customerId || "").trim();
+      const userIdKey = String(userId || "").trim();
+      const emailKey = String(email || "").trim().toLowerCase();
+      const nameKey = String(name || "").trim().toLowerCase();
+
+      return (
         (customerIdKey && projectCustomerIds.has(customerIdKey)) ||
         (userIdKey && projectUserIds.has(userIdKey)) ||
         (emailKey && projectEmails.has(emailKey)) ||
         (nameKey && projectNames.has(nameKey))
-      ) {
+      );
+    };
+
+    const resolveDisplayStatus = ({ customerId, userId, email, name }) => {
+      if (hasLinkedProject({ customerId, userId, email, name })) {
         return "Active";
       }
 
       return "Inactive";
     };
 
-    const customerUsers = await User
-      .find({ role: "customer", isActive: true })
-      .sort({ createdAt: -1 })
-      .select("_id name email phone createdAt updatedAt");
+    const resolveAccountDeleted = ({ isDeleted, userId, email }) => {
+      if (Boolean(isDeleted)) {
+        return true;
+      }
+
+      const userIdKey = String(userId || "").trim();
+      const emailKey = String(email || "").trim().toLowerCase();
+
+      if (userIdKey && userActiveById.has(userIdKey)) {
+        return !userActiveById.get(userIdKey);
+      }
+
+      if (emailKey && userActiveByEmail.has(emailKey)) {
+        return !userActiveByEmail.get(emailKey);
+      }
+
+      return false;
+    };
+
+    const resolveDisplayPhone = ({ customerId, userId, email, name, phone }) => {
+      const phoneValue = String(phone || "").trim();
+      if (phoneValue) {
+        return phoneValue;
+      }
+
+      const customerIdKey = String(customerId || "").trim();
+      const userIdKey = String(userId || "").trim();
+      const emailKey = String(email || "").trim().toLowerCase();
+      const nameKey = String(name || "").trim().toLowerCase();
+
+      return (
+        (customerIdKey && projectPhonesByCustomerId.get(customerIdKey)) ||
+        (userIdKey && userPhonesById.get(userIdKey)) ||
+        (userIdKey && projectPhonesByUserId.get(userIdKey)) ||
+        (emailKey && userPhonesByEmail.get(emailKey)) ||
+        (emailKey && projectPhonesByEmail.get(emailKey)) ||
+        (nameKey && projectPhonesByName.get(nameKey)) ||
+        ""
+      );
+    };
 
     const seenKeys = new Set();
     const mergedCustomers = [];
@@ -185,20 +303,40 @@ exports.getCustomers = async (req, res) => {
     for (const customer of customers) {
       const emailKey = String(customer.email || "").trim().toLowerCase();
       const userKey = customer.userId ? String(customer.userId) : "";
+      const accountDeleted = resolveAccountDeleted({
+        isDeleted: customer.isDeleted,
+        userId: customer.userId,
+        email: customer.email,
+      });
 
       if (emailKey) seenKeys.add(`email:${emailKey}`);
       if (userKey) seenKeys.add(`user:${userKey}`);
 
       mergedCustomers.push({
         ...customer.toObject(),
-        status: resolveDisplayStatus({
+        phone: resolveDisplayPhone({
+          customerId: customer._id,
+          userId: customer.userId,
+          email: customer.email,
+          name: customer.name,
+          phone: customer.phone,
+        }),
+        status: accountDeleted
+          ? "Deleted"
+          : resolveDisplayStatus({
+            customerId: customer._id,
+            userId: customer.userId,
+            email: customer.email,
+            name: customer.name,
+          }),
+        hasCustomerRecord: true,
+        canDelete: !accountDeleted && !hasLinkedProject({
           customerId: customer._id,
           userId: customer.userId,
           email: customer.email,
           name: customer.name,
         }),
-        hasCustomerRecord: true,
-        canDelete: true,
+        canPermanentDelete: accountDeleted,
         source: "customer",
       });
     }
@@ -206,6 +344,7 @@ exports.getCustomers = async (req, res) => {
     for (const user of customerUsers) {
       const emailKey = String(user.email || "").trim().toLowerCase();
       const userKey = String(user._id);
+      const accountDeleted = !Boolean(user.isActive);
 
       if (
         (emailKey && seenKeys.has(`email:${emailKey}`)) ||
@@ -219,15 +358,27 @@ exports.getCustomers = async (req, res) => {
         userId: user._id,
         name: user.name,
         email: emailKey,
-        phone: user.phone || "",
-        status: resolveDisplayStatus({
+        phone: resolveDisplayPhone({
+          userId: user._id,
+          email: emailKey,
+          name: user.name,
+          phone: user.phone,
+        }),
+        status: accountDeleted
+          ? "Deleted"
+          : resolveDisplayStatus({
+            userId: user._id,
+            email: emailKey,
+            name: user.name,
+          }),
+        isDeleted: accountDeleted,
+        hasCustomerRecord: false,
+        canDelete: !accountDeleted && !hasLinkedProject({
           userId: user._id,
           email: emailKey,
           name: user.name,
         }),
-        isDeleted: false,
-        hasCustomerRecord: false,
-        canDelete: true,
+        canPermanentDelete: accountDeleted,
         source: "registered-user",
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -235,6 +386,7 @@ exports.getCustomers = async (req, res) => {
     }
 
     for (const project of projects) {
+      const projectCustomer = project.customerId || null;
       const linkedCustomer = project.customerId && !project.customerId.isDeleted
         ? project.customerId
         : null;
@@ -249,6 +401,11 @@ exports.getCustomers = async (req, res) => {
         linkedCustomer?.phone || project.phone || ""
       ).trim();
       const derivedUserId = linkedCustomer?.userId ? String(linkedCustomer.userId) : "";
+      const accountDeleted = resolveAccountDeleted({
+        isDeleted: projectCustomer?.isDeleted,
+        userId: projectCustomer?.userId,
+        email: derivedEmail,
+      });
 
       if (!derivedName && !derivedEmail && !derivedPhone) {
         continue;
@@ -273,16 +430,25 @@ exports.getCustomers = async (req, res) => {
         userId: linkedCustomer?.userId || null,
         name: derivedName || "Customer",
         email: derivedEmail,
-        phone: derivedPhone,
-        status: resolveDisplayStatus({
-          customerId: linkedCustomer?._id,
-          userId: linkedCustomer?.userId,
+        phone: resolveDisplayPhone({
+          customerId: projectCustomer?._id,
+          userId: projectCustomer?.userId,
           email: derivedEmail,
           name: derivedName,
+          phone: derivedPhone,
         }),
-        isDeleted: false,
+        status: accountDeleted
+          ? "Deleted"
+          : resolveDisplayStatus({
+            customerId: projectCustomer?._id,
+            userId: projectCustomer?.userId,
+            email: derivedEmail,
+            name: derivedName,
+          }),
+        isDeleted: accountDeleted,
         hasCustomerRecord: false,
         canDelete: false,
+        canPermanentDelete: Boolean(accountDeleted && projectCustomer?._id),
         source: "project",
         createdAt: linkedCustomer?.createdAt || project.createdAt,
         updatedAt: linkedCustomer?.updatedAt || project.updatedAt,
@@ -463,6 +629,101 @@ exports.deleteCustomer = async (req, res) => {
     console.error("Delete Customer Error:", error);
 
     res.status(500).json({
+      message: "Server Error"
+    });
+
+  }
+};
+
+
+// ===========================
+// PERMANENTLY DELETE CUSTOMER (ADMIN)
+// ===========================
+exports.permanentlyDeleteCustomer = async (req, res) => {
+  try {
+    if (String(req.user?.role || "").toLowerCase() !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can permanently delete customers"
+      });
+    }
+
+    const id = String(req.params.id || "").trim();
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required"
+      });
+    }
+
+    const userFilterCandidates = [];
+    const customerFilterCandidates = [];
+    let deletedCustomer = await Customer.findByIdAndDelete(id);
+    let deletedUser = null;
+
+    if (deletedCustomer?.userId) {
+      userFilterCandidates.push({ _id: deletedCustomer.userId });
+      customerFilterCandidates.push({ userId: deletedCustomer.userId });
+    }
+
+    const deletedCustomerEmail = String(deletedCustomer?.email || "").trim().toLowerCase();
+    if (deletedCustomerEmail) {
+      userFilterCandidates.push({ email: deletedCustomerEmail });
+      customerFilterCandidates.push({ email: deletedCustomerEmail });
+    }
+
+    if (!deletedCustomer) {
+      const userById = await User.findById(id);
+      if (userById) {
+        deletedUser = await User.findByIdAndDelete(id);
+
+        const normalizedUserEmail = String(userById.email || "").trim().toLowerCase();
+        const customerDeleteFilter = {
+          $or: [
+            { userId: userById._id },
+            ...(normalizedUserEmail ? [{ email: normalizedUserEmail }] : [])
+          ]
+        };
+
+        await Customer.deleteMany(customerDeleteFilter);
+      }
+    }
+
+    if (deletedCustomer && customerFilterCandidates.length > 0) {
+      await Customer.deleteMany({ $or: customerFilterCandidates });
+    }
+
+    if (!deletedUser && userFilterCandidates.length > 0) {
+      deletedUser = await User.findOneAndDelete({ $or: userFilterCandidates });
+    }
+
+    if (!deletedCustomer && !deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    await logActivity(
+      req.user._id,
+      req.user.name,
+      "DELETE",
+      "Customer",
+      `Customer ${(deletedCustomer?.name || deletedUser?.name || id)} permanently deleted`,
+      req.ip
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Customer permanently deleted"
+    });
+
+  } catch (error) {
+
+    console.error("Permanent Delete Customer Error:", error);
+
+    res.status(500).json({
+      success: false,
       message: "Server Error"
     });
 
