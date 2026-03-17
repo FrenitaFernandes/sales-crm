@@ -182,128 +182,7 @@ export default function Leads() {
   const [deleteConfirmMessage, setDeleteConfirmMessage] = useState("");
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-  const [leads, setLeads] = useState([
-    {
-      id: 1,
-      leadName: "Anderson Smith",
-      projectName: "IoT Data Logger",
-      industryType: "Technology",
-      phone: "4551276895",
-      email: "anderson@techcorp.com",
-      source: "Website",
-      status: "New",
-      assignedTo: "John Doe",
-      date: "05/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "today",
-      followUpHistory: [],
-    },
-    {
-      id: 2,
-      leadName: "Emily Johnson",
-      projectName: "Cloud Storage System",
-      industryType: "Finance",
-      phone: "4553986869",
-      email: "anderson@techcorp.com",
-      source: "Website",
-      status: "New",
-      assignedTo: "Jane Smith",
-      date: "05/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "today",
-      followUpHistory: [],
-    },
-    {
-      id: 3,
-      leadName: "Michael Brown",
-      projectName: "Healthcare Management",
-      industryType: "Healthcare",
-      phone: "7854055555",
-      email: "michael@gmail.com",
-      source: "Cold Call",
-      status: "Interested",
-      assignedTo: "John Doe",
-      date: "04/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "interested",
-      followUpHistory: [],
-    },
-    {
-      id: 4,
-      leadName: "Sarah Lee",
-      projectName: "Innovation Platform",
-      industryType: "Technology",
-      phone: "9914388519",
-      email: "sarah@email.com",
-      source: "Website",
-      status: "New",
-      assignedTo: "Jane Smith",
-      date: "05/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "today",
-      followUpHistory: [],
-    },
-    {
-      id: 5,
-      leadName: "David Wilson",
-      projectName: "Energy Management",
-      industryType: "Energy",
-      phone: "9656388256",
-      email: "david@email.com",
-      source: "Website",
-      status: "Not Interested",
-      assignedTo: "Mike Johnson",
-      date: "03/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "not-interested",
-      followUpHistory: [],
-    },
-    {
-      id: 6,
-      leadName: "Jenny Carter",
-      projectName: "Startup Solutions",
-      industryType: "Technology",
-      phone: "5551234567",
-      email: "jenny@startups.com",
-      source: "Referral",
-      status: "Interested",
-      assignedTo: "Jane Smith",
-      date: "04/03/2026, 12:00:00 am",
-      lastFollowUp: "Follow Up",
-      category: "interested",
-      followUpHistory: [],
-    },
-    {
-      id: 7,
-      leadName: "Robert Martinez",
-      projectName: "Cloud Infrastructure",
-      industryType: "IT Services",
-      phone: "5559876543",
-      email: "robert@cloud.com",
-      source: "LinkedIn",
-      status: "Converted",
-      assignedTo: "John Doe",
-      date: "28/02/2026, 12:00:00 am",
-      lastFollowUp: "Completed",
-      category: "converted",
-      followUpHistory: [],
-    },
-    {
-      id: 8,
-      leadName: "Lisa Anderson",
-      projectName: "Digital Transformation",
-      industryType: "Consulting",
-      phone: "5551112222",
-      email: "lisa@digital.com",
-      source: "Email",
-      status: "Dropout",
-      assignedTo: "Mike Johnson",
-      date: "25/02/2026, 12:00:00 am",
-      lastFollowUp: "No Response",
-      category: "dropout",
-      followUpHistory: [],
-    },
-  ]);
+  const [leads, setLeads] = useState([]);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -372,7 +251,7 @@ export default function Leads() {
         }
       } catch (error) {
         console.error("Failed to load leads:", error);
-        // Keep the default leads if API fails
+        setLeads([]);
       }
     };
 
@@ -859,6 +738,11 @@ export default function Leads() {
   };
 
   const handleViewLead = async (leadId) => {
+    if (!/^[0-9a-fA-F]{24}$/.test(String(leadId))) {
+      showNotification("Invalid lead id. Please refresh and try again.", "error");
+      return;
+    }
+
     try {
       // Fetch the latest lead data from backend
       const response = await getLeadById(leadId);

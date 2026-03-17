@@ -1,10 +1,13 @@
 const Lead = require("../models/Lead");
 const Customer = require("../models/Customer");
 const Project = require("../models/Project");
+const mongoose = require("mongoose");
 const { LEAD_INDUSTRY_TYPES } = require("../constants/leadIndustryTypes");
 
 const isValidIndustryType = (industryType) =>
   typeof industryType === "string" && LEAD_INDUSTRY_TYPES.includes(industryType);
+
+const isValidLeadId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // ============================
 // CHECK IF EMAIL EXISTS IN CUSTOMERS
@@ -192,6 +195,13 @@ exports.getLeads = async (req, res) => {
 // ============================
 exports.getLeadById = async (req, res) => {
   try {
+    if (!isValidLeadId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead id",
+      });
+    }
+
     const lead = await Lead.findById(req.params.id);
 
     if (!lead) {
@@ -214,6 +224,13 @@ exports.getLeadById = async (req, res) => {
 // ============================
 exports.updateLead = async (req, res) => {
   try {
+    if (!isValidLeadId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead id",
+      });
+    }
+
     if (
       Object.prototype.hasOwnProperty.call(req.body, "industryType") &&
       !isValidIndustryType(req.body.industryType)
@@ -257,6 +274,13 @@ exports.updateLead = async (req, res) => {
 // ============================
 exports.addFollowUp = async (req, res) => {
   try {
+    if (!isValidLeadId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead id",
+      });
+    }
+
     const { date, note, secondNote, followUpDate, status, updatedBy } = req.body;
 
     const lead = await Lead.findById(req.params.id);
@@ -302,6 +326,13 @@ exports.addFollowUp = async (req, res) => {
 // ============================
 exports.updateStatus = async (req, res) => {
   try {
+    if (!isValidLeadId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead id",
+      });
+    }
+
     const { status } = req.body;
 
     const lead = await Lead.findById(req.params.id);
@@ -338,6 +369,13 @@ exports.updateStatus = async (req, res) => {
 // ============================
 exports.deleteLead = async (req, res) => {
   try {
+    if (!isValidLeadId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead id",
+      });
+    }
+
     const lead = await Lead.findByIdAndDelete(req.params.id);
 
     if (!lead) {
