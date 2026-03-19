@@ -601,6 +601,16 @@ exports.deleteCustomer = async (req, res) => {
       });
     }
 
+    const targetUser = matchedUser
+      || (customer?.userId ? await User.findById(customer.userId) : null)
+      || (customer?.email ? await User.findOne({ email: String(customer.email).trim().toLowerCase() }) : null);
+
+    if (String(targetUser?.role || "").toLowerCase() === "admin") {
+      return res.status(403).json({
+        message: "Admin account cannot be deleted or deactivated"
+      });
+    }
+
     // Keep customer/projects for admin history, but block future user logins.
     const userFilter = matchedUser?._id
       ? { _id: matchedUser._id }
@@ -656,6 +666,24 @@ exports.permanentlyDeleteCustomer = async (req, res) => {
       });
     }
 
+    const existingCustomer = await Customer.findById(id);
+    const existingUserById = await User.findById(id);
+    const targetUserFromCustomer = existingCustomer?.userId
+      ? await User.findById(existingCustomer.userId)
+      : existingCustomer?.email
+        ? await User.findOne({ email: String(existingCustomer.email).trim().toLowerCase() })
+        : null;
+
+    if (
+      String(existingUserById?.role || "").toLowerCase() === "admin"
+      || String(targetUserFromCustomer?.role || "").toLowerCase() === "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin account cannot be permanently deleted"
+      });
+    }
+
     const userFilterCandidates = [];
     const customerFilterCandidates = [];
     let deletedCustomer = await Customer.findByIdAndDelete(id);
@@ -675,6 +703,13 @@ exports.permanentlyDeleteCustomer = async (req, res) => {
     if (!deletedCustomer) {
       const userById = await User.findById(id);
       if (userById) {
+        if (String(userById.role || "").toLowerCase() === "admin") {
+          return res.status(403).json({
+            success: false,
+            message: "Admin account cannot be permanently deleted"
+          });
+        }
+
         deletedUser = await User.findByIdAndDelete(id);
 
         const normalizedUserEmail = String(userById.email || "").trim().toLowerCase();
@@ -790,6 +825,13 @@ exports.deleteOwnAccount = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     const userEmail = req.user.email;
+
+    if (String(req.user?.role || "").toLowerCase() === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin account cannot be self-deleted"
+      });
+    }
 
     if (!userId) {
       return res.status(401).json({

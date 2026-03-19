@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
+const { protect } = require("../middleware/authMiddleware");
 
 const Customer = require("../models/Customer.js");
 const ServiceRequest = require("../models/ServiceRequest.js");
@@ -45,11 +46,25 @@ router.get("/dashboard", async (req, res) => {
 });
 
 
-// ✅ Seed Dummy Data (ONLY FOR DRAFT DB)
-router.get("/seed", async (req, res) => {
+// Seed/reset endpoint guarded to avoid accidental mass deletions.
+router.post("/seed", protect, async (req, res) => {
+  if (String(req.user?.role || "").toLowerCase() !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
   if (process.env.NODE_ENV === "production") {
-  return res.status(403).json({ message: "❌ Seeding disabled in production" });
-}
+    return res.status(403).json({ message: "Seeding disabled in production" });
+  }
+
+  if (String(process.env.SEED_ALLOW || "").toLowerCase() !== "true") {
+    return res.status(403).json({ message: "Seeding disabled. Set SEED_ALLOW=true to enable." });
+  }
+
+  if (String(req.body?.confirm || "") !== "RESET_ALL") {
+    return res.status(400).json({
+      message: "Confirmation required. Send { \"confirm\": \"RESET_ALL\" } in request body."
+    });
+  }
 
   try {
     await Customer.deleteMany({});
@@ -57,7 +72,7 @@ router.get("/seed", async (req, res) => {
     await User.deleteMany({}); // Clear existing users
 
     // Create admin user
-    const hashedAdminPassword = await bcrypt.hash("admin123", 10);
+    const hashedAdminPassword = await bcrypt.hash("admin@123", 10);
     await User.create({
       name: "Admin",
       email: "admin@gmail.com",
@@ -101,7 +116,7 @@ router.get("/seed", async (req, res) => {
       },
     ]);
 
-    res.json({ message: "✅ Dummy data inserted successfully" });
+    res.json({ message: "Dummy data inserted successfully" });
   } catch (err) {
     console.error("Seed error:", err);
     res.status(500).json({ message: "Seed failed" });
