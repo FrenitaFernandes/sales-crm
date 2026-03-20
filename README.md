@@ -1,3 +1,33 @@
+# Sales CRM Setup
+
+## Stable Team Workflow (Avoid "Module not found")
+
+Run these commands after switching branches or pulling new changes:
+
+```bash
+npm run setup
+```
+
+Verify dependencies are healthy:
+
+```bash
+npm run deps:check
+```
+
+Start frontend and backend in separate terminals:
+
+```bash
+npm run start:frontend
+```
+
+```bash
+npm run start:backend
+```
+
+Important team rule:
+- Always commit updated `package.json` and lock files when adding/removing packages.
+- Never commit `node_modules`.
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

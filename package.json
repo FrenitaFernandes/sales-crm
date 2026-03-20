@@ -25,6 +25,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "setup": "npm ci && npm --prefix backend ci",
+    "deps:check": "npm ls --depth=0 && npm --prefix backend ls --depth=0",
+    "start:frontend": "react-scripts start",
+    "start:backend": "npm --prefix backend start",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
