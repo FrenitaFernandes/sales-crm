@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const dns = require("dns");
 const { execSync } = require("child_process");
 const { ensureDefaultAdmin } = require("./adminGuard");
 
@@ -35,6 +36,15 @@ const resolveDbName = () => {
 
 const connectDB = async () => {
   try {
+    const dnsServers = String(process.env.MONGO_DNS_SERVERS || "1.1.1.1,1.0.0.1")
+      .split(",")
+      .map((server) => server.trim())
+      .filter(Boolean);
+
+    if (dnsServers.length) {
+      dns.setServers(dnsServers);
+    }
+
     const dbName = resolveDbName();
     const connectOptions = dbName ? { dbName } : {};
     const conn = await mongoose.connect(process.env.MONGO_URI, connectOptions);
